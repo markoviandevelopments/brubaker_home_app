@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'led_controls_screen.dart'; // New screen
+import 'socket_game_screen.dart'; // New screen
 
 class GamesScreen extends StatelessWidget {
   const GamesScreen({super.key});
@@ -26,6 +27,16 @@ class GamesScreen extends StatelessWidget {
               backgroundColor: Theme.of(context).primaryColor,
             ), // Brown cowboy accent
             child: const Text('LED Controls'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const SocketGameScreen()),
+            ),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Theme.of(context).primaryColor,
+            ), // Brown cowboy accent
+            child: const Text('Socket Game (meow)'),
           ),
         ],
       ),
