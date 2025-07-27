@@ -197,6 +197,7 @@ class _MinesweeperScreenState extends State<MinesweeperScreen> {
             onPressed: () => _sendAction({'action': 'new_game'}),
             child: const Text('Start New Game'),
           ),
+          const SizedBox(height: 50),
         ],
       ),
     );

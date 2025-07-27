@@ -37,7 +37,7 @@ class GamesScreen extends StatelessWidget {
             ),
             style: ElevatedButton.styleFrom(
               backgroundColor: Theme.of(context).primaryColor,
-            ), // Brown cowboy accent
+            ),
             child: const Text('Socket Game (meow)'),
           ),
           ElevatedButton(
@@ -47,7 +47,7 @@ class GamesScreen extends StatelessWidget {
             ),
             style: ElevatedButton.styleFrom(
               backgroundColor: Theme.of(context).primaryColor,
-            ), // Brown cowboy accent
+            ),
             child: const Text('Indian Name'),
           ),
           ElevatedButton(
@@ -57,7 +57,7 @@ class GamesScreen extends StatelessWidget {
             ),
             style: ElevatedButton.styleFrom(
               backgroundColor: Theme.of(context).primaryColor,
-            ), // Brown cowboy accent
+            ),
             child: const Text('Minesweeper'),
           ),
         ],
