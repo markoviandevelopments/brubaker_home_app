@@ -8,7 +8,11 @@ class InfoScreen extends StatelessWidget {
       context: context,
       builder: (context) => AlertDialog(
         title: Text(title),
-        content: const Text('Placeholder: Instructions coming soon!'),
+        content: title == 'House Rules'
+            ? const Text(
+                'Always listen to Willoh, even if Willoh tells you otherwise...',
+              )
+            : const Text('Placeholder: Info coming soon!'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
