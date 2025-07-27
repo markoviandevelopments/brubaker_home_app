@@ -27,6 +27,17 @@ class _SocketGameScreenState extends State<SocketGameScreen> {
   }
 
   @override
+  void spawnYellowChance() {
+    // Randomly change a cell to yellow
+    int number = random.nextInt(10);
+    if (number == 0) {
+      int x = random.nextInt(10);
+      int y = random.nextInt(10);
+      gridColors[x][y] = Colors.yellow; // Set random cell to yellow
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     // Update cat's position in the grid
     gridColors[currentRow][currentCol] = Colors.grey[800]!;
@@ -86,14 +97,8 @@ class _SocketGameScreenState extends State<SocketGameScreen> {
                       gridColors[currentRow][currentCol] = Colors.green;
                       // Move cat up
                       if (currentRow > 0) currentRow--;
-                      // Randomly change a cell to yellow
-                      int number = random.nextInt(10);
-                      if (number == 0) {
-                        int x = random.nextInt(10);
-                        int y = random.nextInt(10);
-                        gridColors[x][y] =
-                            Colors.yellow; // Set random cell to yellow
-                      }
+                      spawnYellowChance();
+
                       // Check to see if point was earned
                       if (gridColors[currentRow][currentCol] == Colors.yellow) {
                         score++;
@@ -112,6 +117,7 @@ class _SocketGameScreenState extends State<SocketGameScreen> {
                       gridColors[currentRow][currentCol] = Colors.green;
                       // Move cat down
                       if (currentRow < 9) currentRow++;
+                      spawnYellowChance();
                       // Check to see if point was earned
                       if (gridColors[currentRow][currentCol] == Colors.yellow) {
                         score++;
@@ -130,6 +136,7 @@ class _SocketGameScreenState extends State<SocketGameScreen> {
                       gridColors[currentRow][currentCol] = Colors.green;
                       // Move cat left
                       if (currentCol > 0) currentCol--;
+                      spawnYellowChance();
                       // Check to see if point was earned
                       if (gridColors[currentRow][currentCol] == Colors.yellow) {
                         score++;
@@ -148,6 +155,7 @@ class _SocketGameScreenState extends State<SocketGameScreen> {
                       gridColors[currentRow][currentCol] = Colors.green;
                       // Move cat right
                       if (currentCol < 9) currentCol++;
+                      spawnYellowChance();
                       // Set new cat position to grey
                       // Check to see if point was earned
                       if (gridColors[currentRow][currentCol] == Colors.yellow) {
