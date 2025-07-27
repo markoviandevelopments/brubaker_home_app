@@ -30,36 +30,40 @@ class GamesScreen extends StatelessWidget {
             ), // Brown cowboy accent
             child: const Text('LED Controls'),
           ),
+          const SizedBox(height: 10), // Margin
           ElevatedButton(
             onPressed: () => Navigator.push(
               context,
               MaterialPageRoute(builder: (context) => const SocketGameScreen()),
             ),
             style: ElevatedButton.styleFrom(
-              backgroundColor: Theme.of(context).primaryColor,
+              backgroundColor: Colors.green,
             ),
             child: const Text('Socket Game (meow)'),
           ),
+          const SizedBox(height: 10), // Margin
           ElevatedButton(
             onPressed: () => Navigator.push(
               context,
               MaterialPageRoute(builder: (context) => const IndianNameScreen()),
             ),
             style: ElevatedButton.styleFrom(
-              backgroundColor: Theme.of(context).primaryColor,
+              backgroundColor: Colors.grey,
             ),
             child: const Text('Indian Name'),
           ),
+          const SizedBox(height: 10), // Margin
           ElevatedButton(
             onPressed: () => Navigator.push(
               context,
               MaterialPageRoute(builder: (context) => const MinesweeperScreen()),
             ),
             style: ElevatedButton.styleFrom(
-              backgroundColor: Theme.of(context).primaryColor,
+              backgroundColor: Colors.red,
             ),
             child: const Text('Minesweeper'),
           ),
+          const SizedBox(height: 10), // Margin
         ],
       ),
     );
