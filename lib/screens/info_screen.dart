@@ -4,15 +4,22 @@ class InfoScreen extends StatelessWidget {
   const InfoScreen({super.key});
 
   void _showPlaceholderDialog(BuildContext context, String title) {
+    Widget content;
+    if (title == 'House Rules') {
+      content = const Text('1. No audiably brushing your teeth around Willoh. 2. Only chew with your mouth shut. 3. See rule 1. 4. Any mention of the Lorax should should include discourse on the system of political economy portrayed / defamed in the movie.');
+    } else if (title == 'Coffee Machine') {
+      content = const Text('Put coffee beans in grinder, and grind such that only a slight amount of coarseness is left. THen press into pod and run machine.');
+    } else if (title == 'WiFi Setup') {
+      content = const Text('WiFi Name: BrubakerWifi\nWifi Pass: Pre\$ton01');
+    } else {
+      content = const Text('No information available');
+    }
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: Text(title),
-        content: title == 'House Rules'
-            ? const Text(
-                'Always listen to Willoh, even if Willoh tells you otherwise...',
-              )
-            : const Text('Placeholder: Info coming soon!'),
+        content: content,
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
