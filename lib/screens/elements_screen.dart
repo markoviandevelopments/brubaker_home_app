@@ -11,12 +11,22 @@ class ElementsScreen extends StatefulWidget {
 
 class _ElementsScreenState extends State<ElementsScreen> {
   Socket? _socket;
-  List<List<String>> _grid = List.generate(20, (_) => List.generate(20, (_) => 'nothing'));
+  List<List<String>> _grid = List.generate(
+    20,
+    (_) => List.generate(20, (_) => 'nothing'),
+  );
   String _errorMessage = '';
   bool _isLoading = false;
   String _buffer = '';
   String _selectedElement = 'sand';
-  final List<String> elements = ["nothing", "sand", "water", "block", "cloud", "gas"];
+  final List<String> elements = [
+    "nothing",
+    "sand",
+    "water",
+    "block",
+    "cloud",
+    "gas",
+  ];
 
   @override
   void initState() {
@@ -43,7 +53,11 @@ class _ElementsScreenState extends State<ElementsScreen> {
               if (jsonData['type'] == 'state') {
                 setState(() {
                   _grid = (jsonData['grid'] as List)
-                      .map((row) => (row as List).map((cell) => cell as String).toList())
+                      .map(
+                        (row) => (row as List)
+                            .map((cell) => cell as String)
+                            .toList(),
+                      )
                       .toList();
                 });
               }
@@ -100,23 +114,53 @@ class _ElementsScreenState extends State<ElementsScreen> {
 
   Widget _buildCell(int row, int col) {
     final value = _grid[row][col];
-    Color cellColor = const Color.fromRGBO(15, 15, 15, 1);
+    Color cellColor = const Color.fromARGB(255, 48, 48, 48); // Nothing
 
     if (value == 'sand') {
-      cellColor = const Color.fromRGBO(100, 100, 10, 1);
+      cellColor = const Color.fromRGBO(255, 204, 102, 1); // Sand
     } else if (value == 'water') {
-      cellColor = Colors.blue;
+      cellColor = const Color.fromRGBO(51, 153, 255, 1); // Water
     } else if (value == 'block') {
-      cellColor = const Color.fromRGBO(100, 100, 100, 1);
+      cellColor = const Color.fromARGB(255, 158, 98, 19); // Block
     } else if (value == 'cloud') {
       cellColor = const Color.fromRGBO(173, 216, 230, 1);
-    }  else if (value == 'gas') {
-        cellColor = const Color.fromRGBO(245, 11, 148, 1);
+    } else if (value == 'gas') {
+      cellColor = const Color.fromRGBO(245, 11, 148, 1);
     }
 
     return GestureDetector(
       onTap: () {
-        _sendAction({'action': 'place', 'x': col, 'y': row, 'element': _selectedElement});
+        _sendAction({
+          'action': 'place',
+          'x': col,
+          'y': row,
+          'element': _selectedElement,
+        });
+      },
+      onPanStart: (details) {
+        _sendAction({
+          'action': 'place',
+          'x': col,
+          'y': row,
+          'element': _selectedElement,
+        });
+      },
+      onPanUpdate: (details) {
+        RenderBox box = context.findRenderObject() as RenderBox;
+        Offset localPosition = box.globalToLocal(details.globalPosition);
+        int newRow = (localPosition.dy / (box.size.height / 20)).floor();
+        int newCol = (localPosition.dx / (box.size.width / 20)).floor();
+
+        if (newRow >= 0 && newRow < 20 && newCol >= 0 && newCol < 20) {
+          if (newRow != row || newCol != col) {
+            _sendAction({
+              'action': 'place',
+              'x': newCol,
+              'y': newRow,
+              'element': _selectedElement,
+            });
+          }
+        }
       },
       child: Container(
         decoration: BoxDecoration(
@@ -132,6 +176,7 @@ class _ElementsScreenState extends State<ElementsScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Elements Game'),
+        backgroundColor: Colors.blue, // Modern, clean Houston vibe
       ),
       body: Column(
         children: [

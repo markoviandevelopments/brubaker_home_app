@@ -4,10 +4,14 @@ import 'package:provider/provider.dart';
 import 'providers/post_provider.dart'; // New import
 import 'theme.dart'; // Custom theme for white base with cowboy accents
 import 'screens/home_screen.dart'; // New import for extracted HomeScreen
+import 'dart:io'; // Added for platform checks
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp();
+  // Conditionally initialize Firebase only on supported platforms (e.g., Android, iOS)
+  if (!Platform.isLinux) {
+    await Firebase.initializeApp();
+  }
   runApp(const GuestApp());
 }
 

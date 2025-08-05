@@ -14,162 +14,200 @@ class _SocketGameScreenState extends State<SocketGameScreen> {
   int currentCol = 0;
   int score = 0;
   final random = Random();
-  late List<List<Color>> gridColors; // 2D list for grid colors
+  late List<List<bool>> hasCollectible; // 2D list for collectible positions
+
+  // Swipe detection variables
+  Offset? _dragStart;
 
   @override
   void initState() {
     super.initState();
-    // Initialize 10x10 grid with green color
-    gridColors = List.generate(
-      10,
-      (_) => List.generate(10, (_) => Colors.green),
-    );
+    // Initialize 10x10 grid for collectibles
+    hasCollectible = List.generate(10, (_) => List.generate(10, (_) => false));
   }
 
-  @override
-  void spawnYellowChance() {
-    // Randomly change a cell to yellow
-    int number = random.nextInt(10);
-    if (number == 0) {
+  void spawnCollectibleChance() {
+    // Randomly spawn a collectible
+    if (random.nextInt(10) == 0) {
       int x = random.nextInt(10);
       int y = random.nextInt(10);
-      gridColors[x][y] = Colors.yellow; // Set random cell to yellow
+      // Avoid spawning on player
+      if (!hasCollectible[x][y] && !(x == currentRow && y == currentCol)) {
+        hasCollectible[x][y] = true;
+      }
     }
+  }
+
+  void moveUp() {
+    setState(() {
+      if (currentRow > 0) currentRow--;
+      spawnCollectibleChance();
+      if (hasCollectible[currentRow][currentCol]) {
+        score++;
+        hasCollectible[currentRow][currentCol] = false;
+      }
+    });
+  }
+
+  void moveDown() {
+    setState(() {
+      if (currentRow < 9) currentRow++;
+      spawnCollectibleChance();
+      if (hasCollectible[currentRow][currentCol]) {
+        score++;
+        hasCollectible[currentRow][currentCol] = false;
+      }
+    });
+  }
+
+  void moveLeft() {
+    setState(() {
+      if (currentCol > 0) currentCol--;
+      spawnCollectibleChance();
+      if (hasCollectible[currentRow][currentCol]) {
+        score++;
+        hasCollectible[currentRow][currentCol] = false;
+      }
+    });
+  }
+
+  void moveRight() {
+    setState(() {
+      if (currentCol < 9) currentCol++;
+      spawnCollectibleChance();
+      if (hasCollectible[currentRow][currentCol]) {
+        score++;
+        hasCollectible[currentRow][currentCol] = false;
+      }
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    // Update cat's position in the grid
-    gridColors[currentRow][currentCol] = Colors.grey[800]!;
-
-    return Scaffold(
-      appBar: AppBar(title: const Text('Socket Game')),
-      body: Column(
-        children: [
-          // Display score above the grid
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Text(
-              'Score: $score',
-              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-            ),
+    return Theme(
+      data: ThemeData(
+        primaryColor: const Color(0xFF8B4513), // Saddle brown accent
+        scaffoldBackgroundColor: Colors.white, // Clean white background
+        iconTheme: const IconThemeData(color: Colors.black),
+      ),
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Socket Game'),
+          backgroundColor: const Color(0xFF8B4513), // Saddle brown app bar
+          titleTextStyle: const TextStyle(
+            color: Colors.white,
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
           ),
-          Expanded(
-            child: Center(
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  double maxSize = constraints.maxWidth < constraints.maxHeight
-                      ? constraints.maxWidth
-                      : constraints.maxHeight;
-                  return SizedBox(
-                    width: maxSize,
-                    height: maxSize,
-                    child: GridView.builder(
-                      physics: const NeverScrollableScrollPhysics(),
-                      gridDelegate:
-                          const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 10,
-                            childAspectRatio: 1.0,
-                          ),
-                      itemCount: 100,
-                      itemBuilder: (context, index) {
-                        int row = index ~/ 10;
-                        int col = index % 10;
-                        // Use color from 2D list
-                        Color color = gridColors[row][col];
-                        return Container(color: color);
-                      },
-                    ),
-                  );
-                },
+        ),
+        body: SafeArea(
+          child: Column(
+            children: [
+              // Display score above the grid
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Text(
+                  'Score: $score',
+                  style: const TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
               ),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                ElevatedButton(
-                  onPressed: () {
-                    setState(() {
-                      // Reset current cat position to green
-                      gridColors[currentRow][currentCol] = Colors.green;
-                      // Move cat up
-                      if (currentRow > 0) currentRow--;
-                      spawnYellowChance();
+              Expanded(
+                child: Center(
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      double maxSize =
+                          constraints.maxWidth < constraints.maxHeight
+                          ? constraints.maxWidth
+                          : constraints.maxHeight;
+                      return GestureDetector(
+                        onPanStart: (details) {
+                          _dragStart =
+                              details.localPosition; // Uses localPosition
+                        },
+                        onPanEnd: (details) {
+                          if (_dragStart == null) return;
+                          final dx = details.velocity.pixelsPerSecond.dx;
+                          final dy = details.velocity.pixelsPerSecond.dy;
+                          if (dx.abs() > dy.abs()) {
+                            if (dx > 0)
+                              moveRight();
+                            else
+                              moveLeft();
+                          } else {
+                            if (dy > 0)
+                              moveDown();
+                            else
+                              moveUp();
+                          }
+                          _dragStart = null;
+                        },
+                        child: SizedBox(
+                          width: maxSize,
+                          height: maxSize,
+                          child: GridView.builder(
+                            physics: const NeverScrollableScrollPhysics(),
+                            gridDelegate:
+                                const SliverGridDelegateWithFixedCrossAxisCount(
+                                  crossAxisCount: 10,
+                                  childAspectRatio: 1.0,
+                                ),
+                            itemCount: 100,
+                            itemBuilder: (context, index) {
+                              int row = index ~/ 10;
+                              int col = index % 10;
+                              bool isPlayer =
+                                  (row == currentRow && col == currentCol);
+                              bool isCollectible = hasCollectible[row][col];
 
-                      // Check to see if point was earned
-                      if (gridColors[currentRow][currentCol] == Colors.yellow) {
-                        score++;
-                      }
-                      // Set new cat position to grey
-                      gridColors[currentRow][currentCol] = Colors.grey[800]!;
-                    });
-                  },
-                  child: const Text('Up'),
+                              return Container(
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: [Colors.white, Colors.brown[100]!],
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                  ),
+                                  border: Border.all(
+                                    color: const Color(0xFF8B4513),
+                                    width: 0.5,
+                                  ), // Saddle brown border
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.1),
+                                      blurRadius: 2,
+                                      offset: const Offset(1, 1),
+                                    ),
+                                  ],
+                                ),
+                                child: Center(
+                                  child: isPlayer
+                                      ? const Icon(
+                                          Icons.pets,
+                                          size: 24,
+                                          color: Colors.black,
+                                        ) // Cat icon; replace with Image.asset for custom
+                                      : isCollectible
+                                      ? const Icon(
+                                          Icons.star,
+                                          size: 24,
+                                          color: Colors.yellow,
+                                        ) // Star icon; replace with Image.asset
+                                      : null,
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      );
+                    },
+                  ),
                 ),
-                const SizedBox(width: 10),
-                ElevatedButton(
-                  onPressed: () {
-                    setState(() {
-                      // Reset current cat position to green
-                      gridColors[currentRow][currentCol] = Colors.green;
-                      // Move cat down
-                      if (currentRow < 9) currentRow++;
-                      spawnYellowChance();
-                      // Check to see if point was earned
-                      if (gridColors[currentRow][currentCol] == Colors.yellow) {
-                        score++;
-                      }
-                      // Set new cat position to grey
-                      gridColors[currentRow][currentCol] = Colors.grey[800]!;
-                    });
-                  },
-                  child: const Text('Down'),
-                ),
-                const SizedBox(width: 10),
-                ElevatedButton(
-                  onPressed: () {
-                    setState(() {
-                      // Reset current cat position to green
-                      gridColors[currentRow][currentCol] = Colors.green;
-                      // Move cat left
-                      if (currentCol > 0) currentCol--;
-                      spawnYellowChance();
-                      // Check to see if point was earned
-                      if (gridColors[currentRow][currentCol] == Colors.yellow) {
-                        score++;
-                      }
-                      // Set new cat position to grey
-                      gridColors[currentRow][currentCol] = Colors.grey[800]!;
-                    });
-                  },
-                  child: const Text('Left'),
-                ),
-                const SizedBox(width: 10),
-                ElevatedButton(
-                  onPressed: () {
-                    setState(() {
-                      // Reset current cat position to green
-                      gridColors[currentRow][currentCol] = Colors.green;
-                      // Move cat right
-                      if (currentCol < 9) currentCol++;
-                      spawnYellowChance();
-                      // Set new cat position to grey
-                      // Check to see if point was earned
-                      if (gridColors[currentRow][currentCol] == Colors.yellow) {
-                        score++;
-                      }
-                      gridColors[currentRow][currentCol] = Colors.grey[800]!;
-                    });
-                  },
-                  child: const Text('Right'),
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }

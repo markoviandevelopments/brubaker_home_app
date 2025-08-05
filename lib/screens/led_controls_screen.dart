@@ -95,13 +95,9 @@ class _LedControlsScreenState extends State<LedControlsScreen> {
       SnackBar(
         content: Text(
           message,
-          style: GoogleFonts.montserrat(
-            color: Theme.of(context).colorScheme.onSurface, // Light theme text
-          ),
+          style: GoogleFonts.montserrat(color: Colors.white),
         ),
-        backgroundColor: Theme.of(
-          context,
-        ).colorScheme.surface, // Light background
+        backgroundColor: Colors.black.withOpacity(0.7),
       ),
     );
   }
@@ -116,78 +112,103 @@ class _LedControlsScreenState extends State<LedControlsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
         title: Text(
           'LED Controls',
-          style: GoogleFonts.montserrat(
-            color: Theme.of(context).colorScheme.secondary, // Red accent
-            fontWeight: FontWeight.w600,
+          style: GoogleFonts.rye(
+            color: Colors.redAccent,
+            fontWeight: FontWeight.bold,
+            fontSize: 24,
           ),
         ),
-        backgroundColor: Theme.of(
-          context,
-        ).colorScheme.surface, // Light background
+        backgroundColor: Colors.transparent,
         elevation: 0,
       ),
-      body: isLoading
-          ? Center(
-              child: CircularProgressIndicator(
-                color: Theme.of(context).colorScheme.secondary, // Red accent
-              ),
-            )
-          : ListView(
-              padding: const EdgeInsets.all(16.0),
-              children: [
-                Text(
-                  'Current Mode: ${titleCase(currentMode)}',
-                  style: GoogleFonts.montserrat(
-                    color: Theme.of(context).colorScheme.onSurface, // Dark text
-                    fontSize: 18,
-                  ),
-                ),
-                const SizedBox(height: 20),
-                Text(
-                  'Predefined Modes',
-                  style: GoogleFonts.montserrat(
-                    color: Theme.of(
-                      context,
-                    ).colorScheme.secondary, // Red accent
-                    fontWeight: FontWeight.w600,
-                    fontSize: 20,
-                  ),
-                ),
-                const SizedBox(height: 10),
-                ...modes.map(
-                  (mode) => Card(
-                    child: ListTile(
-                      title: Text(
-                        titleCase(mode),
-                        style: GoogleFonts.montserrat(
-                          color: mode == currentMode
-                              ? Theme.of(context)
-                                    .colorScheme
-                                    .secondary // Red for selected
-                              : Theme.of(
-                                  context,
-                                ).colorScheme.primary, // Brown for unselected
+      body: Container(
+        decoration: const BoxDecoration(
+          image: DecorationImage(
+            image: NetworkImage(
+              'https://images.unsplash.com/photo-1693368765432-lDivijzEg9o?auto=format&fit=crop&w=1920&q=80',
+            ),
+            fit: BoxFit.cover,
+          ),
+        ),
+        child: SafeArea(
+          child: isLoading
+              ? const Center(
+                  child: CircularProgressIndicator(color: Colors.redAccent),
+                )
+              : ListView(
+                  padding: const EdgeInsets.all(16.0),
+                  children: [
+                    Text(
+                      'Current Mode: ${titleCase(currentMode)}',
+                      style: GoogleFonts.montserrat(
+                        color: Colors.white,
+                        fontSize: 18,
+                        shadows: [
+                          Shadow(
+                            blurRadius: 8.0,
+                            color: Colors.redAccent.withOpacity(0.5),
+                            offset: const Offset(0, 0),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    Text(
+                      'Predefined Modes',
+                      style: GoogleFonts.rye(
+                        color: Colors.redAccent,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 20,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    ...modes.map(
+                      (mode) => Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 4.0),
+                        child: GestureDetector(
+                          onTap: isUpdating ? null : () => updateMode(mode),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: Colors.black.withOpacity(0.5),
+                              borderRadius: BorderRadius.circular(12),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: mode == currentMode
+                                      ? Colors.redAccent.withOpacity(0.8)
+                                      : Colors.blueAccent.withOpacity(0.3),
+                                  blurRadius: 10,
+                                  spreadRadius: 2,
+                                ),
+                              ],
+                            ),
+                            child: ListTile(
+                              title: Text(
+                                titleCase(mode),
+                                style: GoogleFonts.montserrat(
+                                  color: mode == currentMode
+                                      ? Colors.redAccent
+                                      : Colors.white,
+                                ),
+                              ),
+                              trailing: Icon(
+                                Icons.lightbulb,
+                                color: mode == currentMode
+                                    ? Colors.redAccent
+                                    : Colors.white,
+                              ),
+                            ),
+                          ),
                         ),
                       ),
-                      trailing: Icon(
-                        Icons.lightbulb,
-                        color: mode == currentMode
-                            ? Theme.of(context)
-                                  .colorScheme
-                                  .secondary // Red for selected
-                            : Theme.of(
-                                context,
-                              ).colorScheme.primary, // Brown for unselected
-                      ),
-                      onTap: isUpdating ? null : () => updateMode(mode),
                     ),
-                  ),
+                  ],
                 ),
-              ],
-            ),
+        ),
+      ),
     );
   }
 }
