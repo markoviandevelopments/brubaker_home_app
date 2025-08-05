@@ -32,7 +32,7 @@ class _MinesweeperScreenState extends State<MinesweeperScreen> {
       _errorMessage = '';
     });
     try {
-      _socket = await Socket.connect('192.168.1.126', 5091);
+      _socket = await Socket.connect('108.254.1.184', 5091);
       _socket!.listen(
         (List<int> data) {
           _buffer += utf8.decode(data);

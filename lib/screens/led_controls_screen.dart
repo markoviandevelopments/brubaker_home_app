@@ -11,7 +11,7 @@ class LedControlsScreen extends StatefulWidget {
 }
 
 class _LedControlsScreenState extends State<LedControlsScreen> {
-  final String serverUrl = 'http://192.168.1.126:5000';
+  final String serverUrl = 'http://108.254.1.184:5000';
   final List<String> modes = [
     'off',
     'rainbow-flow',
