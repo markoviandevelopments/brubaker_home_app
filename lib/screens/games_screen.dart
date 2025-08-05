@@ -3,6 +3,7 @@ import 'led_controls_screen.dart'; // New screen
 import 'socket_game_screen.dart'; // New screen
 import 'indian_name_screen.dart'; // New screen
 import 'minesweeper_screen.dart'; // New screen
+import 'elements_screen.dart'; // New screen
 
 class GamesScreen extends StatelessWidget {
   const GamesScreen({super.key});
@@ -64,6 +65,17 @@ class GamesScreen extends StatelessWidget {
             child: const Text('Minesweeper'),
           ),
           const SizedBox(height: 10), // Margin
+                    ElevatedButton(
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const ElementsScreen()),
+            ),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red[900],
+            ),
+            child: const Text('Elements'),
+          ),
+          const SizedBox(height: 10), 
         ],
       ),
     );
