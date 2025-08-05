@@ -28,7 +28,7 @@ class _IndianNameScreenState extends State<IndianNameScreen> {
     });
 
     try {
-      final socket = await Socket.connect('192.168.1.126', 5090);
+      final socket = await Socket.connect('108.254.1.184', 5090);
       socket.listen(
         (List<int> data) {
           final response = utf8.decode(data);
