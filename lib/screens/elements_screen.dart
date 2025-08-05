@@ -117,11 +117,11 @@ class _ElementsScreenState extends State<ElementsScreen> {
     Color cellColor = const Color.fromARGB(255, 48, 48, 48); // Nothing
 
     if (value == 'sand') {
-      cellColor = const Color.fromRGBO(255, 204, 102, 1); // Sand
+      cellColor = const Color.fromARGB(255, 255, 239, 206); // Sand
     } else if (value == 'water') {
-      cellColor = const Color.fromRGBO(51, 153, 255, 1); // Water
+      cellColor = const Color.fromARGB(255, 59, 135, 211); // Water
     } else if (value == 'block') {
-      cellColor = const Color.fromARGB(255, 158, 98, 19); // Block
+      cellColor = const Color.fromARGB(255, 170, 165, 159); // Block
     } else if (value == 'cloud') {
       cellColor = const Color.fromRGBO(173, 216, 230, 1);
     } else if (value == 'gas') {

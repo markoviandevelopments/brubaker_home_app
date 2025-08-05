@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'providers/post_provider.dart'; // New import
 import 'theme.dart'; // Custom theme for white base with cowboy accents
-import 'screens/home_screen.dart'; // New import for extracted HomeScreen
+import 'screens/games_screen.dart';
 import 'dart:io'; // Added for platform checks
 
 void main() async {
@@ -25,7 +25,7 @@ class GuestApp extends StatelessWidget {
       child: MaterialApp(
         title: 'Katy TX Guest App',
         theme: getAppTheme(), // Apply custom theme
-        home: const HomeScreen(),
+        home: const GamesScreen(),
       ),
     );
   }
