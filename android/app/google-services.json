@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "818785973247",
+    "project_id": "brubaker-home-app",
+    "storage_bucket": "brubaker-home-app.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:818785973247:android:daeae9cfd4c0de5f04edca",
+        "android_client_info": {
+          "package_name": "com.brubaker.homeapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCL4IrMpdqhYP7K0wEubXoVwxslawzNHII"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:818785973247:android:455ce382e313e53c04edca",
+        "android_client_info": {
+          "package_name": "com.example.wills_guest_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCL4IrMpdqhYP7K0wEubXoVwxslawzNHII"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

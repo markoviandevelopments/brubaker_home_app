@@ -1,6 +1,6 @@
 {
-    "name": "wills_guest_app",
-    "short_name": "wills_guest_app",
+    "name": "brubaker_homeapp",
+    "short_name": "brubaker_homeapp",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

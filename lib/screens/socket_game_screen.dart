@@ -61,7 +61,7 @@ class _SocketGameScreenState extends State<SocketGameScreen> {
                   double maxSize = constraints.maxWidth < constraints.maxHeight
                       ? constraints.maxWidth
                       : constraints.maxHeight;
-                  return Container(
+                  return SizedBox(
                     width: maxSize,
                     height: maxSize,
                     child: GridView.builder(

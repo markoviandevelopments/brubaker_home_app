@@ -1,4 +1,4 @@
-name: wills_guest_app
+name: brubaker_homeapp
 description: "A new Flutter project."
 
 publish_to: 'none'
@@ -16,6 +16,18 @@ dependencies:
   http: ^1.4.0
   flutter_colorpicker: ^1.1.0
   google_fonts: ^6.2.1
+  firebase_core: ^3.3.0
+  cloud_firestore: ^5.2.0
+  firebase_storage: ^12.2.0
+  firebase_auth: ^5.2.0
+  provider: ^6.1.2
+  image_picker: ^1.0.7
+  video_player: ^2.9.1
+  chewie: ^1.7.5
+  uuid: ^4.4.2
+  shared_preferences: ^2.3.2
+  crypto: ^3.0.5
+  animate_do: ^3.0.2
 
 dev_dependencies:
   flutter_test:
@@ -25,8 +37,9 @@ dev_dependencies:
 
 
 flutter:
-
   uses-material-design: true
+  assets:
+    - assets/images/restaurants/
 
 flutter_launcher_icons:
   android: true
