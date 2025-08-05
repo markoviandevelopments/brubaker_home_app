@@ -37,7 +37,7 @@ class GamesScreen extends StatelessWidget {
               MaterialPageRoute(builder: (context) => const SocketGameScreen()),
             ),
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.pink(600),
+              backgroundColor: Colors.pink[600],
             ),
             child: const Text('Socket Game (meow)'),
           ),
@@ -50,7 +50,7 @@ class GamesScreen extends StatelessWidget {
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.blueGrey,
             ),
-            child: const Text('Indian Name'),
+            child: const Text('Silly Name'),
           ),
           const SizedBox(height: 10), // Margin
           ElevatedButton(
@@ -59,7 +59,7 @@ class GamesScreen extends StatelessWidget {
               MaterialPageRoute(builder: (context) => const MinesweeperScreen()),
             ),
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red(900),
+              backgroundColor: Colors.red[900],
             ),
             child: const Text('Minesweeper'),
           ),

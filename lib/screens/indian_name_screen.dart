@@ -65,7 +65,7 @@ class _IndianNameScreenState extends State<IndianNameScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Indian Name'),
+        title: const Text('Silly Name'),
       ),
       body: Center(
         child: Column(
@@ -82,7 +82,7 @@ class _IndianNameScreenState extends State<IndianNameScreen> {
               Text('Epoch Time: $_epochTime'),
               Text('Random Number: $_randomNumber'),
               Text('Num Visits: $_numVisits'),
-              Text('Tribal Name: $_tribalName'),
+              Text('Silly Name: $_tribalName'),
             ] else
               const Text('Press the button to fetch data from the server'),
             const SizedBox(height: 20),
