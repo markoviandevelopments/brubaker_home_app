@@ -16,7 +16,7 @@ class _ElementsScreenState extends State<ElementsScreen> {
   bool _isLoading = false;
   String _buffer = '';
   String _selectedElement = 'sand';
-  final List<String> elements = ["nothing", "sand", "water", "block", "cloud"];
+  final List<String> elements = ["nothing", "sand", "water", "block", "cloud", "gas"];
 
   @override
   void initState() {
@@ -109,7 +109,9 @@ class _ElementsScreenState extends State<ElementsScreen> {
     } else if (value == 'block') {
       cellColor = const Color.fromRGBO(100, 100, 100, 1);
     } else if (value == 'cloud') {
-      cellColor = const Color.fromRGBO(250, 114, 64, 1);
+      cellColor = const Color.fromRGBO(173, 216, 230, 1);
+    }  else if (value == 'gas') {
+        cellColor = const Color.fromRGBO(245, 11, 148, 1);
     }
 
     return GestureDetector(
@@ -179,4 +181,4 @@ class _ElementsScreenState extends State<ElementsScreen> {
       ),
     );
   }
-}
+}h
