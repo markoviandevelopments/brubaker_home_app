@@ -27,7 +27,7 @@ class _MinesweeperScreenState extends State<MinesweeperScreen> {
   void initState() {
     super.initState();
     _confettiController = ConfettiController(
-      duration: const Duration(seconds: 3),
+      duration: const Duration(seconds: 5),
     );
     _connectToServer();
   }
@@ -57,8 +57,27 @@ class _MinesweeperScreenState extends State<MinesweeperScreen> {
                   _width = jsonData['width'];
                   _height = jsonData['height'];
                   _mines = jsonData['mines'];
-                  if (_status == 'win') {
-                    _confettiController.play();
+
+                  // Client-side win/lose detection
+                  if (_status == 'ongoing') {
+                    int unrevealedCount = 0;
+                    bool hasExplodedMine = false;
+                    for (var row in _board) {
+                      for (var cell in row) {
+                        if (cell == 'hidden' || cell == 'flag') {
+                          unrevealedCount++;
+                        }
+                        if (cell == 'mine') {
+                          hasExplodedMine = true;
+                        }
+                      }
+                    }
+                    if (hasExplodedMine) {
+                      _status = 'lose';
+                    } else if (unrevealedCount == _mines) {
+                      _status = 'win';
+                      _confettiController.play();
+                    }
                   }
                 });
               }
@@ -118,7 +137,7 @@ class _MinesweeperScreenState extends State<MinesweeperScreen> {
     final value = _board[row][col];
     IconData? icon;
     String text = '';
-    Color cellColor = const Color(0xFFD2B48C); // Tan base color
+    Color cellColor = const Color(0xFFD2B48C);
     Color textColor = Colors.black;
 
     if (value == 'hidden') {
@@ -308,11 +327,13 @@ class _MinesweeperScreenState extends State<MinesweeperScreen> {
                       Color(0xFFFFD700),
                       Color(0xFF4682B4),
                       Color(0xFF8B4513),
+                      Colors.white,
                     ],
-                    emissionFrequency: 0.05,
-                    numberOfParticles: 50,
-                    maxBlastForce: 20,
-                    minBlastForce: 10,
+                    emissionFrequency: 0.02,
+                    numberOfParticles: 100,
+                    maxBlastForce: 30,
+                    minBlastForce: 15,
+                    gravity: 0.1,
                   ),
                 ),
               ],
@@ -369,86 +390,88 @@ class _MinesweeperScreenState extends State<MinesweeperScreen> {
             ),
           ),
         ),
-        body: Stack(
-          children: [
-            Container(
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [Color(0xFFF5F5DC), Color(0xFFE6D7A8)],
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
+        body: SafeArea(
+          child: Stack(
+            children: [
+              Container(
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Color(0xFFF5F5DC), Color(0xFFE6D7A8)],
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                  ),
+                ),
+                child: Column(
+                  children: [
+                    if (_errorMessage.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.all(8.0),
+                        child: Text(
+                          _errorMessage,
+                          style: const TextStyle(
+                            color: Color(0xFFB22222),
+                            fontFamily: 'RobotoMono',
+                            fontSize: 16,
+                          ),
+                        ),
+                      ),
+                    if (_isLoading || _board.isEmpty)
+                      const Expanded(
+                        child: Center(child: CircularProgressIndicator()),
+                      )
+                    else
+                      Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.all(12),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              border: Border.all(
+                                color: const Color(0xFF8B4513),
+                                width: 4,
+                              ),
+                              borderRadius: BorderRadius.circular(12),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.2),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: GridView.builder(
+                              padding: const EdgeInsets.all(4),
+                              gridDelegate:
+                                  SliverGridDelegateWithFixedCrossAxisCount(
+                                    crossAxisCount: _width,
+                                    childAspectRatio: 1,
+                                  ),
+                              itemCount: _height * _width,
+                              itemBuilder: (context, index) {
+                                final row = index ~/ _width;
+                                final col = index % _width;
+                                return _buildCell(row, col);
+                              },
+                            ),
+                          ),
+                        ),
+                      ),
+                    _buildStatusMessage(),
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 30, top: 10),
+                      child: ElevatedButton(
+                        onPressed: () {
+                          _confettiController.stop();
+                          _sendAction({'action': 'new_game'});
+                        },
+                        child: const Text('Start New Game'),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              child: Column(
-                children: [
-                  if (_errorMessage.isNotEmpty)
-                    Padding(
-                      padding: const EdgeInsets.all(8.0),
-                      child: Text(
-                        _errorMessage,
-                        style: const TextStyle(
-                          color: Color(0xFFB22222),
-                          fontFamily: 'RobotoMono',
-                          fontSize: 16,
-                        ),
-                      ),
-                    ),
-                  if (_isLoading || _board.isEmpty)
-                    const Expanded(
-                      child: Center(child: CircularProgressIndicator()),
-                    )
-                  else
-                    Expanded(
-                      child: Padding(
-                        padding: const EdgeInsets.all(12),
-                        child: Container(
-                          decoration: BoxDecoration(
-                            border: Border.all(
-                              color: const Color(0xFF8B4513),
-                              width: 4,
-                            ),
-                            borderRadius: BorderRadius.circular(12),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.2),
-                                blurRadius: 10,
-                                offset: const Offset(0, 4),
-                              ),
-                            ],
-                          ),
-                          child: GridView.builder(
-                            padding: const EdgeInsets.all(4),
-                            gridDelegate:
-                                SliverGridDelegateWithFixedCrossAxisCount(
-                                  crossAxisCount: _width,
-                                  childAspectRatio: 1,
-                                ),
-                            itemCount: _height * _width,
-                            itemBuilder: (context, index) {
-                              final row = index ~/ _width;
-                              final col = index % _width;
-                              return _buildCell(row, col);
-                            },
-                          ),
-                        ),
-                      ),
-                    ),
-                  _buildStatusMessage(),
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 20),
-                    child: ElevatedButton(
-                      onPressed: () {
-                        _confettiController.stop();
-                        _sendAction({'action': 'new_game'});
-                      },
-                      child: const Text('Start New Game'),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            _buildWinOverlay(),
-          ],
+              _buildWinOverlay(),
+            ],
+          ),
         ),
       ),
     );

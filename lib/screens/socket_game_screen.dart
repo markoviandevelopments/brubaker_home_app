@@ -18,6 +18,8 @@ class _SocketGameScreenState extends State<SocketGameScreen> {
 
   // Swipe detection variables
   Offset? _dragStart;
+  Offset? _dragCurrent;
+  final double minDragDistance = 50.0; // Threshold for valid swipe
 
   @override
   void initState() {
@@ -124,25 +126,33 @@ class _SocketGameScreenState extends State<SocketGameScreen> {
                           : constraints.maxHeight;
                       return GestureDetector(
                         onPanStart: (details) {
-                          _dragStart =
-                              details.localPosition; // Uses localPosition
+                          _dragStart = details.localPosition;
+                          _dragCurrent = details.localPosition;
+                        },
+                        onPanUpdate: (details) {
+                          _dragCurrent = details.localPosition;
                         },
                         onPanEnd: (details) {
-                          if (_dragStart == null) return;
-                          final dx = details.velocity.pixelsPerSecond.dx;
-                          final dy = details.velocity.pixelsPerSecond.dy;
-                          if (dx.abs() > dy.abs()) {
-                            if (dx > 0)
-                              moveRight();
-                            else
-                              moveLeft();
+                          if (_dragStart == null || _dragCurrent == null)
+                            return;
+                          final delta = _dragCurrent! - _dragStart!;
+                          if (delta.dx.abs() > delta.dy.abs()) {
+                            if (delta.dx.abs() > minDragDistance) {
+                              if (delta.dx > 0)
+                                moveRight();
+                              else
+                                moveLeft();
+                            }
                           } else {
-                            if (dy > 0)
-                              moveDown();
-                            else
-                              moveUp();
+                            if (delta.dy.abs() > minDragDistance) {
+                              if (delta.dy > 0)
+                                moveDown();
+                              else
+                                moveUp();
+                            }
                           }
                           _dragStart = null;
+                          _dragCurrent = null;
                         },
                         child: SizedBox(
                           width: maxSize,
@@ -163,37 +173,20 @@ class _SocketGameScreenState extends State<SocketGameScreen> {
                               bool isCollectible = hasCollectible[row][col];
 
                               return Container(
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    colors: [Colors.white, Colors.brown[100]!],
-                                    begin: Alignment.topLeft,
-                                    end: Alignment.bottomRight,
-                                  ),
-                                  border: Border.all(
-                                    color: const Color(0xFF8B4513),
-                                    width: 0.5,
-                                  ), // Saddle brown border
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.black.withOpacity(0.1),
-                                      blurRadius: 2,
-                                      offset: const Offset(1, 1),
-                                    ),
-                                  ],
-                                ),
+                                color: Colors
+                                    .green, // Green background, no borders
                                 child: Center(
                                   child: isPlayer
-                                      ? const Icon(
-                                          Icons.pets,
-                                          size: 24,
-                                          color: Colors.black,
-                                        ) // Cat icon; replace with Image.asset for custom
+                                      ? Image.asset(
+                                          'assets/cat.png',
+                                          fit: BoxFit.contain,
+                                        ) // Uploaded cat image; adjust size if needed
                                       : isCollectible
                                       ? const Icon(
-                                          Icons.star,
-                                          size: 24,
-                                          color: Colors.yellow,
-                                        ) // Star icon; replace with Image.asset
+                                          Icons.circle,
+                                          size: 10,
+                                          color: Color(0xFF8B4513),
+                                        ) // Kibble as small brown circle; replace with Image.asset for custom
                                       : null,
                                 ),
                               );
