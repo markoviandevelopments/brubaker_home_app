@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:convert';
 import 'package:animate_do/animate_do.dart';
 import 'package:confetti/confetti.dart';
+import 'package:flutter/foundation.dart';
 
 class MinesweeperScreen extends StatefulWidget {
   const MinesweeperScreen({super.key});
@@ -57,27 +58,11 @@ class _MinesweeperScreenState extends State<MinesweeperScreen> {
                   _width = jsonData['width'];
                   _height = jsonData['height'];
                   _mines = jsonData['mines'];
-
-                  // Client-side win/lose detection
-                  if (_status == 'ongoing') {
-                    int unrevealedCount = 0;
-                    bool hasExplodedMine = false;
-                    for (var row in _board) {
-                      for (var cell in row) {
-                        if (cell == 'hidden' || cell == 'flag') {
-                          unrevealedCount++;
-                        }
-                        if (cell == 'mine') {
-                          hasExplodedMine = true;
-                        }
-                      }
-                    }
-                    if (hasExplodedMine) {
-                      _status = 'lose';
-                    } else if (unrevealedCount == _mines) {
-                      _status = 'win';
-                      _confettiController.play();
-                    }
+                  if (kDebugMode) {
+                    print('Game status: $_status'); // Debug to check status
+                  }
+                  if (_isWinStatus()) {
+                    _confettiController.play();
                   }
                 });
               }
@@ -108,6 +93,11 @@ class _MinesweeperScreenState extends State<MinesweeperScreen> {
         _isLoading = false;
       });
     }
+  }
+
+  bool _isWinStatus() {
+    // Flexible check for win status
+    return ['win', 'victory', 'won', 'success'].contains(_status.toLowerCase());
   }
 
   void _disconnect() {
@@ -177,29 +167,29 @@ class _MinesweeperScreenState extends State<MinesweeperScreen> {
         child: Container(
           decoration: BoxDecoration(
             gradient: LinearGradient(
-              colors: [cellColor, cellColor.withOpacity(0.8)],
+              colors: [cellColor, cellColor.withOpacity(0.7)],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
             border: Border.all(color: const Color(0xFF8B4513), width: 2),
-            borderRadius: BorderRadius.circular(4),
+            borderRadius: BorderRadius.circular(6),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.2),
-                blurRadius: 4,
+                color: Colors.black.withOpacity(0.3),
+                blurRadius: 5,
                 offset: const Offset(2, 2),
               ),
             ],
           ),
           child: Center(
             child: icon != null
-                ? Icon(icon, color: Colors.black, size: 26)
+                ? Icon(icon, color: Colors.black, size: 28)
                 : Text(
                     text,
                     style: const TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.bold,
-                      fontSize: 20,
+                      fontSize: 22,
                       fontFamily: 'RobotoMono',
                     ),
                   ),
@@ -210,12 +200,12 @@ class _MinesweeperScreenState extends State<MinesweeperScreen> {
   }
 
   Widget _buildStatusMessage() {
-    String message = _status == 'win'
+    String message = _isWinStatus()
         ? 'You Won!'
         : _status == 'lose'
         ? 'Game Over!'
         : 'Mines: $_mines';
-    Color bgColor = _status == 'win'
+    Color bgColor = _isWinStatus()
         ? const Color(0xFF228B22)
         : _status == 'lose'
         ? const Color(0xFFB22222)
@@ -224,28 +214,28 @@ class _MinesweeperScreenState extends State<MinesweeperScreen> {
     return FadeIn(
       duration: const Duration(milliseconds: 500),
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 24),
-        margin: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
+        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 28),
+        margin: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
         decoration: BoxDecoration(
           color: bgColor,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(18),
           border: Border.all(color: const Color(0xFF8B4513), width: 3),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withOpacity(0.3),
-              blurRadius: 8,
-              offset: const Offset(0, 4),
+              blurRadius: 10,
+              offset: const Offset(0, 5),
             ),
           ],
         ),
         child: Text(
           message,
           style: const TextStyle(
-            fontSize: 28,
+            fontSize: 30,
             fontWeight: FontWeight.bold,
             color: Colors.white,
             fontFamily: 'RobotoMono',
-            letterSpacing: 1.2,
+            letterSpacing: 1.5,
           ),
           textAlign: TextAlign.center,
         ),
@@ -254,37 +244,37 @@ class _MinesweeperScreenState extends State<MinesweeperScreen> {
   }
 
   Widget _buildWinOverlay() {
-    return _status == 'win'
+    return _isWinStatus()
         ? FadeIn(
             duration: const Duration(milliseconds: 500),
             child: Stack(
               children: [
                 Container(
-                  color: Colors.black.withOpacity(0.7),
+                  color: Colors.black.withOpacity(0.8),
                   child: Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        ElasticIn(
-                          duration: const Duration(milliseconds: 800),
+                        ShakeX(
+                          duration: const Duration(milliseconds: 1000),
                           child: const Text(
                             'YOU WON!',
                             style: TextStyle(
-                              fontSize: 48,
+                              fontSize: 52,
                               fontWeight: FontWeight.bold,
                               color: Color(0xFFFFD700),
                               fontFamily: 'RobotoMono',
                               shadows: [
                                 Shadow(
                                   color: Colors.black,
-                                  blurRadius: 10,
-                                  offset: Offset(2, 2),
+                                  blurRadius: 12,
+                                  offset: Offset(3, 3),
                                 ),
                               ],
                             ),
                           ),
                         ),
-                        const SizedBox(height: 20),
+                        const SizedBox(height: 24),
                         ElevatedButton(
                           onPressed: () {
                             _confettiController.stop();
@@ -294,21 +284,22 @@ class _MinesweeperScreenState extends State<MinesweeperScreen> {
                             backgroundColor: const Color(0xFF4682B4),
                             foregroundColor: Colors.white,
                             padding: const EdgeInsets.symmetric(
-                              vertical: 16,
-                              horizontal: 32,
+                              vertical: 18,
+                              horizontal: 36,
                             ),
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius: BorderRadius.circular(14),
                               side: const BorderSide(
                                 color: Color(0xFF8B4513),
-                                width: 2,
+                                width: 3,
                               ),
                             ),
+                            elevation: 6,
                           ),
                           child: const Text(
                             'Play Again',
                             style: TextStyle(
-                              fontSize: 20,
+                              fontSize: 22,
                               fontFamily: 'RobotoMono',
                               fontWeight: FontWeight.bold,
                             ),
@@ -329,11 +320,11 @@ class _MinesweeperScreenState extends State<MinesweeperScreen> {
                       Color(0xFF8B4513),
                       Colors.white,
                     ],
-                    emissionFrequency: 0.02,
-                    numberOfParticles: 100,
-                    maxBlastForce: 30,
-                    minBlastForce: 15,
-                    gravity: 0.1,
+                    emissionFrequency: 0.01,
+                    numberOfParticles: 150,
+                    maxBlastForce: 40,
+                    minBlastForce: 20,
+                    gravity: 0.15,
                   ),
                 ),
               ],
@@ -432,7 +423,7 @@ class _MinesweeperScreenState extends State<MinesweeperScreen> {
                               borderRadius: BorderRadius.circular(12),
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.black.withOpacity(0.2),
+                                  color: Colors.black.withOpacity(0.3),
                                   blurRadius: 10,
                                   offset: const Offset(0, 4),
                                 ),
@@ -457,7 +448,7 @@ class _MinesweeperScreenState extends State<MinesweeperScreen> {
                       ),
                     _buildStatusMessage(),
                     Padding(
-                      padding: const EdgeInsets.only(bottom: 30, top: 10),
+                      padding: const EdgeInsets.only(bottom: 40, top: 10),
                       child: ElevatedButton(
                         onPressed: () {
                           _confettiController.stop();
