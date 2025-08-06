@@ -45,6 +45,3 @@ flutter_launcher_icons:
   android: true
   ios: true
   image_path: "assets/icon/icon.png"
-```<grok-card data-id="6c9e19" data-type="citation_card"></grok-card><grok-card data-id="45cd22" data-type="citation_card"></grok-card><grok-card data-id="3bf8bf" data-type="citation_card"></grok-card><grok-card data-id="1f3b6f" data-type="citation_card"></grok-card>
-
-Run `flutter clean && flutter pub get`, commit/push, and re-trigger the workflow. Yeehaw from Houston—keepin' it crisp and modern!
