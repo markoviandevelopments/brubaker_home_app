@@ -1,48 +1,41 @@
 name: iOS IPA Build
-
 on:
   push:
     branches: [ main ]
   workflow_dispatch:
-
 jobs:
   build:
     runs-on: macos-latest
-
     steps:
-    - uses: actions/checkout@v4  # Updated to latest version
-
+    - uses: actions/checkout@v4
     - name: Set up Flutter
       uses: subosito/flutter-action@v2
       with:
-        flutter-version: '3.x'  # Use your Flutter version
-
+        flutter-version: '3.x'
     - name: Install dependencies
       run: flutter pub get
-
+    - name: Upgrade dependencies
+      run: flutter pub upgrade
+    - name: Clean build
+      run: flutter clean
     - name: Build iOS app without signing
       run: flutter build ios --release --no-codesign
-
     - name: Create IPA
       run: |
         cd build/ios/iphoneos
         mkdir Payload
         mv Runner.app Payload/
         zip -r app.ipa Payload
-
     - name: Upload IPA artifact
-      uses: actions/upload-artifact@v4  # Updated to v4
+      uses: actions/upload-artifact@v4
       with:
         name: app-ipa
         path: build/ios/iphoneos/app.ipa
-
-    - name: Install GitHub CLI
-      run: brew install gh
-
     - name: Create Release and Upload IPA
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
         gh release create v1.0.${{ github.run_number }} build/ios/iphoneos/app.ipa \
           --title "Release v1.0.${{ github.run_number }}" \
-          --notes "Automated Flutter iOS IPA build"
+          --notes "Automated Flutter iOS IPA build" \
+          --latest  # Optional: Overwrite if tag exists
