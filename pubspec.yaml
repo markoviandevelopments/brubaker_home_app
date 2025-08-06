@@ -16,10 +16,10 @@ dependencies:
   http: ^1.4.0
   flutter_colorpicker: ^1.1.0
   google_fonts: ^6.2.1
-  firebase_core: ^3.3.0
-  cloud_firestore: ^5.2.0
-  firebase_storage: ^12.2.0
-  firebase_auth: ^5.2.0
+  firebase_core: ^4.0.0
+  cloud_firestore: ^6.0.0
+  firebase_storage: ^13.0.0
+  firebase_auth: ^6.0.0
   provider: ^6.1.2
   image_picker: ^1.0.7
   video_player: ^2.9.1
@@ -45,3 +45,6 @@ flutter_launcher_icons:
   android: true
   ios: true
   image_path: "assets/icon/icon.png"
+```<grok-card data-id="6c9e19" data-type="citation_card"></grok-card><grok-card data-id="45cd22" data-type="citation_card"></grok-card><grok-card data-id="3bf8bf" data-type="citation_card"></grok-card><grok-card data-id="1f3b6f" data-type="citation_card"></grok-card>
+
+Run `flutter clean && flutter pub get`, commit/push, and re-trigger the workflow. Yeehaw from Houston—keepin' it crisp and modern!
