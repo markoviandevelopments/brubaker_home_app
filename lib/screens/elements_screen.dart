@@ -123,9 +123,9 @@ class _ElementsScreenState extends State<ElementsScreen> {
     } else if (value == 'block') {
       cellColor = const Color.fromARGB(255, 170, 165, 159); // Block
     } else if (value == 'cloud') {
-      cellColor = const Color.fromRGBO(173, 216, 230, 1);
+      cellColor = const Color.fromRGBO(173, 216, 230, 1); // Cloud
     } else if (value == 'gas') {
-      cellColor = const Color.fromRGBO(245, 11, 148, 1);
+      cellColor = const Color.fromRGBO(245, 11, 148, 1); // Gas
     }
 
     return GestureDetector(
@@ -137,31 +137,6 @@ class _ElementsScreenState extends State<ElementsScreen> {
           'element': _selectedElement,
         });
       },
-      onPanStart: (details) {
-        _sendAction({
-          'action': 'place',
-          'x': col,
-          'y': row,
-          'element': _selectedElement,
-        });
-      },
-      onPanUpdate: (details) {
-        RenderBox box = context.findRenderObject() as RenderBox;
-        Offset localPosition = box.globalToLocal(details.globalPosition);
-        int newRow = (localPosition.dy / (box.size.height / 20)).floor();
-        int newCol = (localPosition.dx / (box.size.width / 20)).floor();
-
-        if (newRow >= 0 && newRow < 20 && newCol >= 0 && newCol < 20) {
-          if (newRow != row || newCol != col) {
-            _sendAction({
-              'action': 'place',
-              'x': newCol,
-              'y': newRow,
-              'element': _selectedElement,
-            });
-          }
-        }
-      },
       child: Container(
         decoration: BoxDecoration(
           color: cellColor,
@@ -169,6 +144,22 @@ class _ElementsScreenState extends State<ElementsScreen> {
         ),
       ),
     );
+  }
+
+  void _handlePointerEvent(PointerEvent event, BuildContext context) {
+    RenderBox box = context.findRenderObject() as RenderBox;
+    Offset localPosition = box.globalToLocal(event.position);
+    int row = (localPosition.dy / (box.size.height / 20)).floor();
+    int col = (localPosition.dx / (box.size.width / 20)).floor();
+
+    if (row >= 0 && row < 20 && col >= 0 && col < 20) {
+      _sendAction({
+        'action': 'place',
+        'x': col,
+        'y': row,
+        'element': _selectedElement,
+      });
+    }
   }
 
   @override
@@ -209,17 +200,21 @@ class _ElementsScreenState extends State<ElementsScreen> {
             const Center(child: CircularProgressIndicator())
           else
             Expanded(
-              child: GridView.builder(
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 20,
-                  childAspectRatio: 1,
+              child: Listener(
+                onPointerDown: (event) => _handlePointerEvent(event, context),
+                onPointerMove: (event) => _handlePointerEvent(event, context),
+                child: GridView.builder(
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 20,
+                    childAspectRatio: 1,
+                  ),
+                  itemCount: 20 * 20,
+                  itemBuilder: (context, index) {
+                    final row = index ~/ 20;
+                    final col = index % 20;
+                    return _buildCell(row, col);
+                  },
                 ),
-                itemCount: 20 * 20,
-                itemBuilder: (context, index) {
-                  final row = index ~/ 20;
-                  final col = index % 20;
-                  return _buildCell(row, col);
-                },
               ),
             ),
         ],

@@ -16,21 +16,18 @@ dependencies:
   http: ^1.4.0
   flutter_colorpicker: ^1.1.0
   google_fonts: ^6.2.1
-  provider: ^6.1.2
   image_picker: ^1.0.7
   video_player: ^2.9.1
   chewie: ^1.7.5
   uuid: ^4.4.2
-  shared_preferences: ^2.3.2
-  crypto: ^3.0.5
   animate_do: ^3.0.2
+  confetti: ^0.7.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_launcher_icons: ^0.13.1
   flutter_lints: ^5.0.0
-
 
 flutter:
   uses-material-design: true

@@ -1,17 +1,9 @@
-import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import 'providers/post_provider.dart'; // New import
-import 'theme.dart'; // Custom theme for white base with cowboy accents
-import 'screens/games_screen.dart';
-import 'dart:io'; // Added for platform checks
+import 'theme.dart';
+import 'screens/home_screen.dart';
 
-void main() async {
+void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  // Conditionally initialize Firebase only on supported platforms (e.g., Android, iOS)
-  if (!Platform.isLinux) {
-    await Firebase.initializeApp();
-  }
   runApp(const GuestApp());
 }
 
@@ -20,13 +12,10 @@ class GuestApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider<PostProvider>(
-      create: (_) => PostProvider(),
-      child: MaterialApp(
-        title: 'Katy TX Guest App',
-        theme: getAppTheme(), // Apply custom theme
-        home: const GamesScreen(),
-      ),
+    return MaterialApp(
+      title: 'Katy TX Guest App',
+      theme: getAppTheme(), // White base, cowboy accents
+      home: const HomeScreen(),
     );
   }
 }

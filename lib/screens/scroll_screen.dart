@@ -3,37 +3,38 @@ import 'dart:io';
 import 'package:chewie/chewie.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:provider/provider.dart';
 import 'package:video_player/video_player.dart';
 import '../models/post.dart';
-import '../providers/post_provider.dart';
 
-class ScrollScreen extends StatelessWidget {
+class ScrollScreen extends StatefulWidget {
   const ScrollScreen({super.key});
 
   @override
+  _ScrollScreenState createState() => _ScrollScreenState();
+}
+
+class _ScrollScreenState extends State<ScrollScreen> {
+  final List<Post> _posts = []; // Local in-memory posts
+
+  @override
   Widget build(BuildContext context) {
-    return Consumer<PostProvider>(
-      builder: (context, provider, child) {
-        return Scaffold(
-          body: ListView.builder(
-            padding: const EdgeInsets.all(16.0),
-            itemCount: provider.posts.length,
-            itemBuilder: (context, index) {
-              return PostWidget(post: provider.posts[index]);
-            },
-          ),
-          floatingActionButton: FloatingActionButton(
-            backgroundColor: const Color(0xFF8B4513), // Brown cowboy accent
-            child: const Icon(Icons.add, color: Colors.white),
-            onPressed: () => _showPostDialog(context, provider),
-          ),
-        );
-      },
+    return Scaffold(
+      body: ListView.builder(
+        padding: const EdgeInsets.all(16.0),
+        itemCount: _posts.length,
+        itemBuilder: (context, index) {
+          return PostWidget(post: _posts[index]);
+        },
+      ),
+      floatingActionButton: FloatingActionButton(
+        backgroundColor: const Color(0xFF8B4513), // Brown cowboy accent
+        child: const Icon(Icons.add, color: Colors.white),
+        onPressed: () => _showPostDialog(context),
+      ),
     );
   }
 
-  void _showPostDialog(BuildContext context, PostProvider provider) {
+  void _showPostDialog(BuildContext context) {
     String userName = '';
     String text = '';
     File? mediaFile;
@@ -116,7 +117,17 @@ class ScrollScreen extends StatelessWidget {
           TextButton(
             onPressed: () {
               if (userName.isNotEmpty && text.isNotEmpty) {
-                provider.addPost(userName, text, mediaFile, mediaType);
+                setState(() {
+                  _posts.add(
+                    Post(
+                      userName: userName,
+                      text: text,
+                      mediaPath: mediaFile?.path,
+                      mediaType: mediaType,
+                      timestamp: DateTime.now(),
+                    ),
+                  );
+                });
               }
               Navigator.pop(context);
             },
@@ -146,9 +157,9 @@ class _PostWidgetState extends State<PostWidget> {
   @override
   void initState() {
     super.initState();
-    if (widget.post.mediaType == 'video' && widget.post.mediaUrl != null) {
-      _videoController = VideoPlayerController.networkUrl(
-        Uri.parse(widget.post.mediaUrl!),
+    if (widget.post.mediaType == 'video' && widget.post.mediaPath != null) {
+      _videoController = VideoPlayerController.file(
+        File(widget.post.mediaPath!),
       );
       _chewieController = ChewieController(
         videoPlayerController: _videoController!,
@@ -169,9 +180,12 @@ class _PostWidgetState extends State<PostWidget> {
   @override
   Widget build(BuildContext context) {
     Widget mediaWidget = const SizedBox.shrink();
-    if (widget.post.mediaUrl != null) {
+    if (widget.post.mediaPath != null) {
       if (widget.post.mediaType == 'image') {
-        mediaWidget = Image.network(widget.post.mediaUrl!, fit: BoxFit.cover);
+        mediaWidget = Image.file(
+          File(widget.post.mediaPath!),
+          fit: BoxFit.cover,
+        );
       } else if (widget.post.mediaType == 'video') {
         mediaWidget = SizedBox(
           height: 200,
