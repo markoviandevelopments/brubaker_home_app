@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'dart:io';
 import 'dart:convert';
 
+const int GRID_W = 20;
+
 class ElementsScreen extends StatefulWidget {
   const ElementsScreen({super.key});
 
@@ -12,8 +14,8 @@ class ElementsScreen extends StatefulWidget {
 class _ElementsScreenState extends State<ElementsScreen> {
   Socket? _socket;
   List<List<String>> _grid = List.generate(
-    20,
-    (_) => List.generate(20, (_) => 'nothing'),
+    GRID_W,
+    (_) => List.generate(GRID_W, (_) => 'nothing'),
   );
   String _errorMessage = '';
   bool _isLoading = false;
@@ -26,6 +28,8 @@ class _ElementsScreenState extends State<ElementsScreen> {
     "block",
     "cloud",
     "gas",
+    "void",
+    "clone"
   ];
 
   @override
@@ -95,7 +99,7 @@ class _ElementsScreenState extends State<ElementsScreen> {
     _socket = null;
     if (mounted) {
       setState(() {
-        _grid = List.generate(20, (_) => List.generate(20, (_) => 'nothing'));
+        _grid = List.generate(GRID_W, (_) => List.generate(GRID_W, (_) => 'nothing'));
       });
     }
   }
@@ -126,6 +130,10 @@ class _ElementsScreenState extends State<ElementsScreen> {
       cellColor = const Color.fromRGBO(173, 216, 230, 1); // Cloud
     } else if (value == 'gas') {
       cellColor = const Color.fromRGBO(245, 11, 148, 1); // Gas
+    } else if (value == 'void') {
+      cellColor = const Color.fromRGBO(30, 0, 0, 1); // Void
+    } else if (value == 'clone') {
+      cellColor = const Color.fromRGBO(255, 255, 0, 1); // Clone
     }
 
     return GestureDetector(
@@ -149,10 +157,10 @@ class _ElementsScreenState extends State<ElementsScreen> {
   void _handlePointerEvent(PointerEvent event, BuildContext context) {
     RenderBox box = context.findRenderObject() as RenderBox;
     Offset localPosition = box.globalToLocal(event.position);
-    int row = (localPosition.dy / (box.size.height / 20)).floor();
-    int col = (localPosition.dx / (box.size.width / 20)).floor();
+    int row = (localPosition.dy / (box.size.height / GRID_W)).floor();
+    int col = (localPosition.dx / (box.size.width / GRID_W)).floor();
 
-    if (row >= 0 && row < 20 && col >= 0 && col < 20) {
+    if (row >= 0 && row < GRID_W && col >= 0 && col < GRID_W) {
       _sendAction({
         'action': 'place',
         'x': col,
@@ -205,13 +213,13 @@ class _ElementsScreenState extends State<ElementsScreen> {
                 onPointerMove: (event) => _handlePointerEvent(event, context),
                 child: GridView.builder(
                   gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 20,
+                    crossAxisCount: GRID_W,
                     childAspectRatio: 1,
                   ),
-                  itemCount: 20 * 20,
+                  itemCount: GRID_W * GRID_W,
                   itemBuilder: (context, index) {
-                    final row = index ~/ 20;
-                    final col = index % 20;
+                    final row = index ~/ GRID_W;
+                    final col = index % GRID_W;
                     return _buildCell(row, col);
                   },
                 ),
