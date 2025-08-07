@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'dart:io';
 import 'dart:convert';
 
-const int GRID_W = 30;
+const int GRID_W = 20;
 
 class ElementsScreen extends StatefulWidget {
   const ElementsScreen({super.key});
