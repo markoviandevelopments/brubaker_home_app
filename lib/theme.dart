@@ -1,25 +1,27 @@
 import 'package:flutter/material.dart';
 
 ThemeData getAppTheme() {
-  return ThemeData(
-    primaryColor: const Color(0xFF8B4513), // Saddle brown for cowboy nods
-    scaffoldBackgroundColor: Colors.white, // Bright, clean white base
+  return ThemeData.dark().copyWith(
+    primaryColor: const Color(0xFF00FFFF),
+    scaffoldBackgroundColor: const Color(0xFF0A0A1E),
     appBarTheme: const AppBarTheme(
-      backgroundColor: Colors.white,
-      elevation: 0, // Modern, flat look
+      backgroundColor: Colors.transparent,
+      elevation: 0,
       titleTextStyle: TextStyle(
-        color: Colors.black,
+        color: Colors.white,
         fontWeight: FontWeight.bold,
+        fontFamily: 'Courier',
       ),
     ),
     colorScheme: ColorScheme.fromSwatch().copyWith(
-      secondary: const Color(0xFFCD5C5C), // Indian red for subtle Texas accents
+      secondary: const Color(0xFFFF00FF),
+      background: const LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [Color(0xFF0A0A1E), Color(0xFF1A1A3A)],
+      ).colors[0],
     ),
-    textTheme: const TextTheme(
-      bodyLarge: TextStyle(color: Colors.black87), // Professional readability
-    ),
-    iconTheme: const IconThemeData(
-      color: Color(0xFF8B4513),
-    ), // Brown icons for theme tie-in
+    textTheme: const TextTheme(bodyLarge: TextStyle(color: Colors.white70)),
+    iconTheme: const IconThemeData(color: Color(0xFF00FFFF)),
   );
 }

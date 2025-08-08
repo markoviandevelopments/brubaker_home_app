@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'dart:io';
 import 'dart:convert';
+import 'dart:ui';
 import 'package:animate_do/animate_do.dart';
-import 'package:confetti/confetti.dart';
 import 'package:flutter/foundation.dart';
 
 class MinesweeperScreen extends StatefulWidget {
@@ -22,14 +22,12 @@ class _MinesweeperScreenState extends State<MinesweeperScreen> {
   String _errorMessage = '';
   bool _isLoading = false;
   String _buffer = '';
-  late ConfettiController _confettiController;
+  bool _showWinOverlay = false;
+  bool _showLoseOverlay = false;
 
   @override
   void initState() {
     super.initState();
-    _confettiController = ConfettiController(
-      duration: const Duration(seconds: 5),
-    );
     _connectToServer();
   }
 
@@ -59,11 +57,10 @@ class _MinesweeperScreenState extends State<MinesweeperScreen> {
                   _height = jsonData['height'];
                   _mines = jsonData['mines'];
                   if (kDebugMode) {
-                    print('Game status: $_status'); // Debug to check status
+                    print('Game status: $_status');
                   }
-                  if (_isWinStatus()) {
-                    _confettiController.play();
-                  }
+                  _showWinOverlay = _isWinStatus();
+                  _showLoseOverlay = _status.toLowerCase() == 'lose';
                 });
               }
             } catch (e) {
@@ -96,7 +93,6 @@ class _MinesweeperScreenState extends State<MinesweeperScreen> {
   }
 
   bool _isWinStatus() {
-    // Flexible check for win status
     return ['win', 'victory', 'won', 'success'].contains(_status.toLowerCase());
   }
 
@@ -118,7 +114,6 @@ class _MinesweeperScreenState extends State<MinesweeperScreen> {
 
   @override
   void dispose() {
-    _confettiController.dispose();
     _disconnect();
     super.dispose();
   }
@@ -127,28 +122,36 @@ class _MinesweeperScreenState extends State<MinesweeperScreen> {
     final value = _board[row][col];
     IconData? icon;
     String text = '';
-    Color cellColor = const Color(0xFFD2B48C);
-    Color textColor = Colors.black;
+    Color cellColor = const Color(
+      0xFF1A1A3A,
+    ).withOpacity(0.9); // Hidden: high-opacity navy for contrast
+    Color textColor = Colors.white;
+    double opacity = 0.9;
 
     if (value == 'hidden') {
-      cellColor = const Color(0xFFD2B48C);
+      cellColor = const Color(0xFF1A1A3A); // Starry navy
     } else if (value == 'flag') {
-      icon = Icons.flag;
-      cellColor = const Color(0xFFFFD700);
+      icon = Icons.star;
+      cellColor = const Color(0xFF00FFFF).withOpacity(0.8);
+      opacity = 0.8;
     } else if (value == 'mine') {
-      icon = Icons.warning;
-      cellColor = const Color(0xFFB22222);
+      icon = Icons.warning_amber;
+      cellColor = const Color(0xFFFF00FF).withOpacity(1.0);
+      opacity = 1.0;
     } else if (value is int) {
       text = value > 0 ? value.toString() : '';
-      cellColor = const Color(0xFF4682B4);
-      if (value == 1) textColor = Colors.blue;
-      if (value == 2) textColor = Colors.green;
-      if (value == 3) textColor = Colors.red;
-      if (value == 4) textColor = Colors.purple;
-      if (value == 5) textColor = Colors.brown;
-      if (value == 6) textColor = Colors.teal;
-      if (value == 7) textColor = Colors.black;
-      if (value == 8) textColor = Colors.grey;
+      cellColor = const Color(
+        0xFF0A0A1E,
+      ).withOpacity(0.2); // Revealed: low-opacity dark for high contrast
+      opacity = 0.2;
+      if (value == 1) textColor = const Color(0xFF00FFFF);
+      if (value == 2) textColor = const Color(0xFF00FF00);
+      if (value == 3) textColor = const Color(0xFFFF00FF);
+      if (value == 4) textColor = const Color(0xFF800080);
+      if (value == 5) textColor = const Color(0xFFFFA500);
+      if (value == 6) textColor = const Color(0xFF00FFFF);
+      if (value == 7) textColor = Colors.white;
+      if (value == 8) textColor = Colors.grey[300]!;
     }
 
     return GestureDetector(
@@ -164,35 +167,43 @@ class _MinesweeperScreenState extends State<MinesweeperScreen> {
       },
       child: ZoomIn(
         duration: const Duration(milliseconds: 200),
-        child: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [cellColor, cellColor.withOpacity(0.7)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            border: Border.all(color: const Color(0xFF8B4513), width: 2),
-            borderRadius: BorderRadius.circular(6),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.3),
-                blurRadius: 5,
-                offset: const Offset(2, 2),
-              ),
-            ],
-          ),
-          child: Center(
-            child: icon != null
-                ? Icon(icon, color: Colors.black, size: 28)
-                : Text(
-                    text,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 22,
-                      fontFamily: 'RobotoMono',
-                    ),
+        child: ClipRect(
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 3, sigmaY: 3), // Clear glass blur
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [cellColor, cellColor.withOpacity(opacity)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                border: Border.all(
+                  color: Colors.white.withOpacity(0.4),
+                  width: 1,
+                ),
+                borderRadius: BorderRadius.circular(4),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF00FFFF).withOpacity(0.2),
+                    blurRadius: 8,
+                    spreadRadius: 2,
                   ),
+                ],
+              ),
+              child: Center(
+                child: icon != null
+                    ? Icon(icon, color: Colors.white, size: 24)
+                    : Text(
+                        text,
+                        style: TextStyle(
+                          color: textColor,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 18,
+                          fontFamily: 'Courier',
+                        ),
+                      ),
+              ),
+            ),
           ),
         ),
       ),
@@ -201,106 +212,118 @@ class _MinesweeperScreenState extends State<MinesweeperScreen> {
 
   Widget _buildStatusMessage() {
     String message = _isWinStatus()
-        ? 'You Won!'
+        ? 'Galactic Victory!'
         : _status == 'lose'
-        ? 'Game Over!'
+        ? 'Black Hole Defeat!'
         : 'Mines: $_mines';
     Color bgColor = _isWinStatus()
-        ? const Color(0xFF228B22)
+        ? const Color(0xFF00FFFF).withOpacity(0.6)
         : _status == 'lose'
-        ? const Color(0xFFB22222)
-        : const Color(0xFFE0E0E0);
+        ? const Color(0xFFFF00FF).withOpacity(0.6)
+        : Colors.transparent;
 
     return FadeIn(
       duration: const Duration(milliseconds: 500),
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 28),
-        margin: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-        decoration: BoxDecoration(
-          color: bgColor,
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: const Color(0xFF8B4513), width: 3),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.3),
-              blurRadius: 10,
-              offset: const Offset(0, 5),
+      child: ClipRect(
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 4, sigmaY: 4),
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 24),
+            margin: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
+            decoration: BoxDecoration(
+              color: bgColor,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.white.withOpacity(0.3)),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.4),
+                  blurRadius: 10,
+                  offset: const Offset(0, 5),
+                ),
+              ],
             ),
-          ],
-        ),
-        child: Text(
-          message,
-          style: const TextStyle(
-            fontSize: 30,
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-            fontFamily: 'RobotoMono',
-            letterSpacing: 1.5,
+            child: Text(
+              message,
+              style: const TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+                fontFamily: 'Courier',
+                letterSpacing: 1.2,
+              ),
+              textAlign: TextAlign.center,
+            ),
           ),
-          textAlign: TextAlign.center,
         ),
       ),
     );
   }
 
   Widget _buildWinOverlay() {
-    return _isWinStatus()
-        ? FadeIn(
-            duration: const Duration(milliseconds: 500),
-            child: Stack(
-              children: [
-                Container(
-                  color: Colors.black.withOpacity(0.8),
+    if (!_showWinOverlay) return const SizedBox.shrink();
+    return SlideInDown(
+      duration: const Duration(milliseconds: 600),
+      child: FadeIn(
+        duration: const Duration(milliseconds: 500),
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            ClipRect(
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                child: Container(
+                  color: Colors.black.withOpacity(0.7),
                   child: Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        ShakeX(
+                        Pulse(
                           duration: const Duration(milliseconds: 1000),
                           child: const Text(
-                            'YOU WON!',
+                            'GALACTIC VICTORY!',
+                            textAlign: TextAlign.center,
                             style: TextStyle(
-                              fontSize: 52,
+                              fontSize: 42,
                               fontWeight: FontWeight.bold,
-                              color: Color(0xFFFFD700),
-                              fontFamily: 'RobotoMono',
+                              color: Color(0xFF00FFFF),
+                              fontFamily: 'Courier',
                               shadows: [
                                 Shadow(
-                                  color: Colors.black,
-                                  blurRadius: 12,
-                                  offset: Offset(3, 3),
+                                  color: Color(0xFF00FFFF),
+                                  blurRadius: 15,
+                                  offset: Offset(0, 0),
                                 ),
                               ],
                             ),
                           ),
                         ),
-                        const SizedBox(height: 24),
+                        const SizedBox(height: 20),
                         ElevatedButton(
                           onPressed: () {
-                            _confettiController.stop();
                             _sendAction({'action': 'new_game'});
+                            setState(() => _showWinOverlay = false);
                           },
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF4682B4),
-                            foregroundColor: Colors.white,
+                            backgroundColor: const Color(0xFF00FFFF),
+                            foregroundColor: Colors.black,
                             padding: const EdgeInsets.symmetric(
-                              vertical: 18,
-                              horizontal: 36,
+                              vertical: 16,
+                              horizontal: 32,
                             ),
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(14),
-                              side: const BorderSide(
-                                color: Color(0xFF8B4513),
-                                width: 3,
+                              borderRadius: BorderRadius.circular(10),
+                              side: BorderSide(
+                                color: Colors.white.withOpacity(0.2),
+                                width: 2,
                               ),
                             ),
-                            elevation: 6,
+                            elevation: 8,
                           ),
                           child: const Text(
-                            'Play Again',
+                            'New Mission',
                             style: TextStyle(
-                              fontSize: 22,
-                              fontFamily: 'RobotoMono',
+                              fontSize: 20,
+                              fontFamily: 'Courier',
                               fontWeight: FontWeight.bold,
                             ),
                           ),
@@ -309,90 +332,168 @@ class _MinesweeperScreenState extends State<MinesweeperScreen> {
                     ),
                   ),
                 ),
-                Align(
-                  alignment: Alignment.topCenter,
-                  child: ConfettiWidget(
-                    confettiController: _confettiController,
-                    blastDirectionality: BlastDirectionality.explosive,
-                    colors: const [
-                      Color(0xFFFFD700),
-                      Color(0xFF4682B4),
-                      Color(0xFF8B4513),
-                      Colors.white,
-                    ],
-                    emissionFrequency: 0.01,
-                    numberOfParticles: 150,
-                    maxBlastForce: 40,
-                    minBlastForce: 20,
-                    gravity: 0.15,
+              ),
+            ),
+            Positioned(
+              top: 40,
+              right: 20,
+              child: IconButton(
+                icon: const Icon(Icons.close, color: Colors.white70, size: 30),
+                onPressed: () => setState(() => _showWinOverlay = false),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLoseOverlay() {
+    if (!_showLoseOverlay) return const SizedBox.shrink();
+    return SlideInDown(
+      duration: const Duration(milliseconds: 600),
+      child: FadeIn(
+        duration: const Duration(milliseconds: 500),
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            ClipRect(
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                child: Container(
+                  color: Colors.black.withOpacity(0.7),
+                  child: Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        ShakeX(
+                          duration: const Duration(milliseconds: 800),
+                          child: Flash(
+                            duration: const Duration(milliseconds: 300),
+                            child: const Text(
+                              'BLACK HOLE DEFEAT!',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 42,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFFFF00FF),
+                                fontFamily: 'Courier',
+                                shadows: [
+                                  Shadow(
+                                    color: Color(0xFFFF00FF),
+                                    blurRadius: 15,
+                                    offset: Offset(0, 0),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                        ElevatedButton(
+                          onPressed: () {
+                            _sendAction({'action': 'new_game'});
+                            setState(() => _showLoseOverlay = false);
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFFFF00FF),
+                            foregroundColor: Colors.black,
+                            padding: const EdgeInsets.symmetric(
+                              vertical: 16,
+                              horizontal: 32,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                              side: BorderSide(
+                                color: Colors.white.withOpacity(0.2),
+                                width: 2,
+                              ),
+                            ),
+                            elevation: 8,
+                          ),
+                          child: const Text(
+                            'Retry Mission',
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontFamily: 'Courier',
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-              ],
+              ),
             ),
-          )
-        : const SizedBox.shrink();
+            Positioned(
+              top: 40,
+              right: 20,
+              child: IconButton(
+                icon: const Icon(Icons.close, color: Colors.white70, size: 30),
+                onPressed: () => setState(() => _showLoseOverlay = false),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Theme(
-      data: ThemeData(
-        primaryColor: const Color(0xFF8B4513),
-        scaffoldBackgroundColor: const Color(0xFFF5F5DC),
+      data: ThemeData.dark().copyWith(
+        primaryColor: const Color(0xFF00FFFF),
+        scaffoldBackgroundColor: const Color(0xFF0A0A1E),
         elevatedButtonTheme: ElevatedButtonThemeData(
           style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFF4682B4),
-            foregroundColor: Colors.white,
+            backgroundColor: const Color(0xFF00FFFF),
+            foregroundColor: Colors.black,
             textStyle: const TextStyle(
-              fontFamily: 'RobotoMono',
+              fontFamily: 'Courier',
               fontWeight: FontWeight.bold,
               fontSize: 18,
             ),
             padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 24),
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-              side: const BorderSide(color: Color(0xFF8B4513), width: 2),
+              borderRadius: BorderRadius.circular(10),
+              side: BorderSide(color: Colors.white.withOpacity(0.2), width: 2),
             ),
             elevation: 5,
           ),
         ),
         appBarTheme: const AppBarTheme(
-          backgroundColor: Color(0xFF8B4513),
+          backgroundColor: Colors.transparent,
           titleTextStyle: TextStyle(
-            color: Colors.white,
+            color: Color(0xFF00FFFF),
             fontSize: 22,
             fontWeight: FontWeight.bold,
-            fontFamily: 'RobotoMono',
+            fontFamily: 'Courier',
           ),
-          elevation: 5,
+          elevation: 0,
         ),
       ),
       child: Scaffold(
+        extendBodyBehindAppBar: true,
         appBar: AppBar(
-          title: const Text('Minesweeper'),
+          title: const Text('Galactic Minesweeper'),
           centerTitle: true,
-          flexibleSpace: Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                colors: [Color(0xFF8B4513), Color(0xFFA0522D)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+        ),
+        body: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [Color(0xFF0A0A1E), Color(0xFF1A1A3A)],
             ),
           ),
-        ),
-        body: SafeArea(
-          child: Stack(
-            children: [
-              Container(
-                decoration: const BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [Color(0xFFF5F5DC), Color(0xFFE6D7A8)],
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                  ),
-                ),
-                child: Column(
+          child: SafeArea(
+            child: Stack(
+              children: [
+                Column(
                   children: [
                     if (_errorMessage.isNotEmpty)
                       Padding(
@@ -400,48 +501,60 @@ class _MinesweeperScreenState extends State<MinesweeperScreen> {
                         child: Text(
                           _errorMessage,
                           style: const TextStyle(
-                            color: Color(0xFFB22222),
-                            fontFamily: 'RobotoMono',
+                            color: Color(0xFFFF00FF),
+                            fontFamily: 'Courier',
                             fontSize: 16,
                           ),
                         ),
                       ),
                     if (_isLoading || _board.isEmpty)
                       const Expanded(
-                        child: Center(child: CircularProgressIndicator()),
+                        child: Center(
+                          child: CircularProgressIndicator(
+                            color: Color(0xFF00FFFF),
+                          ),
+                        ),
                       )
                     else
                       Expanded(
                         child: Padding(
                           padding: const EdgeInsets.all(12),
-                          child: Container(
-                            decoration: BoxDecoration(
-                              border: Border.all(
-                                color: const Color(0xFF8B4513),
-                                width: 4,
-                              ),
-                              borderRadius: BorderRadius.circular(12),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.3),
-                                  blurRadius: 10,
-                                  offset: const Offset(0, 4),
-                                ),
-                              ],
-                            ),
-                            child: GridView.builder(
-                              padding: const EdgeInsets.all(4),
-                              gridDelegate:
-                                  SliverGridDelegateWithFixedCrossAxisCount(
-                                    crossAxisCount: _width,
-                                    childAspectRatio: 1,
+                          child: ClipRect(
+                            child: BackdropFilter(
+                              filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  color: Colors.transparent, // Clear glass
+                                  border: Border.all(
+                                    color: Colors.white.withOpacity(0.3),
+                                    width: 2,
                                   ),
-                              itemCount: _height * _width,
-                              itemBuilder: (context, index) {
-                                final row = index ~/ _width;
-                                final col = index % _width;
-                                return _buildCell(row, col);
-                              },
+                                  borderRadius: BorderRadius.circular(12),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: const Color(
+                                        0xFF00FFFF,
+                                      ).withOpacity(0.3),
+                                      blurRadius: 10,
+                                      offset: const Offset(0, 4),
+                                    ),
+                                  ],
+                                ),
+                                child: GridView.builder(
+                                  padding: const EdgeInsets.all(4),
+                                  gridDelegate:
+                                      SliverGridDelegateWithFixedCrossAxisCount(
+                                        crossAxisCount: _width,
+                                        childAspectRatio: 1,
+                                      ),
+                                  itemCount: _height * _width,
+                                  itemBuilder: (context, index) {
+                                    final row = index ~/ _width;
+                                    final col = index % _width;
+                                    return _buildCell(row, col);
+                                  },
+                                ),
+                              ),
                             ),
                           ),
                         ),
@@ -450,18 +563,16 @@ class _MinesweeperScreenState extends State<MinesweeperScreen> {
                     Padding(
                       padding: const EdgeInsets.only(bottom: 40, top: 10),
                       child: ElevatedButton(
-                        onPressed: () {
-                          _confettiController.stop();
-                          _sendAction({'action': 'new_game'});
-                        },
-                        child: const Text('Start New Game'),
+                        onPressed: () => _sendAction({'action': 'new_game'}),
+                        child: const Text('New Mission'),
                       ),
                     ),
                   ],
                 ),
-              ),
-              _buildWinOverlay(),
-            ],
+                _buildWinOverlay(),
+                _buildLoseOverlay(),
+              ],
+            ),
           ),
         ),
       ),

@@ -29,8 +29,9 @@ class _ElementsScreenState extends State<ElementsScreen> {
     "cloud",
     "gas",
     "void",
-    "clone"
+    "clone",
   ];
+  final GlobalKey _gridKey = GlobalKey();
 
   @override
   void initState() {
@@ -99,7 +100,10 @@ class _ElementsScreenState extends State<ElementsScreen> {
     _socket = null;
     if (mounted) {
       setState(() {
-        _grid = List.generate(GRID_W, (_) => List.generate(GRID_W, (_) => 'nothing'));
+        _grid = List.generate(
+          GRID_W,
+          (_) => List.generate(GRID_W, (_) => 'nothing'),
+        );
       });
     }
   }
@@ -118,7 +122,12 @@ class _ElementsScreenState extends State<ElementsScreen> {
 
   Widget _buildCell(int row, int col) {
     final value = _grid[row][col];
-    Color cellColor = const Color.fromARGB(255, 48, 48, 48); // Nothing
+    Color cellColor = const Color.fromARGB(
+      255,
+      48,
+      48,
+      48,
+    ); // Nothing - clean, neutral base
 
     if (value == 'sand') {
       cellColor = const Color.fromARGB(255, 255, 239, 206); // Sand
@@ -136,29 +145,16 @@ class _ElementsScreenState extends State<ElementsScreen> {
       cellColor = const Color.fromRGBO(255, 255, 0, 1); // Clone
     }
 
-    return GestureDetector(
-      onTap: () {
-        _sendAction({
-          'action': 'place',
-          'x': col,
-          'y': row,
-          'element': _selectedElement,
-        });
-      },
-      child: Container(
-        decoration: BoxDecoration(
-          color: cellColor,
-          border: Border.all(color: Colors.black, width: 0.5),
-        ),
-      ),
-    );
+    return Container(decoration: BoxDecoration(color: cellColor));
   }
 
-  void _handlePointerEvent(PointerEvent event, BuildContext context) {
-    RenderBox box = context.findRenderObject() as RenderBox;
-    Offset localPosition = box.globalToLocal(event.position);
-    int row = (localPosition.dy / (box.size.height / GRID_W)).floor();
-    int col = (localPosition.dx / (box.size.width / GRID_W)).floor();
+  void _handlePointerEvent(PointerEvent event) {
+    final RenderBox? box =
+        _gridKey.currentContext?.findRenderObject() as RenderBox?;
+    if (box == null) return; // Prevent crashes if widget isn't rendered
+    final Offset localPosition = box.globalToLocal(event.position);
+    final int row = (localPosition.dy / (box.size.height / GRID_W)).floor();
+    final int col = (localPosition.dx / (box.size.width / GRID_W)).floor();
 
     if (row >= 0 && row < GRID_W && col >= 0 && col < GRID_W) {
       _sendAction({
@@ -174,8 +170,14 @@ class _ElementsScreenState extends State<ElementsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Elements Game'),
-        backgroundColor: Colors.blue, // Modern, clean Houston vibe
+        title: const Text(
+          'Elements Game',
+          style: TextStyle(
+            fontWeight: FontWeight.bold, // Bold for cowboy accent
+            color: Colors.white, // Clean, modern contrast
+          ),
+        ),
+        backgroundColor: const Color(0xFF4A90E2), // Soft blue for Houston vibe
       ),
       body: Column(
         children: [
@@ -194,7 +196,13 @@ class _ElementsScreenState extends State<ElementsScreen> {
               items: elements.map((String value) {
                 return DropdownMenuItem<String>(
                   value: value,
-                  child: Text(value),
+                  child: Text(
+                    value,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w500, // Clean, modern typography
+                      color: Colors.black87,
+                    ),
+                  ),
                 );
               }).toList(),
               onChanged: (String? newValue) {
@@ -202,6 +210,12 @@ class _ElementsScreenState extends State<ElementsScreen> {
                   _selectedElement = newValue!;
                 });
               },
+              style: const TextStyle(color: Colors.black87, fontSize: 16),
+              dropdownColor: Colors.white, // White, clean Houston theme
+              underline: Container(
+                height: 2,
+                color: const Color(0xFF4A90E2), // Subtle cowboy accent
+              ),
             ),
           ),
           if (_isLoading)
@@ -209,8 +223,9 @@ class _ElementsScreenState extends State<ElementsScreen> {
           else
             Expanded(
               child: Listener(
-                onPointerDown: (event) => _handlePointerEvent(event, context),
-                onPointerMove: (event) => _handlePointerEvent(event, context),
+                key: _gridKey,
+                onPointerDown: _handlePointerEvent,
+                onPointerMove: _handlePointerEvent,
                 child: GridView.builder(
                   gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: GRID_W,

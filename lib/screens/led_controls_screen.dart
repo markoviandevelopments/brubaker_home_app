@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:google_fonts/google_fonts.dart';
 import 'dart:convert';
+import 'dart:ui'; // For BackdropFilter
 
 class LedControlsScreen extends StatefulWidget {
   const LedControlsScreen({super.key});
@@ -54,9 +54,7 @@ class _LedControlsScreenState extends State<LedControlsScreen> {
       if (response.statusCode == 200 && modes.contains(response.body.trim())) {
         setState(() => currentMode = response.body.trim());
       } else {
-        _showSnackBar(
-          'Failed to fetch mode: ${response.statusCode}, ${response.body}',
-        );
+        _showSnackBar('Failed to fetch mode: ${response.statusCode}');
       }
     } catch (e) {
       _showSnackBar('Connection error: $e');
@@ -79,9 +77,7 @@ class _LedControlsScreenState extends State<LedControlsScreen> {
         setState(() => currentMode = newMode);
         _showSnackBar('Mode updated to $newMode');
       } else {
-        _showSnackBar(
-          'Update failed: ${response.statusCode}, ${response.body}',
-        );
+        _showSnackBar('Update failed: ${response.statusCode}');
       }
     } catch (e) {
       _showSnackBar('Connection error: $e');
@@ -95,9 +91,10 @@ class _LedControlsScreenState extends State<LedControlsScreen> {
       SnackBar(
         content: Text(
           message,
-          style: GoogleFonts.montserrat(color: Colors.white),
+          style: const TextStyle(fontFamily: 'Courier', color: Colors.white70),
         ),
-        backgroundColor: Colors.black.withOpacity(0.7),
+        backgroundColor: Colors.black.withOpacity(0.8),
+        behavior: SnackBarBehavior.floating,
       ),
     );
   }
@@ -114,12 +111,13 @@ class _LedControlsScreenState extends State<LedControlsScreen> {
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(
-        title: Text(
-          'LED Controls',
-          style: GoogleFonts.rye(
-            color: Colors.redAccent,
+        title: const Text(
+          'Galactic LED Matrix',
+          style: TextStyle(
+            fontFamily: 'Courier',
             fontWeight: FontWeight.bold,
-            fontSize: 24,
+            fontSize: 22,
+            color: Color(0xFF00FFFF), // Neon cyan
           ),
         ),
         backgroundColor: Colors.transparent,
@@ -127,42 +125,74 @@ class _LedControlsScreenState extends State<LedControlsScreen> {
       ),
       body: Container(
         decoration: const BoxDecoration(
-          image: DecorationImage(
-            image: NetworkImage(
-              'https://images.unsplash.com/photo-1693368765432-lDivijzEg9o?auto=format&fit=crop&w=1920&q=80',
-            ),
-            fit: BoxFit.cover,
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Color(0xFF0A0A1E),
+              Color(0xFF1A1A3A),
+            ], // Starry space gradient
           ),
         ),
         child: SafeArea(
           child: isLoading
               ? const Center(
-                  child: CircularProgressIndicator(color: Colors.redAccent),
+                  child: CircularProgressIndicator(color: Color(0xFF00FFFF)),
                 )
               : ListView(
                   padding: const EdgeInsets.all(16.0),
                   children: [
-                    Text(
-                      'Current Mode: ${titleCase(currentMode)}',
-                      style: GoogleFonts.montserrat(
-                        color: Colors.white,
-                        fontSize: 18,
-                        shadows: [
-                          Shadow(
-                            blurRadius: 8.0,
-                            color: Colors.redAccent.withOpacity(0.5),
-                            offset: const Offset(0, 0),
+                    ClipRect(
+                      child: BackdropFilter(
+                        filter: ImageFilter.blur(
+                          sigmaX: 5,
+                          sigmaY: 5,
+                        ), // Glass effect
+                        child: Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(
+                              0.1,
+                            ), // Glassy panel
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: Colors.white.withOpacity(0.2),
+                            ),
                           ),
-                        ],
+                          child: Text(
+                            'Current Mode: ${titleCase(currentMode)}',
+                            style: const TextStyle(
+                              fontFamily: 'Courier',
+                              color: Colors.white70,
+                              fontSize: 18,
+                            ),
+                          ),
+                        ),
                       ),
                     ),
                     const SizedBox(height: 20),
-                    Text(
-                      'Predefined Modes',
-                      style: GoogleFonts.rye(
-                        color: Colors.redAccent,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 20,
+                    ClipRect(
+                      child: BackdropFilter(
+                        filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+                        child: Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: Colors.white.withOpacity(0.2),
+                            ),
+                          ),
+                          child: const Text(
+                            'Select Mode',
+                            style: TextStyle(
+                              fontFamily: 'Courier',
+                              color: Color(0xFF00FFFF),
+                              fontWeight: FontWeight.bold,
+                              fontSize: 20,
+                            ),
+                          ),
+                        ),
                       ),
                     ),
                     const SizedBox(height: 10),
@@ -171,34 +201,49 @@ class _LedControlsScreenState extends State<LedControlsScreen> {
                         padding: const EdgeInsets.symmetric(vertical: 4.0),
                         child: GestureDetector(
                           onTap: isUpdating ? null : () => updateMode(mode),
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: Colors.black.withOpacity(0.5),
-                              borderRadius: BorderRadius.circular(12),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: mode == currentMode
-                                      ? Colors.redAccent.withOpacity(0.8)
-                                      : Colors.blueAccent.withOpacity(0.3),
-                                  blurRadius: 10,
-                                  spreadRadius: 2,
+                          child: ClipRect(
+                            child: BackdropFilter(
+                              filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  color: Colors.black.withOpacity(0.6),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: mode == currentMode
+                                        ? const Color(
+                                            0xFF00FFFF,
+                                          ).withOpacity(0.8)
+                                        : Colors.white.withOpacity(0.2),
+                                  ),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: mode == currentMode
+                                          ? const Color(
+                                              0xFF00FFFF,
+                                            ).withOpacity(0.5)
+                                          : Colors.black.withOpacity(0.3),
+                                      blurRadius: 10,
+                                      spreadRadius: 2,
+                                    ),
+                                  ],
                                 ),
-                              ],
-                            ),
-                            child: ListTile(
-                              title: Text(
-                                titleCase(mode),
-                                style: GoogleFonts.montserrat(
-                                  color: mode == currentMode
-                                      ? Colors.redAccent
-                                      : Colors.white,
+                                child: ListTile(
+                                  title: Text(
+                                    titleCase(mode),
+                                    style: TextStyle(
+                                      fontFamily: 'Courier',
+                                      color: mode == currentMode
+                                          ? const Color(0xFF00FFFF)
+                                          : Colors.white70,
+                                    ),
+                                  ),
+                                  trailing: Icon(
+                                    Icons.star, // Star icon for space vibe
+                                    color: mode == currentMode
+                                        ? const Color(0xFF00FFFF)
+                                        : Colors.white70,
+                                  ),
                                 ),
-                              ),
-                              trailing: Icon(
-                                Icons.lightbulb,
-                                color: mode == currentMode
-                                    ? Colors.redAccent
-                                    : Colors.white,
                               ),
                             ),
                           ),

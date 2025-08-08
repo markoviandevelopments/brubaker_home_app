@@ -22,6 +22,7 @@ dependencies:
   uuid: ^4.4.2
   animate_do: ^3.0.2
   confetti: ^0.7.0
+  shared_preferences: ^2.2.2
 
 dev_dependencies:
   flutter_test:
