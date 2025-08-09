@@ -30,7 +30,9 @@ class _ElementsScreenState extends State<ElementsScreen> {
     "gas",
     "void",
     "clone",
-    "fire"
+    "fire",
+    "soil",
+    "plant",
   ];
   final GlobalKey _gridKey = GlobalKey();
 
@@ -144,10 +146,13 @@ class _ElementsScreenState extends State<ElementsScreen> {
       cellColor = const Color.fromRGBO(30, 0, 0, 1); // Void
     } else if (value == 'clone') {
       cellColor = const Color.fromRGBO(255, 255, 0, 1); // Clone
-    }  else if (value == 'fire') {
+    } else if (value == 'fire') {
       cellColor = const Color.fromRGBO(255, 0, 0, 1); // Fire
+    } else if (value == 'soil') {
+      cellColor = const Color.fromRGBO(175, 114, 78, 1); // Fire
+    } else if (value == 'plant') {
+      cellColor = const Color.fromRGBO(107, 142, 35, 1); // Fire
     }
-
     return Container(decoration: BoxDecoration(color: cellColor));
   }
 
