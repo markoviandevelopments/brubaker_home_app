@@ -172,12 +172,8 @@ class _ElementsScreenState extends State<ElementsScreen> {
       appBar: AppBar(
         title: const Text(
           'Elements Game',
-          style: TextStyle(
-            fontWeight: FontWeight.bold, // Bold for cowboy accent
-            color: Colors.white, // Clean, modern contrast
-          ),
+          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
         ),
-        backgroundColor: const Color(0xFF4A90E2), // Soft blue for Houston vibe
       ),
       body: Column(
         children: [
@@ -199,7 +195,7 @@ class _ElementsScreenState extends State<ElementsScreen> {
                   child: Text(
                     value,
                     style: const TextStyle(
-                      fontWeight: FontWeight.w500, // Clean, modern typography
+                      fontWeight: FontWeight.w500,
                       color: Colors.black87,
                     ),
                   ),
@@ -222,22 +218,37 @@ class _ElementsScreenState extends State<ElementsScreen> {
             const Center(child: CircularProgressIndicator())
           else
             Expanded(
-              child: Listener(
-                key: _gridKey,
-                onPointerDown: _handlePointerEvent,
-                onPointerMove: _handlePointerEvent,
-                child: GridView.builder(
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: GRID_W,
-                    childAspectRatio: 1,
-                  ),
-                  itemCount: GRID_W * GRID_W,
-                  itemBuilder: (context, index) {
-                    final row = index ~/ GRID_W;
-                    final col = index % GRID_W;
-                    return _buildCell(row, col);
-                  },
-                ),
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final double size =
+                      constraints.maxWidth < constraints.maxHeight
+                      ? constraints.maxWidth
+                      : constraints.maxHeight;
+                  return Center(
+                    child: SizedBox(
+                      width: size,
+                      height: size,
+                      child: Listener(
+                        key: _gridKey,
+                        onPointerDown: _handlePointerEvent,
+                        onPointerMove: _handlePointerEvent,
+                        child: GridView.builder(
+                          gridDelegate:
+                              const SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount: GRID_W,
+                                childAspectRatio: 1,
+                              ),
+                          itemCount: GRID_W * GRID_W,
+                          itemBuilder: (context, index) {
+                            final row = index ~/ GRID_W;
+                            final col = index % GRID_W;
+                            return _buildCell(row, col);
+                          },
+                        ),
+                      ),
+                    ),
+                  );
+                },
               ),
             ),
         ],
