@@ -14,7 +14,7 @@ class GuestApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Katy TX Guest App',
-      theme: getAppTheme(), // White base, cowboy accents
+      theme: getAppTheme(),
       home: const HomeScreen(),
     );
   }

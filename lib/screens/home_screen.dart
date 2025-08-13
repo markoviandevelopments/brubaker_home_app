@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'led_controls_screen.dart';
-import 'events_screen.dart'; // Placeholder for Events screen
+import 'elements_screen.dart';
 import 'scroll_screen.dart';
 import 'info_screen.dart';
 import 'games_screen.dart';
+import 'star_field.dart'; // Import the new StarField widget
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -17,7 +18,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   static const List<Widget> _pages = <Widget>[
     LedControlsScreen(),
-    EventsScreen(), // Replaced VisitScreen
+    ElementsScreen(),
     ScrollScreen(),
     InfoScreen(),
     GamesScreen(),
@@ -32,28 +33,33 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Welcome to Katy, TX!')),
-      body: IndexedStack(index: _selectedIndex, children: _pages),
+      body: Stack(
+        children: [
+          // Starry background effect
+          Positioned.fill(child: StarField()),
+          IndexedStack(index: _selectedIndex, children: _pages),
+        ],
+      ),
       bottomNavigationBar: BottomNavigationBar(
         items: const <BottomNavigationBarItem>[
           BottomNavigationBarItem(icon: Icon(Icons.lightbulb), label: ''),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.event),
-            label: '',
-          ), // Events icon
+          BottomNavigationBarItem(icon: Icon(Icons.widgets), label: ''),
           BottomNavigationBarItem(icon: Icon(Icons.auto_awesome), label: ''),
-          BottomNavigationBarItem(icon: Icon(Icons.info), label: ''),
           BottomNavigationBarItem(
-            icon: Icon(Icons.gamepad),
+            icon: Icon(Icons.favorite),
             label: '',
-          ), // Gamepad for Fun
+          ), // Changed to heart
+          BottomNavigationBarItem(
+            icon: Icon(Icons.sports_esports),
+            label: '',
+          ), // Changed to esports
         ],
         currentIndex: _selectedIndex,
         selectedItemColor: Theme.of(context).primaryColor, // Neon cyan
         unselectedItemColor: Theme.of(context).colorScheme.secondary, // Magenta
         onTap: _onItemTapped,
         type: BottomNavigationBarType.fixed,
-        showSelectedLabels: false, // Hide labels
+        showSelectedLabels: false,
         showUnselectedLabels: false,
         backgroundColor: const Color(0xFF0A0A1E), // Match dark space theme
       ),

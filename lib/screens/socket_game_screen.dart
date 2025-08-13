@@ -17,6 +17,7 @@ class _SocketGameScreenState extends State<SocketGameScreen> {
   int currentRow = 0;
   int currentCol = 0;
   int score = 0;
+  int level = 1;
   final random = Random();
   late List<List<bool>> hasCollectible;
   late List<List<Color>> gridColors; // For subtle starry variations
@@ -31,6 +32,7 @@ class _SocketGameScreenState extends State<SocketGameScreen> {
   @override
   void initState() {
     super.initState();
+    level = 1;
     hasCollectible = List.generate(10, (_) => List.generate(10, (_) => false));
     gridColors = List.generate(
       10,
@@ -51,7 +53,9 @@ class _SocketGameScreenState extends State<SocketGameScreen> {
   }
 
   void spawnCollectibleChance() {
-    if (random.nextInt(10) == 0) {
+    int chanceBound = 11 - level;
+    if (chanceBound < 3) chanceBound = 3; // Prevent too high spawn rate
+    if (random.nextInt(chanceBound) == 0) {
       int x = random.nextInt(10);
       int y = random.nextInt(10);
       if (!hasCollectible[x][y] && !(x == currentRow && y == currentCol)) {
@@ -69,6 +73,11 @@ class _SocketGameScreenState extends State<SocketGameScreen> {
       if (hasCollectible[currentRow][currentCol]) {
         score++;
         hasCollectible[currentRow][currentCol] = false;
+        if (score >= level * 5) {
+          level++;
+          spawnCollectibleChance();
+          spawnCollectibleChance(); // Extra spawns on level up for excitement
+        }
       }
     });
   }
@@ -80,6 +89,11 @@ class _SocketGameScreenState extends State<SocketGameScreen> {
       if (hasCollectible[currentRow][currentCol]) {
         score++;
         hasCollectible[currentRow][currentCol] = false;
+        if (score >= level * 5) {
+          level++;
+          spawnCollectibleChance();
+          spawnCollectibleChance(); // Extra spawns on level up for excitement
+        }
       }
     });
   }
@@ -91,6 +105,11 @@ class _SocketGameScreenState extends State<SocketGameScreen> {
       if (hasCollectible[currentRow][currentCol]) {
         score++;
         hasCollectible[currentRow][currentCol] = false;
+        if (score >= level * 5) {
+          level++;
+          spawnCollectibleChance();
+          spawnCollectibleChance(); // Extra spawns on level up for excitement
+        }
       }
     });
   }
@@ -102,6 +121,11 @@ class _SocketGameScreenState extends State<SocketGameScreen> {
       if (hasCollectible[currentRow][currentCol]) {
         score++;
         hasCollectible[currentRow][currentCol] = false;
+        if (score >= level * 5) {
+          level++;
+          spawnCollectibleChance();
+          spawnCollectibleChance(); // Extra spawns on level up for excitement
+        }
       }
     });
   }
@@ -144,7 +168,7 @@ class _SocketGameScreenState extends State<SocketGameScreen> {
         extendBodyBehindAppBar: true,
         appBar: AppBar(
           title: const Text(
-            'Galactic Collector',
+            'Happy Birthday Galactic Collector',
             style: TextStyle(
               fontSize: 22,
               fontWeight: FontWeight.bold,
@@ -196,7 +220,7 @@ class _SocketGameScreenState extends State<SocketGameScreen> {
                               ],
                             ),
                             child: Text(
-                              'Score: $score',
+                              'Level: $level\nScore: $score',
                               style: const TextStyle(
                                 fontSize: 24,
                                 fontWeight: FontWeight.bold,
@@ -255,70 +279,47 @@ class _SocketGameScreenState extends State<SocketGameScreen> {
                                         bool isCollectible =
                                             hasCollectible[row][col];
 
-                                        return FadeIn(
-                                          duration: const Duration(
-                                            milliseconds: 200,
-                                          ),
-                                          child: ClipRect(
-                                            child: BackdropFilter(
-                                              filter: ImageFilter.blur(
-                                                sigmaX: 2,
-                                                sigmaY: 2,
+                                        return Container(
+                                          decoration: BoxDecoration(
+                                            color: gridColors[row][col],
+                                            border: Border.all(
+                                              color: Colors.white.withOpacity(
+                                                0.1,
                                               ),
-                                              child: Container(
-                                                decoration: BoxDecoration(
-                                                  color: gridColors[row][col],
-                                                  border: Border.all(
-                                                    color: Colors.white
-                                                        .withOpacity(0.1),
-                                                    width: 0.5,
-                                                  ),
-                                                ),
-                                                child: Center(
-                                                  child: isPlayer
-                                                      ? Pulse(
-                                                          duration:
-                                                              const Duration(
-                                                                milliseconds:
-                                                                    1000,
-                                                              ),
-                                                          child: Transform.scale(
-                                                            scale: 1.5,
-                                                            child: Image.asset(
-                                                              'assets/cat.png',
-                                                              fit: BoxFit
-                                                                  .contain,
-                                                              color:
-                                                                  const Color(
-                                                                    0xFF00FFFF,
-                                                                  ).withOpacity(
-                                                                    0.9,
-                                                                  ),
-                                                              colorBlendMode:
-                                                                  BlendMode
-                                                                      .modulate,
-                                                            ),
-                                                          ),
-                                                        )
-                                                      : isCollectible
-                                                      ? Pulse(
-                                                          duration:
-                                                              const Duration(
-                                                                milliseconds:
-                                                                    800,
-                                                              ),
-                                                          child: const Icon(
-                                                            Icons.star,
-                                                            size: 15,
-                                                            color: Color(
-                                                              0xFFFF00FF,
-                                                            ),
-                                                          ),
-                                                        )
-                                                      : null,
-                                                ),
-                                              ),
+                                              width: 0.5,
                                             ),
+                                          ),
+                                          child: Center(
+                                            child: isPlayer
+                                                ? Pulse(
+                                                    duration: const Duration(
+                                                      milliseconds: 1000,
+                                                    ),
+                                                    child: Transform.scale(
+                                                      scale: 1.5,
+                                                      child: Image.asset(
+                                                        'assets/cat.png',
+                                                        fit: BoxFit.contain,
+                                                        color: const Color(
+                                                          0xFF00FFFF,
+                                                        ).withOpacity(0.9),
+                                                        colorBlendMode:
+                                                            BlendMode.modulate,
+                                                      ),
+                                                    ),
+                                                  )
+                                                : isCollectible
+                                                ? Pulse(
+                                                    duration: const Duration(
+                                                      milliseconds: 800,
+                                                    ),
+                                                    child: const Icon(
+                                                      Icons.card_giftcard,
+                                                      size: 15,
+                                                      color: Colors.redAccent,
+                                                    ),
+                                                  )
+                                                : null,
                                           ),
                                         );
                                       },
@@ -436,6 +437,25 @@ class _SocketGameScreenState extends State<SocketGameScreen> {
                         ),
                       ),
                     ),
+                  ),
+                ),
+                // Small birthday elements: Celebration icons for festive feel
+                Positioned(
+                  top: 100,
+                  left: 20,
+                  child: const Icon(
+                    Icons.celebration,
+                    size: 40,
+                    color: Colors.yellow,
+                  ),
+                ),
+                Positioned(
+                  top: 100,
+                  right: 20,
+                  child: const Icon(
+                    Icons.celebration,
+                    size: 40,
+                    color: Colors.yellow,
                   ),
                 ),
               ],

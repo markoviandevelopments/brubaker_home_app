@@ -35,6 +35,7 @@ flutter:
   assets:
     - assets/images/restaurants/
     - assets/cat.png
+    - assets/modes/
 
 flutter_launcher_icons:
   android: true
