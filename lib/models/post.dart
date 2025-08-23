@@ -1,5 +1,4 @@
-import 'package:flutter/foundation.dart';
-import 'dart:convert'; // For jsonEncode/jsonDecode
+// For jsonEncode/jsonDecode
 
 class Post {
   final String userName;

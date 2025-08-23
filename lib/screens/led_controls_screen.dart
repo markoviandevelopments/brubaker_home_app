@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:google_fonts/google_fonts.dart';
+import 'package:brubaker_homeapp/screens/star_field.dart';
 import 'dart:convert';
-import 'dart:ui'; // For BackdropFilter
-import 'dart:math' as math; // For animation calculations
+import 'dart:ui';
 
 class LedControlsScreen extends StatefulWidget {
-  const LedControlsScreen({super.key});
+  final Function(int)? onGameSelected; // Added for consistency, may not be used
+
+  const LedControlsScreen({super.key, this.onGameSelected});
 
   @override
   _LedControlsScreenState createState() => _LedControlsScreenState();
@@ -75,6 +78,7 @@ class _LedControlsScreenState extends State<LedControlsScreen>
       'name': 'electric-sheep-dream',
       'image': 'assets/modes/electric-sheep-dream.png',
     },
+    {'name': 'qrng', 'image': 'assets/modes/qrng.png'},
   ];
   String currentMode = 'off';
   bool isLoading = true;
@@ -102,6 +106,7 @@ class _LedControlsScreenState extends State<LedControlsScreen>
   }
 
   Future<void> fetchCurrentMode() async {
+    if (!mounted) return;
     setState(() => isLoading = true);
     try {
       final response = await http
@@ -109,18 +114,23 @@ class _LedControlsScreenState extends State<LedControlsScreen>
           .timeout(const Duration(seconds: 5));
       if (response.statusCode == 200 &&
           modes.any((mode) => mode['name'] == response.body.trim())) {
-        setState(() => currentMode = response.body.trim());
+        if (mounted) {
+          setState(() => currentMode = response.body.trim());
+        }
       } else {
         _showSnackBar('Failed to fetch mode: ${response.statusCode}');
       }
     } catch (e) {
       _showSnackBar('Connection error: $e');
     } finally {
-      setState(() => isLoading = false);
+      if (mounted) {
+        setState(() => isLoading = false);
+      }
     }
   }
 
   Future<void> updateMode(String newMode) async {
+    if (!mounted) return;
     setState(() => isUpdating = true);
     try {
       final response = await http
@@ -131,24 +141,29 @@ class _LedControlsScreenState extends State<LedControlsScreen>
           )
           .timeout(const Duration(seconds: 5));
       if (response.statusCode == 200) {
-        setState(() => currentMode = newMode);
-        _showSnackBar('Mode updated to $newMode');
+        if (mounted) {
+          setState(() => currentMode = newMode);
+          _showSnackBar('Mode updated to $newMode');
+        }
       } else {
         _showSnackBar('Update failed: ${response.statusCode}');
       }
     } catch (e) {
       _showSnackBar('Connection error: $e');
     } finally {
-      setState(() => isUpdating = false);
+      if (mounted) {
+        setState(() => isUpdating = false);
+      }
     }
   }
 
   void _showSnackBar(String message) {
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
           message,
-          style: const TextStyle(fontFamily: 'Courier', color: Colors.white70),
+          style: GoogleFonts.orbitron(color: Colors.white70, fontSize: 14),
         ),
         backgroundColor: Colors.black.withOpacity(0.8),
         behavior: SnackBarBehavior.floating,
@@ -165,194 +180,93 @@ class _LedControlsScreenState extends State<LedControlsScreen>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      extendBodyBehindAppBar: true,
-      appBar: AppBar(
-        title: const Text(
-          'Galactic LED Matrix',
-          style: TextStyle(
-            fontFamily: 'Courier',
-            fontWeight: FontWeight.bold,
-            fontSize: 22,
-            color: Color(0xFF00FFFF), // Neon cyan
-          ),
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Color(0xFF0A0A1E), Color(0xFF1A1A3A)],
         ),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
       ),
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              Color(0xFF0A0A1E),
-              Color(0xFF1A1A3A),
-            ], // Starry space gradient
-          ),
-        ),
-        child: SafeArea(
-          child: isLoading
-              ? const Center(
-                  child: CircularProgressIndicator(color: Color(0xFF00FFFF)),
-                )
-              : ListView(
-                  padding: const EdgeInsets.all(16.0),
-                  children: [
-                    ClipRect(
-                      child: BackdropFilter(
-                        filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
-                        child: Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: Colors.white.withOpacity(0.2),
-                            ),
+      child: Stack(
+        children: [
+          Positioned.fill(child: StarField(opacity: 0.2)),
+          SafeArea(
+            child: Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        'Galactic LED Matrix',
+                        style: GoogleFonts.orbitron(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 22,
+                          color: Colors.white70,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  child: isLoading
+                      ? const Center(
+                          child: CircularProgressIndicator(
+                            color: Colors.white70,
                           ),
-                          child: Row(
-                            children: [
-                              AnimatedBuilder(
-                                animation: _glowAnimation,
-                                builder: (context, child) {
-                                  return Container(
-                                    decoration: BoxDecoration(
-                                      borderRadius: BorderRadius.circular(8),
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: const Color(0xFF00FFFF)
-                                              .withOpacity(
-                                                0.4 * _glowAnimation.value,
-                                              ),
-                                          blurRadius: 12 * _glowAnimation.value,
-                                          spreadRadius:
-                                              4 * _glowAnimation.value,
-                                        ),
-                                      ],
+                        )
+                      : ListView(
+                          padding: const EdgeInsets.all(16.0),
+                          children: [
+                            ClipRect(
+                              child: BackdropFilter(
+                                filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+                                child: Container(
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withOpacity(0.2),
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                      color: Colors.white.withOpacity(0.3),
                                     ),
-                                    child: Image.asset(
-                                      modes.firstWhere(
-                                        (mode) => mode['name'] == currentMode,
-                                      )['image']!,
-                                      width: 100,
-                                      height: 100,
-                                      fit: BoxFit.cover,
-                                      errorBuilder:
-                                          (context, error, stackTrace) =>
-                                              const Icon(
-                                                Icons.image_not_supported,
-                                                color: Colors.white70,
-                                                size: 100,
-                                              ),
-                                    ),
-                                  );
-                                },
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Text(
-                                  'Current Mode: ${titleCase(currentMode)}',
-                                  style: const TextStyle(
-                                    fontFamily: 'Courier',
-                                    color: Colors.white70,
-                                    fontSize: 18,
                                   ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    ClipRect(
-                      child: BackdropFilter(
-                        filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
-                        child: Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: Colors.white.withOpacity(0.2),
-                            ),
-                          ),
-                          child: const Text(
-                            'Select Mode',
-                            style: TextStyle(
-                              fontFamily: 'Courier',
-                              color: Color(0xFF00FFFF),
-                              fontWeight: FontWeight.bold,
-                              fontSize: 20,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    GridView.builder(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      gridDelegate:
-                          const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 2,
-                            crossAxisSpacing: 12,
-                            mainAxisSpacing: 12,
-                            childAspectRatio:
-                                0.75, // Adjusted for larger images
-                          ),
-                      itemCount: modes.length,
-                      itemBuilder: (context, index) {
-                        final mode = modes[index];
-                        return GestureDetector(
-                          onTap: isUpdating
-                              ? null
-                              : () => updateMode(mode['name']!),
-                          child: ClipRect(
-                            child: BackdropFilter(
-                              filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
-                              child: AnimatedBuilder(
-                                animation: _glowAnimation,
-                                builder: (context, child) {
-                                  return Container(
-                                    decoration: BoxDecoration(
-                                      color: Colors.black.withOpacity(0.6),
-                                      borderRadius: BorderRadius.circular(12),
-                                      border: Border.all(
-                                        color: mode['name'] == currentMode
-                                            ? const Color(
-                                                0xFF00FFFF,
-                                              ).withOpacity(
-                                                0.8 * _glowAnimation.value,
-                                              )
-                                            : Colors.white.withOpacity(0.2),
-                                      ),
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: mode['name'] == currentMode
-                                              ? const Color(
-                                                  0xFF00FFFF,
-                                                ).withOpacity(
-                                                  0.4 * _glowAnimation.value,
-                                                )
-                                              : Colors.black.withOpacity(0.3),
-                                          blurRadius: 10 * _glowAnimation.value,
-                                          spreadRadius:
-                                              2 * _glowAnimation.value,
-                                        ),
-                                      ],
-                                    ),
-                                    child: Column(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.center,
-                                      children: [
-                                        Expanded(
-                                          child: Padding(
-                                            padding: const EdgeInsets.all(8.0),
+                                  child: Row(
+                                    children: [
+                                      AnimatedBuilder(
+                                        animation: _glowAnimation,
+                                        builder: (context, child) {
+                                          return Container(
+                                            decoration: BoxDecoration(
+                                              borderRadius:
+                                                  BorderRadius.circular(8),
+                                              boxShadow: [
+                                                BoxShadow(
+                                                  color: Colors.white
+                                                      .withOpacity(
+                                                        0.4 *
+                                                            _glowAnimation
+                                                                .value,
+                                                      ),
+                                                  blurRadius:
+                                                      12 * _glowAnimation.value,
+                                                  spreadRadius:
+                                                      4 * _glowAnimation.value,
+                                                ),
+                                              ],
+                                            ),
                                             child: Image.asset(
-                                              mode['image']!,
-                                              fit: BoxFit.contain,
+                                              modes.firstWhere(
+                                                (mode) =>
+                                                    mode['name'] == currentMode,
+                                              )['image']!,
+                                              width: 100,
+                                              height: 100,
+                                              fit: BoxFit.cover,
                                               errorBuilder:
                                                   (
                                                     context,
@@ -361,44 +275,180 @@ class _LedControlsScreenState extends State<LedControlsScreen>
                                                   ) => const Icon(
                                                     Icons.image_not_supported,
                                                     color: Colors.white70,
-                                                    size: 120,
+                                                    size: 100,
                                                   ),
                                             ),
+                                          );
+                                        },
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: Text(
+                                          'Current Mode: ${titleCase(currentMode)}',
+                                          style: GoogleFonts.orbitron(
+                                            color: Colors.white70,
+                                            fontSize: 18,
                                           ),
                                         ),
-                                        const SizedBox(height: 8),
-                                        Text(
-                                          titleCase(mode['name']!),
-                                          textAlign: TextAlign.center,
-                                          style: TextStyle(
-                                            fontFamily: 'Courier',
-                                            color: mode['name'] == currentMode
-                                                ? const Color(0xFF00FFFF)
-                                                : Colors.white70,
-                                            fontSize: 14,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 4),
-                                        Icon(
-                                          Icons.star,
-                                          color: mode['name'] == currentMode
-                                              ? const Color(0xFF00FFFF)
-                                              : Colors.white70,
-                                          size: 20,
-                                        ),
-                                      ],
-                                    ),
-                                  );
-                                },
+                                      ),
+                                    ],
+                                  ),
+                                ),
                               ),
                             ),
-                          ),
-                        );
-                      },
-                    ),
-                  ],
+                            const SizedBox(height: 20),
+                            ClipRect(
+                              child: BackdropFilter(
+                                filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+                                child: AnimatedBuilder(
+                                  animation: _glowAnimation,
+                                  builder: (context, child) {
+                                    return Container(
+                                      padding: const EdgeInsets.all(12),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white.withOpacity(0.2),
+                                        borderRadius: BorderRadius.circular(12),
+                                        border: Border.all(
+                                          color: Colors.white.withOpacity(0.3),
+                                        ),
+                                      ),
+                                      child: Text(
+                                        'Select Mode',
+                                        style: GoogleFonts.orbitron(
+                                          color: Colors.white70,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 20,
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                            GridView.builder(
+                              shrinkWrap: true,
+                              physics: const NeverScrollableScrollPhysics(),
+                              gridDelegate:
+                                  const SliverGridDelegateWithFixedCrossAxisCount(
+                                    crossAxisCount: 2,
+                                    crossAxisSpacing: 12,
+                                    mainAxisSpacing: 12,
+                                    childAspectRatio: 0.75,
+                                  ),
+                              itemCount: modes.length,
+                              itemBuilder: (context, index) {
+                                final mode = modes[index];
+                                return GestureDetector(
+                                  onTap: isUpdating
+                                      ? null
+                                      : () => updateMode(mode['name']!),
+                                  child: ClipRect(
+                                    child: BackdropFilter(
+                                      filter: ImageFilter.blur(
+                                        sigmaX: 5,
+                                        sigmaY: 5,
+                                      ),
+                                      child: AnimatedBuilder(
+                                        animation: _glowAnimation,
+                                        builder: (context, child) {
+                                          return Container(
+                                            decoration: BoxDecoration(
+                                              color: Colors.white.withOpacity(
+                                                0.2,
+                                              ),
+                                              borderRadius:
+                                                  BorderRadius.circular(12),
+                                              border: Border.all(
+                                                color:
+                                                    mode['name'] == currentMode
+                                                    ? Colors.white.withOpacity(
+                                                        0.8 *
+                                                            _glowAnimation
+                                                                .value,
+                                                      )
+                                                    : Colors.white.withOpacity(
+                                                        0.3,
+                                                      ),
+                                              ),
+                                              boxShadow: [
+                                                BoxShadow(
+                                                  color:
+                                                      mode['name'] ==
+                                                          currentMode
+                                                      ? Colors.white
+                                                            .withOpacity(
+                                                              0.4 *
+                                                                  _glowAnimation
+                                                                      .value,
+                                                            )
+                                                      : Colors.black
+                                                            .withOpacity(0.3),
+                                                  blurRadius:
+                                                      10 * _glowAnimation.value,
+                                                  spreadRadius:
+                                                      2 * _glowAnimation.value,
+                                                ),
+                                              ],
+                                            ),
+                                            child: Column(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment.center,
+                                              children: [
+                                                Expanded(
+                                                  child: Padding(
+                                                    padding:
+                                                        const EdgeInsets.all(
+                                                          8.0,
+                                                        ),
+                                                    child: Image.asset(
+                                                      mode['image']!,
+                                                      fit: BoxFit.contain,
+                                                      errorBuilder:
+                                                          (
+                                                            context,
+                                                            error,
+                                                            stackTrace,
+                                                          ) => const Icon(
+                                                            Icons
+                                                                .image_not_supported,
+                                                            color:
+                                                                Colors.white70,
+                                                            size: 120,
+                                                          ),
+                                                    ),
+                                                  ),
+                                                ),
+                                                const SizedBox(height: 8),
+                                                Text(
+                                                  titleCase(mode['name']!),
+                                                  textAlign: TextAlign.center,
+                                                  style: GoogleFonts.orbitron(
+                                                    color:
+                                                        mode['name'] ==
+                                                            currentMode
+                                                        ? Colors.white
+                                                        : Colors.white70,
+                                                    fontSize: 14,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          );
+                                        },
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          ],
+                        ),
                 ),
-        ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

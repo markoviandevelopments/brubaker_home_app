@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
-import 'led_controls_screen.dart';
-import 'elements_screen.dart';
-import 'scroll_screen.dart';
-import 'info_screen.dart';
-import 'games_screen.dart';
-import 'star_field.dart'; // Import the new StarField widget
+import 'package:brubaker_homeapp/screens/led_controls_screen.dart';
+import 'package:brubaker_homeapp/screens/scroll_screen.dart';
+import 'package:brubaker_homeapp/screens/info_screen.dart';
+import 'package:brubaker_homeapp/screens/games_screen.dart';
+import 'package:brubaker_homeapp/screens/socket_game_screen.dart';
+import 'package:brubaker_homeapp/screens/indian_name_screen.dart';
+import 'package:brubaker_homeapp/screens/minesweeper_screen.dart';
+import 'package:brubaker_homeapp/screens/toad_jumper_screen.dart';
+import 'package:brubaker_homeapp/screens/elements_screen.dart';
+import 'package:brubaker_homeapp/screens/star_field.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -14,19 +18,49 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  int _selectedIndex = 4;
-
-  static const List<Widget> _pages = <Widget>[
-    LedControlsScreen(),
-    ElementsScreen(),
-    ScrollScreen(),
-    InfoScreen(),
-    GamesScreen(),
+  int _selectedIndex = 0; // Initialize to LedControlsScreen
+  int _gameScreenIndex =
+      0; // Track the current game screen (0 = GamesScreen, 1 = Elements, 2 = ToadJumper, 3 = SocketGame, 4 = IndianName, 5 = Minesweeper)
+  final List<Widget> _mainPages = [
+    LedControlsScreen(onGameSelected: (index) {}), // Placeholder
+    GamesScreen(
+      onGameSelected: (index) {},
+    ), // Placeholder, updated in initState
+    const ScrollScreen(),
+    const InfoScreen(),
   ];
+  late List<Widget> _gamePages;
+
+  @override
+  void initState() {
+    super.initState();
+    // Initialize game pages with onGameSelected callbacks
+    _gamePages = [
+      GamesScreen(onGameSelected: _selectGame),
+      ElementsScreen(onGameSelected: _selectGame),
+      ToadJumperScreen(onGameSelected: _selectGame),
+      SocketGameScreen(onGameSelected: _selectGame),
+      IndianNameScreen(onGameSelected: _selectGame),
+      MinesweeperScreen(onGameSelected: _selectGame),
+    ];
+    _mainPages[1] = _gamePages[0]; // Set GamesScreen as default for Games tab
+  }
 
   void _onItemTapped(int index) {
     setState(() {
       _selectedIndex = index;
+      if (index != 1) {
+        _gameScreenIndex = 0; // Reset to GamesScreen when leaving Games tab
+      }
+    });
+  }
+
+  void _selectGame(int gameIndex) {
+    setState(() {
+      if (gameIndex >= 0 && gameIndex < _gamePages.length) {
+        _selectedIndex = 1; // Stay on Games tab
+        _gameScreenIndex = gameIndex; // Select specific game
+      }
     });
   }
 
@@ -35,33 +69,33 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       body: Stack(
         children: [
-          // Starry background effect
-          Positioned.fill(child: StarField()),
-          IndexedStack(index: _selectedIndex, children: _pages),
+          Positioned.fill(child: StarField(opacity: 0.2)),
+          IndexedStack(
+            index: _selectedIndex,
+            children: _mainPages.map((page) {
+              if (page is GamesScreen) {
+                return _gamePages[_gameScreenIndex]; // Show the selected game
+              }
+              return page;
+            }).toList(),
+          ),
         ],
       ),
       bottomNavigationBar: BottomNavigationBar(
         items: const <BottomNavigationBarItem>[
           BottomNavigationBarItem(icon: Icon(Icons.lightbulb), label: ''),
-          BottomNavigationBarItem(icon: Icon(Icons.widgets), label: ''),
+          BottomNavigationBarItem(icon: Icon(Icons.sports_esports), label: ''),
           BottomNavigationBarItem(icon: Icon(Icons.auto_awesome), label: ''),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.favorite),
-            label: '',
-          ), // Changed to heart
-          BottomNavigationBarItem(
-            icon: Icon(Icons.sports_esports),
-            label: '',
-          ), // Changed to esports
+          BottomNavigationBarItem(icon: Icon(Icons.favorite), label: ''),
         ],
         currentIndex: _selectedIndex,
-        selectedItemColor: Theme.of(context).primaryColor, // Neon cyan
-        unselectedItemColor: Theme.of(context).colorScheme.secondary, // Magenta
+        selectedItemColor: const Color(0xFF00FFD1), // Electric greenish teal
+        unselectedItemColor: const Color(0xFFFF4500), // Red-orange
         onTap: _onItemTapped,
         type: BottomNavigationBarType.fixed,
         showSelectedLabels: false,
         showUnselectedLabels: false,
-        backgroundColor: const Color(0xFF0A0A1E), // Match dark space theme
+        backgroundColor: const Color(0xFF0A0A1E),
       ),
     );
   }

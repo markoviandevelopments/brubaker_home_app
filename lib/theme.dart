@@ -15,7 +15,7 @@ ThemeData getAppTheme() {
     ),
     colorScheme: ColorScheme.fromSwatch().copyWith(
       secondary: const Color(0xFFFF00FF),
-      background: const LinearGradient(
+      surface: const LinearGradient(
         begin: Alignment.topCenter,
         end: Alignment.bottomCenter,
         colors: [Color(0xFF0A0A1E), Color(0xFF1A1A3A)],

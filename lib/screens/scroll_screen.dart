@@ -1,11 +1,13 @@
 import 'dart:io';
 import 'dart:convert';
-import 'dart:ui'; // For BackdropFilter
+import 'dart:ui';
 import 'package:chewie/chewie.dart';
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:video_player/video_player.dart';
+import '../screens/star_field.dart';
 import '../models/post.dart';
 
 class ScrollScreen extends StatefulWidget {
@@ -40,6 +42,23 @@ class _ScrollScreenState extends State<ScrollScreen> {
     await prefs.setStringList('posts', postsJson);
   }
 
+  void _deletePost(int index) async {
+    setState(() {
+      _posts.removeAt(index);
+    });
+    await _savePosts();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          'Post deleted',
+          style: GoogleFonts.orbitron(color: Colors.white70, fontSize: 14),
+        ),
+        backgroundColor: Colors.black.withOpacity(0.8),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -48,20 +67,35 @@ class _ScrollScreenState extends State<ScrollScreen> {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Color(0xFF0A0A1E), Color(0xFF1A1A3A)], // Starry gradient
+            colors: [Color(0xFF0A0A1E), Color(0xFF1A1A3A)],
           ),
         ),
-        child: ListView.builder(
-          padding: const EdgeInsets.all(16.0),
-          itemCount: _posts.length,
-          itemBuilder: (context, index) {
-            return PostWidget(post: _posts[index]);
-          },
+        child: Stack(
+          children: [
+            Positioned.fill(child: StarField(opacity: 0.2)),
+            ListView.builder(
+              padding: const EdgeInsets.all(16.0),
+              itemCount: _posts.length,
+              itemBuilder: (context, index) {
+                return PostWidget(
+                  post: _posts[index],
+                  onDelete: () => _deletePost(index),
+                );
+              },
+            ),
+          ],
         ),
       ),
       floatingActionButton: FloatingActionButton(
-        backgroundColor: const Color(0xFF00FFFF), // Neon cyan
-        child: const Icon(Icons.add, color: Colors.black),
+        backgroundColor: Colors.white.withOpacity(0.2),
+        elevation: 5,
+        child: Container(
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            border: Border.all(color: Colors.white.withOpacity(0.3)),
+          ),
+          child: const Icon(Icons.add, color: Colors.white70),
+        ),
         onPressed: () => _showPostDialog(context),
       ),
     );
@@ -79,49 +113,41 @@ class _ScrollScreenState extends State<ScrollScreen> {
         backgroundColor: Colors.transparent,
         content: ClipRect(
           child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5), // Glass effect
+            filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
             child: Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.1),
+                color: Colors.white.withOpacity(0.2),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.white.withOpacity(0.2)),
+                border: Border.all(color: Colors.white.withOpacity(0.3)),
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   TextField(
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       labelText: 'Your Name',
-                      labelStyle: TextStyle(
-                        color: Color(0xFF00FFFF),
-                        fontFamily: 'Courier',
-                      ),
+                      labelStyle: GoogleFonts.orbitron(color: Colors.white70),
                       enabledBorder: UnderlineInputBorder(
-                        borderSide: BorderSide(color: Color(0xFF00FFFF)),
+                        borderSide: BorderSide(
+                          color: Colors.white.withOpacity(0.3),
+                        ),
                       ),
                     ),
-                    style: const TextStyle(
-                      color: Colors.white70,
-                      fontFamily: 'Courier',
-                    ),
+                    style: GoogleFonts.orbitron(color: Colors.white70),
                     onChanged: (value) => userName = value,
                   ),
                   TextField(
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       labelText: 'Status Update',
-                      labelStyle: TextStyle(
-                        color: Color(0xFF00FFFF),
-                        fontFamily: 'Courier',
-                      ),
+                      labelStyle: GoogleFonts.orbitron(color: Colors.white70),
                       enabledBorder: UnderlineInputBorder(
-                        borderSide: BorderSide(color: Color(0xFF00FFFF)),
+                        borderSide: BorderSide(
+                          color: Colors.white.withOpacity(0.3),
+                        ),
                       ),
                     ),
-                    style: const TextStyle(
-                      color: Colors.white70,
-                      fontFamily: 'Courier',
-                    ),
+                    style: GoogleFonts.orbitron(color: Colors.white70),
                     onChanged: (value) => text = value,
                   ),
                   const SizedBox(height: 16),
@@ -130,10 +156,14 @@ class _ScrollScreenState extends State<ScrollScreen> {
                     children: [
                       ElevatedButton(
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF00FFFF),
+                          backgroundColor: Colors.white.withOpacity(0.2),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(8),
+                            side: BorderSide(
+                              color: Colors.white.withOpacity(0.3),
+                            ),
                           ),
+                          elevation: 5,
                         ),
                         onPressed: () async {
                           final picked = await ImagePicker().pickImage(
@@ -144,20 +174,21 @@ class _ScrollScreenState extends State<ScrollScreen> {
                             mediaType = 'image';
                           }
                         },
-                        child: const Text(
+                        child: Text(
                           'Image',
-                          style: TextStyle(
-                            color: Colors.black,
-                            fontFamily: 'Courier',
-                          ),
+                          style: GoogleFonts.orbitron(color: Colors.white70),
                         ),
                       ),
                       ElevatedButton(
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF00FFFF),
+                          backgroundColor: Colors.white.withOpacity(0.2),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(8),
+                            side: BorderSide(
+                              color: Colors.white.withOpacity(0.3),
+                            ),
                           ),
+                          elevation: 5,
                         ),
                         onPressed: () async {
                           final picked = await ImagePicker().pickVideo(
@@ -168,12 +199,9 @@ class _ScrollScreenState extends State<ScrollScreen> {
                             mediaType = 'video';
                           }
                         },
-                        child: const Text(
+                        child: Text(
                           'Video',
-                          style: TextStyle(
-                            color: Colors.black,
-                            fontFamily: 'Courier',
-                          ),
+                          style: GoogleFonts.orbitron(color: Colors.white70),
                         ),
                       ),
                     ],
@@ -186,12 +214,9 @@ class _ScrollScreenState extends State<ScrollScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text(
+            child: Text(
               'Cancel',
-              style: TextStyle(
-                color: Color(0xFFFF00FF), // Magenta
-                fontFamily: 'Courier',
-              ),
+              style: GoogleFonts.orbitron(color: Colors.white70),
             ),
           ),
           TextButton(
@@ -211,23 +236,20 @@ class _ScrollScreenState extends State<ScrollScreen> {
                 Navigator.pop(context);
               } else {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
+                  SnackBar(
                     content: Text(
                       'Name and status required',
-                      style: TextStyle(
-                        fontFamily: 'Courier',
-                        color: Colors.white70,
-                      ),
+                      style: GoogleFonts.orbitron(color: Colors.white70),
                     ),
-                    backgroundColor: Colors.black87,
+                    backgroundColor: Colors.black.withOpacity(0.8),
                     behavior: SnackBarBehavior.floating,
                   ),
                 );
               }
             },
-            child: const Text(
+            child: Text(
               'Post',
-              style: TextStyle(color: Color(0xFFFF00FF), fontFamily: 'Courier'),
+              style: GoogleFonts.orbitron(color: Colors.white70),
             ),
           ),
         ],
@@ -238,8 +260,9 @@ class _ScrollScreenState extends State<ScrollScreen> {
 
 class PostWidget extends StatelessWidget {
   final Post post;
+  final VoidCallback onDelete;
 
-  const PostWidget({super.key, required this.post});
+  const PostWidget({super.key, required this.post, required this.onDelete});
 
   @override
   Widget build(BuildContext context) {
@@ -247,22 +270,21 @@ class PostWidget extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: ClipRect(
         child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5), // Glass effect
+          filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
           child: Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.1),
+              color: Colors.white.withOpacity(0.2),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.white.withOpacity(0.2)),
+              border: Border.all(color: Colors.white.withOpacity(0.3)),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   post.userName,
-                  style: const TextStyle(
-                    fontFamily: 'Courier',
-                    color: Color(0xFF00FFFF),
+                  style: GoogleFonts.orbitron(
+                    color: Colors.white70,
                     fontWeight: FontWeight.bold,
                     fontSize: 16,
                   ),
@@ -270,8 +292,7 @@ class PostWidget extends StatelessWidget {
                 const SizedBox(height: 8),
                 Text(
                   post.text,
-                  style: const TextStyle(
-                    fontFamily: 'Courier',
+                  style: GoogleFonts.orbitron(
                     color: Colors.white70,
                     fontSize: 14,
                   ),
@@ -296,13 +317,25 @@ class PostWidget extends StatelessWidget {
                         ),
                 ],
                 const SizedBox(height: 8),
-                Text(
-                  post.timestamp.toString(),
-                  style: const TextStyle(
-                    fontFamily: 'Courier',
-                    color: Colors.white54,
-                    fontSize: 12,
-                  ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      post.timestamp.toString(),
+                      style: GoogleFonts.orbitron(
+                        color: Colors.white54,
+                        fontSize: 12,
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(
+                        Icons.delete_outline,
+                        color: Colors.white54,
+                        size: 18,
+                      ),
+                      onPressed: onDelete,
+                    ),
+                  ],
                 ),
               ],
             ),
