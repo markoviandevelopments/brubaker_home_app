@@ -1,4 +1,4 @@
-name: Build Signed iOS IPA
+name: Flutter iOS Build
 
 on:
   push:
@@ -7,60 +7,58 @@ on:
   pull_request:
     branches:
       - main
+  workflow_dispatch:
 
 jobs:
-  build-ios:
-    runs-on: macos-13
+  build:
+    runs-on: macos-latest  # Use latest for better compatibility
 
     steps:
-      # Checkout the repository
-      - name: Checkout code
-        uses: actions/checkout@v4
+    - name: Checkout code
+      uses: actions/checkout@v4
 
-      # Set up Flutter
-      - name: Set up Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          flutter-version: '3.32.7'
-          channel: 'stable'
-          cache: true
+    - name: Set up Flutter
+      uses: subosito/flutter-action@v2
+      with:
+        flutter-version: '3.24.1'  # Latest stable as of 2025
+        channel: 'stable'
 
-      # Install dependencies
-      - name: Install dependencies
-        run: flutter pub get
+    - name: Install dependencies
+      run: flutter pub get
 
-      # Decode and import certificate
-      - name: Import Certificate
-        run: |
-          echo "${{ secrets.IOS_CERTIFICATE_APPSTORE }}" | base64 --decode > certificate.p12
-          ls -l certificate.p12  # Debug: Check file size
-          security create-keychain -p pwd ~/Library/Keychains/app-signing.keychain-db
-          security default-keychain -s ~/Library/Keychains/app-signing.keychain-db
-          security unlock-keychain -p pwd ~/Library/Keychains/app-signing.keychain-db
-          security import certificate.p12 -k ~/Library/Keychains/app-signing.keychain-db -P "${{ secrets.P12_PASSWORD }}" -T /usr/bin/codesign || echo "Import failed, check password"
-          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k pwd ~/Library/Keychains/app-signing.keychain-db
-          
-      # Decode and install provisioning profile
-      - name: Install Provisioning Profile
-        run: |
-          echo "${{ secrets.PROVISIONING_PROFILE_APPSTORE }}" | base64 --decode > profile.mobileprovision
-          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
-          cp profile.mobileprovision ~/Library/MobileDevice/Provisioning\ Profiles/"${{ secrets.PROFILE_NAME }}".mobileprovision
+    - name: Decode certificate
+      run: |
+        echo "${{ secrets.IOS_CERTIFICATE_APPSTORE }}" | base64 --decode > appstore.p12
+        ls -l appstore.p12  # Diagnostic: Check file size
 
-      # Build signed IPA
-      - name: Build signed IPA
-        run: flutter build ipa --release --export-options-plist=ios/ExportOptions.plist
+    - name: Decode provisioning profile
+      run: |
+        echo "${{ secrets.PROVISIONING_PROFILE_APPSTORE }}" | base64 --decode > appstore.mobileprovision
+        ls -l appstore.mobileprovision
+        mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+        cp appstore.mobileprovision ~/Library/MobileDevice/Provisioning\ Profiles/
 
-      # Upload the IPA as an artifact
-      - name: Upload IPA
-        uses: actions/upload-artifact@v4
-        with:
-          name: app-ipa
-          path: build/ios/ipa/*.ipa
+    - name: Setup keychain
+      run: |
+        security create-keychain -p pwd build.keychain
+        security default-keychain -s build.keychain
+        security unlock-keychain -p pwd build.keychain
 
-      # Cleanup (always run)
-      - name: Cleanup
-        if: always()
-        run: |
-          security delete-keychain ~/Library/Keychains/app-signing.keychain-db || true
-          rm -f certificate.p12 profile.mobileprovision
+    - name: Import certificate
+      run: |
+        security import appstore.p12 -k build.keychain -P "${{ secrets.P12_PASSWORD }}" -T /usr/bin/codesign
+        security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k pwd build.keychain
+        security find-identity -v -p codesigning  # Diagnostic: Verify import
+
+    - name: Build IPA
+      run: flutter build ipa --release --export-method app-store --bundle-version 1.0.0 --bundle-short-version-string 1.0 --provisioning-profile-uuid 0b68e1cd-eff0-4306-a2c4-878008e53bcb
+
+    - name: Upload to App Store Connect
+      run: |
+        xcrun altool --upload-app -f build/ios/ipa/*.ipa -u "${{ secrets.APPLE_ID }}" -p "${{ secrets.APP_SPECIFIC_PASSWORD }}"
+
+    - name: Archive artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: brubaker-home-app-ipa
+        path: build/ios/ipa/*.ipa
