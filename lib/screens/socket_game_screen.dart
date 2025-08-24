@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:animate_do/animate_do.dart' as animateDo;
+import 'package:animate_do/animate_do.dart' as animate_do;
 import 'dart:math';
 import 'dart:async';
+import 'dart:ui';
 
 enum Direction { none, up, down, left, right }
 
@@ -12,18 +13,18 @@ class SocketGameScreen extends StatefulWidget {
   const SocketGameScreen({super.key, this.onGameSelected});
 
   @override
-  _SocketGameScreenState createState() => _SocketGameScreenState();
+  SocketGameScreenState createState() => SocketGameScreenState();
 }
 
-class _SocketGameScreenState extends State<SocketGameScreen>
+class SocketGameScreenState extends State<SocketGameScreen>
     with SingleTickerProviderStateMixin {
   int currentRow = 0;
   int currentCol = 0;
   int score = 0;
   int level = 1;
-  int cycle = 0; // CHANGED: Added cycle counter for infinite play
+  int cycle = 0;
   int movesLeft = 100;
-  int timeLeft = 35; // CHANGED: Reduced from 45 to 35 for Level 3
+  int timeLeft = 35;
   final Random random = Random();
   late List<List<bool>> hasCollectible;
   late List<List<bool>> hasObstacle;
@@ -35,7 +36,7 @@ class _SocketGameScreenState extends State<SocketGameScreen>
   bool isGameOver = false;
   Offset _joystickDelta = Offset.zero;
   final double _joystickRadius = 60.0;
-  final double _moveThreshold = 40.0; // CHANGED: Increased from 30.0 to 40.0
+  final double _moveThreshold = 40.0;
   Direction _currentMoveDirection = Direction.none;
 
   @override
@@ -58,22 +59,18 @@ class _SocketGameScreenState extends State<SocketGameScreen>
       );
       currentRow = 0;
       currentCol = 0;
-      movesLeft = level == 2
-          ? (30 - cycle * 2).clamp(15, 30)
-          : -1; // CHANGED: Scale moves with cycle
-      timeLeft = level == 3
-          ? (35 - cycle * 2).clamp(20, 35)
-          : -1; // CHANGED: Scale time with cycle
+      movesLeft = level == 2 ? (30 - cycle * 2).clamp(15, 30) : -1;
+      timeLeft = level == 3 ? (35 - cycle * 2).clamp(20, 35) : -1;
       isGameOver = false;
 
       if (level == 1) {
-        _spawnCollectibles(3 + cycle); // CHANGED: Scale stars with cycle
+        _spawnCollectibles(3 + cycle);
       } else if (level == 2) {
-        _spawnCollectibles(3 + cycle); // CHANGED: Scale gems with cycle
-        _spawnObstacles(3 + cycle); // CHANGED: Scale walls with cycle
+        _spawnCollectibles(3 + cycle);
+        _spawnObstacles(3 + cycle);
       } else if (level == 3) {
         _spawnTarget();
-        _spawnObstacles(3 + cycle); // CHANGED: Increased to 3 + cycle hazards
+        _spawnObstacles(3 + cycle);
         _startHazardTimer();
         _startCountdownTimer();
       }
@@ -84,15 +81,15 @@ class _SocketGameScreenState extends State<SocketGameScreen>
     if (level == 1) {
       return const Color(
         0xFF0A0A1E,
-      ).withOpacity(0.2 + random.nextDouble() * 0.1);
+      ).withValues(alpha: 0.2 + random.nextDouble() * 0.1);
     } else if (level == 2) {
       return const Color(
         0xFF1A1A3A,
-      ).withOpacity(0.3 + random.nextDouble() * 0.1);
+      ).withValues(alpha: 0.3 + random.nextDouble() * 0.1);
     } else {
       return const Color(
         0xFF2A0A4A,
-      ).withOpacity(0.4 + random.nextDouble() * 0.1);
+      ).withValues(alpha: 0.4 + random.nextDouble() * 0.1);
     }
   }
 
@@ -110,7 +107,6 @@ class _SocketGameScreenState extends State<SocketGameScreen>
 
   void _spawnObstacles(int count) {
     for (int i = 0; i < count.clamp(0, 20); i++) {
-      // CHANGED: Cap obstacles to prevent grid lock
       int x = random.nextInt(10);
       int y = random.nextInt(10);
       if (!hasCollectible[x][y] &&
@@ -133,7 +129,6 @@ class _SocketGameScreenState extends State<SocketGameScreen>
   void _startHazardTimer() {
     _hazardTimer?.cancel();
     _hazardTimer = Timer.periodic(const Duration(milliseconds: 2500), (timer) {
-      // CHANGED: Set to 2.5 seconds
       if (!mounted) {
         timer.cancel();
         return;
@@ -201,87 +196,96 @@ class _SocketGameScreenState extends State<SocketGameScreen>
       barrierDismissible: false,
       builder: (context) => AlertDialog(
         backgroundColor: Colors.transparent,
-        content: Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.3),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.white.withOpacity(0.3)),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'Game Over',
-                style: GoogleFonts.orbitron(
-                  color: Colors.white,
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                ),
+        content: ClipRect(
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 6, sigmaY: 6),
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.3),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
               ),
-              const SizedBox(height: 16),
-              Text(
-                'Score: $score\nLevel: $level\nCycle: $cycle', // CHANGED: Show cycle
-                style: GoogleFonts.orbitron(
-                  color: Colors.white70,
-                  fontSize: 18,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 16),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  ElevatedButton(
-                    onPressed: () {
-                      Navigator.pop(context);
-                      if (mounted) {
-                        setState(() {
-                          score = 0;
-                          level = 1;
-                          cycle = 0; // CHANGED: Reset cycle
-                          _initializeLevel();
-                        });
-                      }
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF00FFFF).withOpacity(0.8),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                    child: Text(
-                      'Restart',
-                      style: GoogleFonts.orbitron(
-                        color: Colors.white,
-                        fontSize: 16,
-                      ),
+                  Text(
+                    'Game Over',
+                    style: GoogleFonts.orbitron(
+                      color: Colors.white,
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
-                  const SizedBox(width: 16),
-                  ElevatedButton(
-                    onPressed: () {
-                      Navigator.pop(context);
-                      widget.onGameSelected?.call(0);
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.white.withOpacity(0.2),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                        side: BorderSide(color: Colors.white.withOpacity(0.3)),
-                      ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Score: $score\nLevel: $level\nCycle: $cycle',
+                    style: GoogleFonts.orbitron(
+                      color: Colors.white70,
+                      fontSize: 18,
                     ),
-                    child: Text(
-                      'Back to Games',
-                      style: GoogleFonts.orbitron(
-                        color: Colors.white70,
-                        fontSize: 16,
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      ElevatedButton(
+                        onPressed: () {
+                          Navigator.pop(context);
+                          if (mounted) {
+                            setState(() {
+                              score = 0;
+                              level = 1;
+                              cycle = 0;
+                              _initializeLevel();
+                            });
+                          }
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(
+                            0xFF00FFFF,
+                          ).withValues(alpha: 0.8),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        child: Text(
+                          'Restart',
+                          style: GoogleFonts.orbitron(
+                            color: Colors.white,
+                            fontSize: 16,
+                          ),
+                        ),
                       ),
-                    ),
+                      const SizedBox(width: 16),
+                      ElevatedButton(
+                        onPressed: () {
+                          Navigator.pop(context);
+                          widget.onGameSelected?.call(0);
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.white.withValues(alpha: 0.2),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            side: BorderSide(
+                              color: Colors.white.withValues(alpha: 0.3),
+                            ),
+                          ),
+                        ),
+                        child: Text(
+                          'Back to Games',
+                          style: GoogleFonts.orbitron(
+                            color: Colors.white70,
+                            fontSize: 16,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
-            ],
+            ),
           ),
         ),
       ),
@@ -329,7 +333,7 @@ class _SocketGameScreenState extends State<SocketGameScreen>
         if (hasCollectible[currentRow][currentCol]) {
           score++;
           hasCollectible[currentRow][currentCol] = false;
-          _spawnCollectibles(level == 1 ? 1 : 3 + cycle); // CHANGED: Scale gems
+          _spawnCollectibles(level == 1 ? 1 : 3 + cycle); // Scale gems
         }
       } else if (level == 3 &&
           currentRow == targetRow &&
@@ -338,7 +342,6 @@ class _SocketGameScreenState extends State<SocketGameScreen>
         _initializeLevel();
       }
 
-      // CHANGED: Adjusted score thresholds with cycle scaling
       if (score >=
           (level == 1
               ? 5 + cycle * 2
@@ -347,8 +350,8 @@ class _SocketGameScreenState extends State<SocketGameScreen>
               : 30 + cycle * 5)) {
         level++;
         if (level > 3) {
-          level = 1; // CHANGED: Loop back to Level 1
-          cycle++; // CHANGED: Increment cycle
+          level = 1; // Loop back to Level 1
+          cycle++; // Increment cycle
         }
         _initializeLevel();
       }
@@ -397,11 +400,14 @@ class _SocketGameScreenState extends State<SocketGameScreen>
           ),
         ),
         body: Container(
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
-              colors: [Color(0xFF0A0A1E), Color(0xFF1A1A3A)],
+              colors: [
+                Color(0xFF0A0A1E).withValues(alpha: 0.9),
+                Color(0xFF1A1A3A).withValues(alpha: 0.7),
+              ],
             ),
           ),
           child: Stack(
@@ -412,7 +418,7 @@ class _SocketGameScreenState extends State<SocketGameScreen>
                   children: [
                     Padding(
                       padding: const EdgeInsets.all(16.0),
-                      child: animateDo.FadeIn(
+                      child: animate_do.FadeIn(
                         duration: const Duration(milliseconds: 600),
                         child: Container(
                           padding: const EdgeInsets.symmetric(
@@ -420,16 +426,18 @@ class _SocketGameScreenState extends State<SocketGameScreen>
                             horizontal: 24,
                           ),
                           decoration: BoxDecoration(
-                            color: Colors.black.withOpacity(0.4),
+                            color: Colors.black.withValues(alpha: 0.4),
                             border: Border.all(
-                              color: Colors.white.withOpacity(0.3),
+                              color: Colors.white.withValues(alpha: 0.3),
                             ),
                             borderRadius: BorderRadius.circular(12),
                             boxShadow: [
                               BoxShadow(
-                                color: const Color(0xFF00FFFF).withOpacity(0.3),
-                                blurRadius: 10,
-                                offset: const Offset(0, 4),
+                                color: const Color(
+                                  0xFF00FFFF,
+                                ).withValues(alpha: 0.3),
+                                blurRadius: 12,
+                                offset: const Offset(0, 5),
                               ),
                             ],
                           ),
@@ -463,11 +471,22 @@ class _SocketGameScreenState extends State<SocketGameScreen>
                               height: maxSize,
                               child: Container(
                                 decoration: BoxDecoration(
-                                  color: Colors.black.withOpacity(0.5),
-                                  border: Border.all(
-                                    color: Colors.white.withOpacity(0.3),
+                                  gradient: LinearGradient(
+                                    colors: [
+                                      const Color(
+                                        0xFF0A0A1E,
+                                      ).withValues(alpha: 0.5),
+                                      const Color(
+                                        0xFF1A1A3A,
+                                      ).withValues(alpha: 0.3),
+                                    ],
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
                                   ),
-                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: Colors.white.withValues(alpha: 0.4),
+                                  ),
+                                  borderRadius: BorderRadius.circular(15),
                                 ),
                                 child: GridView.builder(
                                   physics: const NeverScrollableScrollPhysics(),
@@ -497,13 +516,24 @@ class _SocketGameScreenState extends State<SocketGameScreen>
                                       decoration: BoxDecoration(
                                         color: gridColors[row][col],
                                         border: Border.all(
-                                          color: Colors.white.withOpacity(0.2),
+                                          color: Colors.white.withValues(
+                                            alpha: 0.2,
+                                          ),
                                           width: 0.5,
                                         ),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: Colors.white.withValues(
+                                              alpha: 0.1,
+                                            ),
+                                            blurRadius: 4,
+                                            spreadRadius: 1,
+                                          ),
+                                        ],
                                       ),
                                       child: Center(
                                         child: isPlayer
-                                            ? animateDo.Pulse(
+                                            ? animate_do.Pulse(
                                                 duration: const Duration(
                                                   milliseconds: 1000,
                                                 ),
@@ -516,7 +546,7 @@ class _SocketGameScreenState extends State<SocketGameScreen>
                                                 ),
                                               )
                                             : isCollectible
-                                            ? animateDo.Pulse(
+                                            ? animate_do.Pulse(
                                                 duration: const Duration(
                                                   milliseconds: 800,
                                                 ),
@@ -531,20 +561,20 @@ class _SocketGameScreenState extends State<SocketGameScreen>
                                                 ),
                                               )
                                             : isObstacle
-                                            ? animateDo.Bounce(
+                                            ? animate_do.Bounce(
                                                 duration: const Duration(
                                                   milliseconds: 1000,
                                                 ),
                                                 child: Icon(
                                                   Icons.block,
                                                   size: 15,
-                                                  color: Colors.red.withOpacity(
-                                                    0.8,
+                                                  color: Colors.red.withValues(
+                                                    alpha: 0.8,
                                                   ),
                                                 ),
                                               )
                                             : isTarget
-                                            ? animateDo.Pulse(
+                                            ? animate_do.Pulse(
                                                 duration: const Duration(
                                                   milliseconds: 800,
                                                 ),
@@ -624,9 +654,7 @@ class _SocketGameScreenState extends State<SocketGameScreen>
                       if (newDirection != Direction.none) {
                         _moveInDirection(newDirection);
                         _moveTimer = Timer.periodic(
-                          const Duration(
-                            milliseconds: 300,
-                          ), // CHANGED: Increased to 300ms
+                          const Duration(milliseconds: 300),
                           (timer) {
                             if (!mounted) {
                               timer.cancel();
@@ -650,16 +678,23 @@ class _SocketGameScreenState extends State<SocketGameScreen>
                     height: _joystickRadius * 2,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: Colors.black.withOpacity(0.3),
+                      gradient: LinearGradient(
+                        colors: [
+                          Colors.black.withValues(alpha: 0.3),
+                          Colors.black.withValues(alpha: 0.1),
+                        ],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
                       border: Border.all(
-                        color: const Color(0xFF00FFFF).withOpacity(0.5),
-                        width: 2,
+                        color: const Color(0xFF00FFFF).withValues(alpha: 0.6),
+                        width: 3,
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: const Color(0xFF00FFFF).withOpacity(0.3),
-                          blurRadius: 10,
-                          spreadRadius: 2,
+                          color: const Color(0xFF00FFFF).withValues(alpha: 0.4),
+                          blurRadius: 12,
+                          spreadRadius: 3,
                         ),
                       ],
                     ),
@@ -667,26 +702,27 @@ class _SocketGameScreenState extends State<SocketGameScreen>
                       alignment: Alignment.center,
                       children: [
                         Positioned(
-                          left:
-                              _joystickRadius +
-                              _joystickDelta.dx -
-                              17.5, // CHANGED: Adjusted for larger circle
-                          top:
-                              _joystickRadius +
-                              _joystickDelta.dy -
-                              17.5, // CHANGED: Adjusted for larger circle
+                          left: _joystickRadius + _joystickDelta.dx - 17.5,
+                          top: _joystickRadius + _joystickDelta.dy - 17.5,
                           child: Container(
-                            width: 35, // CHANGED: Increased from 30 to 35
-                            height: 35, // CHANGED: Increased from 30 to 35
+                            width: 35,
+                            height: 35,
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
-                              color: Colors.white.withOpacity(0.3),
+                              gradient: LinearGradient(
+                                colors: [
+                                  Colors.white.withValues(alpha: 0.4),
+                                  Colors.white.withValues(alpha: 0.2),
+                                ],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ),
                               boxShadow: [
                                 BoxShadow(
                                   color: const Color(
                                     0xFF00FFFF,
-                                  ).withOpacity(0.4),
-                                  blurRadius: 8,
+                                  ).withValues(alpha: 0.5),
+                                  blurRadius: 10,
                                   spreadRadius: 2,
                                 ),
                               ],
@@ -719,8 +755,8 @@ class _NebulaPainter extends CustomPainter {
     final paint = Paint()
       ..shader = LinearGradient(
         colors: [
-          Colors.purple.withOpacity(0.3),
-          Colors.blue.withOpacity(0.2),
+          Colors.purple.withValues(alpha: 0.3),
+          Colors.blue.withValues(alpha: 0.2),
           Colors.transparent,
         ],
         begin: Alignment.topLeft,
@@ -736,7 +772,7 @@ class _NebulaPainter extends CustomPainter {
     canvas.drawCircle(
       Offset(size.width * 0.7, size.height * 0.7),
       size.width * 0.4,
-      paint..color = Colors.purple.withOpacity(0.25),
+      paint..color = Colors.purple.withValues(alpha: 0.25),
     );
   }
 
