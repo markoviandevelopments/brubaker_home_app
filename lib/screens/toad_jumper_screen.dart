@@ -149,7 +149,10 @@ class _ToadJumperGameState extends State<ToadJumperGame> {
     super.didChangeDependencies();
     if (screenSize == null) {
       screenSize = MediaQuery.of(context).size;
-      bottomPadding = MediaQuery.of(context).padding.bottom;
+      // Include system padding and estimated BottomNavigationBar height
+      bottomPadding =
+          MediaQuery.of(context).padding.bottom +
+          56.0; // 56.0 is typical BottomNavigationBar height
     }
     if (toadImage == null && isImageLoading) {
       toadX = screenSize!.width / 2 - 30;
@@ -351,14 +354,12 @@ class _ToadJumperGameState extends State<ToadJumperGame> {
 
   void updateBackgroundProgress() {
     final level = (score / 20).floor() + 1;
-    bgSpeed1 += 2; // Slower increase for smoother progression
+    bgSpeed1 += 2;
     bgSpeed2 += 3;
 
-    // Gradual color transition based on game progress
-    final hue =
-        (level * 5.0) % 360; // Slower hue cycle for smoother transitions
-    final saturation = 0.7 + math.sin(level * 0.2) * 0.2; // Vary saturation
-    final value = 0.2 + math.cos(level * 0.15) * 0.1; // Vary brightness
+    final hue = (level * 5.0) % 360;
+    final saturation = 0.7 + math.sin(level * 0.2) * 0.2;
+    final value = 0.2 + math.cos(level * 0.15) * 0.1;
     bgColorTop = HSVColor.fromAHSV(1.0, hue, saturation, value).toColor();
     bgColorBottom = HSVColor.fromAHSV(
       1.0,
@@ -367,7 +368,6 @@ class _ToadJumperGameState extends State<ToadJumperGame> {
       value * 1.2,
     ).toColor();
 
-    // Platform colors with controlled variance
     final platformHue = (hue + random.nextDouble() * 40 - 20) % 360;
     platformColorStart = HSVColor.fromAHSV(
       1.0,
@@ -382,7 +382,6 @@ class _ToadJumperGameState extends State<ToadJumperGame> {
       0.9,
     ).toColor();
 
-    // Star opacity with subtle pulsing
     starOpacity = 0.4 + math.sin(level * 0.05) * 0.15;
   }
 
