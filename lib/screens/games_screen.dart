@@ -8,10 +8,10 @@ class GamesScreen extends StatefulWidget {
   const GamesScreen({super.key, required this.onGameSelected});
 
   @override
-  _GamesScreenState createState() => _GamesScreenState();
+  GamesScreenState createState() => GamesScreenState();
 }
 
-class _GamesScreenState extends State<GamesScreen>
+class GamesScreenState extends State<GamesScreen>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _pulseAnimation;
@@ -36,8 +36,7 @@ class _GamesScreenState extends State<GamesScreen>
   }
 
   void _navigateToScreen(int index) {
-    print('Navigating to screen with index: $index');
-    widget.onGameSelected(index);
+    widget.onGameSelected(index); // Removed debug print
   }
 
   @override
@@ -84,15 +83,15 @@ class _GamesScreenState extends State<GamesScreen>
                       title: 'Elements',
                       gradient: LinearGradient(
                         colors: [
-                          Color(0xFF4B0082),
-                          Color(0xFF8A2BE2),
-                          Color(0xFF6A0DAD),
+                          Color(0xFF4B0082).withValues(alpha: 0.9),
+                          Color(0xFF8A2BE2).withValues(alpha: 0.8),
+                          Color(0xFF6A0DAD).withValues(alpha: 0.7),
                         ],
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                         transform: GradientRotation(_controller.value * 0.25),
                       ),
-                      glowColor: Colors.purpleAccent,
+                      glowColor: Colors.purpleAccent.withValues(alpha: 0.7),
                       onPressed: () => _navigateToScreen(1),
                       width: buttonWidth,
                     ),
@@ -102,15 +101,15 @@ class _GamesScreenState extends State<GamesScreen>
                       title: 'Toad Jumper',
                       gradient: LinearGradient(
                         colors: [
-                          Color(0xFF32CD32),
-                          Color(0xFF228B22),
-                          Color(0xFF006400),
+                          Color(0xFF32CD32).withValues(alpha: 0.9),
+                          Color(0xFF228B22).withValues(alpha: 0.8),
+                          Color(0xFF006400).withValues(alpha: 0.7),
                         ],
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                         transform: GradientRotation(_controller.value * 0.3),
                       ),
-                      glowColor: Colors.greenAccent,
+                      glowColor: Colors.greenAccent.withValues(alpha: 0.7),
                       onPressed: () => _navigateToScreen(2),
                       width: buttonWidth,
                     ),
@@ -120,15 +119,15 @@ class _GamesScreenState extends State<GamesScreen>
                       title: 'Socket Game',
                       gradient: LinearGradient(
                         colors: [
-                          Color(0xFF00FFFF),
-                          Color(0xFF00B7EB),
-                          Color(0xFF0077B6),
+                          Color(0xFF00FFFF).withValues(alpha: 0.9),
+                          Color(0xFF00B7EB).withValues(alpha: 0.8),
+                          Color(0xFF0077B6).withValues(alpha: 0.7),
                         ],
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                         transform: GradientRotation(_controller.value * 0.1),
                       ),
-                      glowColor: Colors.cyanAccent,
+                      glowColor: Colors.cyanAccent.withValues(alpha: 0.7),
                       onPressed: () => _navigateToScreen(3),
                       width: buttonWidth,
                     ),
@@ -138,15 +137,15 @@ class _GamesScreenState extends State<GamesScreen>
                       title: 'Cosmic Name',
                       gradient: LinearGradient(
                         colors: [
-                          Color(0xFFFF4500),
-                          Color(0xFF8B0000),
-                          Color(0xFF4B0082),
+                          Color(0xFFFF4500).withValues(alpha: 0.9),
+                          Color(0xFF8B0000).withValues(alpha: 0.8),
+                          Color(0xFF4B0082).withValues(alpha: 0.7),
                         ],
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                         transform: GradientRotation(_controller.value * 0.15),
                       ),
-                      glowColor: Colors.redAccent,
+                      glowColor: Colors.redAccent.withValues(alpha: 0.7),
                       onPressed: () => _navigateToScreen(4),
                       width: buttonWidth,
                     ),
@@ -156,15 +155,15 @@ class _GamesScreenState extends State<GamesScreen>
                       title: 'Minesweeper',
                       gradient: LinearGradient(
                         colors: [
-                          Color(0xFFFFFF00),
-                          Color(0xFFFFD700),
-                          Color(0xFFCCAC00),
+                          Color(0xFFFFFF00).withValues(alpha: 0.9),
+                          Color(0xFFFFD700).withValues(alpha: 0.8),
+                          Color(0xFFCCAC00).withValues(alpha: 0.7),
                         ],
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                         transform: GradientRotation(_controller.value * 0.2),
                       ),
-                      glowColor: Colors.yellowAccent,
+                      glowColor: Colors.yellowAccent.withValues(alpha: 0.7),
                       onPressed: () => _navigateToScreen(5),
                       width: buttonWidth,
                     ),
@@ -195,7 +194,6 @@ class _GamesScreenState extends State<GamesScreen>
       onTapUp: (_) {
         if (mounted) {
           setState(() => _scale = 1.0);
-          print('Button tapped: $title');
           onPressed();
         }
       },
@@ -218,37 +216,37 @@ class _GamesScreenState extends State<GamesScreen>
                   gradient: gradient,
                   boxShadow: [
                     BoxShadow(
-                      color: glowColor.withOpacity(0.7),
-                      spreadRadius: 4,
-                      blurRadius: 12,
-                      offset: const Offset(0, 6),
+                      color: glowColor,
+                      spreadRadius: 6,
+                      blurRadius: 15,
+                      offset: const Offset(0, 8),
                     ),
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.5),
-                      spreadRadius: -3,
-                      blurRadius: 8,
-                      offset: const Offset(0, -3),
+                      color: Colors.black.withValues(alpha: 0.6),
+                      spreadRadius: -4,
+                      blurRadius: 10,
+                      offset: const Offset(0, -4),
                     ),
                   ],
                   border: Border.all(
-                    color: glowColor.withOpacity(0.9),
-                    width: 2.5,
+                    color: glowColor.withValues(alpha: 0.9),
+                    width: 3,
                   ),
                 ),
                 child: Stack(
                   children: [
                     Container(
-                      margin: const EdgeInsets.all(2.5),
+                      margin: const EdgeInsets.all(3),
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
                           colors: [
-                            Colors.white.withOpacity(0.4),
+                            Colors.white.withValues(alpha: 0.5),
                             Colors.transparent,
                           ],
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
                         ),
-                        borderRadius: BorderRadius.circular(22.5),
+                        borderRadius: BorderRadius.circular(22),
                       ),
                     ),
                     Center(
@@ -261,9 +259,9 @@ class _GamesScreenState extends State<GamesScreen>
                           color: Colors.white,
                           shadows: [
                             Shadow(
-                              color: glowColor.withOpacity(0.8),
-                              blurRadius: 10,
-                              offset: const Offset(0, 4),
+                              color: glowColor.withValues(alpha: 0.9),
+                              blurRadius: 12,
+                              offset: const Offset(0, 5),
                             ),
                           ],
                         ),
@@ -293,14 +291,14 @@ class _NebulaPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..shader = LinearGradient(
+      ..shader = RadialGradient(
         colors: [
-          Colors.purple.withOpacity(0.25),
-          Colors.blue.withOpacity(0.15),
+          Colors.purple.withValues(alpha: 0.3),
+          Colors.blue.withValues(alpha: 0.2),
           Colors.transparent,
         ],
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
+        center: Alignment(0.3, 0.4),
+        radius: 0.6,
       ).createShader(Rect.fromLTWH(0, 0, size.width, size.height))
       ..blendMode = BlendMode.overlay;
 
@@ -312,7 +310,7 @@ class _NebulaPainter extends CustomPainter {
     canvas.drawCircle(
       Offset(size.width * 0.7, size.height * 0.7),
       size.width * 0.5,
-      paint..color = Colors.purple.withOpacity(0.2),
+      paint..color = Colors.purple.withValues(alpha: 0.25),
     );
   }
 
