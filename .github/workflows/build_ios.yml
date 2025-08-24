@@ -1,62 +1,32 @@
-name: Build Signed iOS IPA
+name: Build iOS
 
 on:
   push:
-    branches:
-      - main
-  workflow_dispatch:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
 
 jobs:
-  build-ios:
+  build:
     runs-on: macos-latest
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Set up Flutter
-      uses: subosito/flutter-action@v2
-      with:
-        flutter-version: '3.35.1'
-        channel: 'stable'
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'  # Uses the latest stable Flutter version
 
-    - name: Install dependencies
-      run: flutter pub get
+      - name: Install dependencies
+        run: flutter pub get
 
-    - name: Decode certificate
-      run: |
-        echo "${{ secrets.IOS_CERTIFICATE_APPSTORE }}" | base64 --decode > appstore.p12 || { echo "Certificate decode failed - check base64 secret"; exit 1; }
-        ls -l appstore.p12  # Diagnostic: Check file size (should be non-zero, ~3KB)
-        file appstore.p12  # Diagnostic: Check file type (should be PKCS#12)
-    - name: Test decoded p12 locally
-      run: |
-        openssl pkcs12 -in appstore.p12 -info -noout -passin pass:"${{ secrets.P12_PASSWORD }}" || { echo "Decoded .p12 verification failed - wrong password or corrupted file"; exit 1; }
-    - name: Decode provisioning profile
-      run: |
-        echo "${{ secrets.PROVISIONING_PROFILE_APPSTORE }}" | base64 --decode > appstore.mobileprovision || { echo "Profile decode failed - check base64 secret"; exit 1; }
-        ls -l appstore.mobileprovision  # Diagnostic: Check file size
-        security cms -D -i appstore.mobileprovision | grep UUID  # Diagnostic: Verify UUID
-    - name: Setup keychain
-      run: |
-        security create-keychain -p pwd app-signing.keychain-db
-        security default-keychain -s app-signing.keychain-db
-        security unlock-keychain -p pwd app-signing.keychain-db
-    - name: Import certificate
-      run: |
-        security import appstore.p12 -k app-signing.keychain-db -P "${{ secrets.P12_PASSWORD }}" -T /usr/bin/codesign || { echo "Certificate import failed - verify password and .p12 integrity"; exit 1; }
-        security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k pwd app-signing.keychain-db
-        security find-identity -v -p codesigning  # Diagnostic: List identities (should show your certificate)
-    - name: Build IPA
-      run: flutter build ipa --release --export-method app-store --bundle-version 1.0.0 --bundle-short-version-string 1.0 --provisioning-profile-uuid 0b68e1cd-eff0-4306-a2c4-878008e53bcb
+      - name: Analyze Dart code
+        run: flutter analyze
 
-    - name: Archive artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: brubaker-home-app-ipa
-        path: build/ios/ipa/*.ipa
+      - name: Run tests
+        run: flutter test
 
-    - name: Cleanup
-      if: always()
-      run: |
-        security delete-keychain app-signing.keychain-db || true
-        rm -f appstore.p12 appstore.mobileprovision
+      - name: Build iOS app (without codesigning)
+        run: flutter build ios --release --no-codesign
