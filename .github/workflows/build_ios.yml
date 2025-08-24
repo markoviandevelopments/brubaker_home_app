@@ -10,7 +10,7 @@ on:
 
 jobs:
   build-ios:
-    runs-on: macos-14
+    runs-on: macos-13
 
     steps:
       # Checkout the repository
@@ -29,27 +29,10 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
-      # Build iOS app without signing
-      - name: Build iOS IPA
-        run: |
-          flutter build ios --release --no-codesign
-          cd ios
-          xcodebuild -workspace Runner.xcworkspace \
-                     -scheme Runner \
-                     -sdk iphoneos \
-                     -configuration Release \
-                     -archivePath build/Runner.xcarchive \
-                     archive \
-                     CODE_SIGNING_ALLOWED=NO
-          xcodebuild -exportArchive \
-                     -archivePath build/Runner.xcarchive \
-                     -exportOptionsPlist exportOptions.plist \
-                     -exportPath build \
-                     CODE_SIGNING_ALLOWED=NO
-
       # Create exportOptions.plist for unsigned IPA
       - name: Create exportOptions.plist
         run: |
+          mkdir -p ios
           cat << EOF > ios/exportOptions.plist
           <?xml version="1.0" encoding="UTF-8"?>
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -63,9 +46,34 @@ jobs:
             <false/>
             <key>teamID</key>
             <string></string>
+            <key>stripSwiftSymbols</key>
+            <true/>
           </dict>
           </plist>
           EOF
+          ls -l ios/exportOptions.plist # Verify file creation
+
+      # Build iOS app without signing
+      - name: Build iOS IPA
+        run: |
+          flutter build ios --release --no-codesign
+          cd ios
+          xcodebuild -workspace Runner.xcworkspace \
+                     -scheme Runner \
+                     -sdk iphoneos \
+                     -configuration Release \
+                     -archivePath build/Runner.xcarchive \
+                     archive \
+                     CODE_SIGNING_ALLOWED=NO \
+                     CODE_SIGNING_REQUIRED=NO \
+                     CODE_SIGN_IDENTITY=""
+          xcodebuild -exportArchive \
+                     -archivePath build/Runner.xcarchive \
+                     -exportOptionsPlist exportOptions.plist \
+                     -exportPath build \
+                     CODE_SIGNING_ALLOWED=NO \
+                     CODE_SIGNING_REQUIRED=NO \
+                     CODE_SIGN_IDENTITY=""
 
       # Upload the IPA as an artifact
       - name: Upload IPA
