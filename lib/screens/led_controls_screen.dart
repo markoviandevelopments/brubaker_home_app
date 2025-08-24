@@ -115,18 +115,16 @@ class LedControlsScreenState extends State<LedControlsScreen>
       // Try local server first
       final response = await http
           .get(Uri.parse('$localServerUrl/mode'))
-          .timeout(const Duration(seconds: 2)); // Short timeout for quick check
+          .timeout(const Duration(seconds: 2));
       if (response.statusCode == 200) {
-        setState(() => serverUrl = localServerUrl); // Local server is available
+        setState(() => serverUrl = localServerUrl);
       } else {
-        setState(() => serverUrl = publicServerUrl); // Fallback to public
+        setState(() => serverUrl = publicServerUrl);
       }
     } catch (e) {
-      setState(
-        () => serverUrl = publicServerUrl,
-      ); // Fallback to public on error
+      setState(() => serverUrl = publicServerUrl);
     } finally {
-      await fetchCurrentMode(); // Fetch mode after determining server
+      await fetchCurrentMode();
     }
   }
 
@@ -147,10 +145,9 @@ class LedControlsScreenState extends State<LedControlsScreen>
       }
     } catch (e) {
       _showSnackBar('Connection error: $e');
-      // Optionally retry with public server if local fails
       if (serverUrl == localServerUrl) {
         setState(() => serverUrl = publicServerUrl);
-        await fetchCurrentMode(); // Retry with public server
+        await fetchCurrentMode();
       }
     } finally {
       if (mounted) {
@@ -180,10 +177,9 @@ class LedControlsScreenState extends State<LedControlsScreen>
       }
     } catch (e) {
       _showSnackBar('Connection error: $e');
-      // Optionally retry with public server if local fails
       if (serverUrl == localServerUrl) {
         setState(() => serverUrl = publicServerUrl);
-        await updateMode(newMode); // Retry with public server
+        await updateMode(newMode);
       }
     } finally {
       if (mounted) {

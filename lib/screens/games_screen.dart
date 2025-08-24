@@ -3,7 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:brubaker_homeapp/screens/star_field.dart';
 
 class GamesScreen extends StatefulWidget {
-  final Function(int) onGameSelected; // Required to ensure navigation
+  final Function(int) onGameSelected;
 
   const GamesScreen({super.key, required this.onGameSelected});
 
@@ -36,7 +36,7 @@ class GamesScreenState extends State<GamesScreen>
   }
 
   void _navigateToScreen(int index) {
-    widget.onGameSelected(index); // Removed debug print
+    widget.onGameSelected(index);
   }
 
   @override

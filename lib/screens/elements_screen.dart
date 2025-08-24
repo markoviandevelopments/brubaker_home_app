@@ -303,9 +303,7 @@ class ElementsScreenState extends State<ElementsScreen>
     }
   }
 
-  void _showPlacementFeedback(int x, int y) {
-    // Visual feedback can be added here if desired
-  }
+  void _showPlacementFeedback(int x, int y) {}
 
   bool _isWaterAdjacent(int row, int col, String direction) {
     switch (direction) {

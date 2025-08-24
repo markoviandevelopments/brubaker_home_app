@@ -29,20 +29,41 @@ class ScrollScreenState extends State<ScrollScreen> {
   }
 
   Future<void> _loadPostsFromServer() async {
+    final scaffoldMessenger = _scaffoldMessengerKey.currentState;
     try {
       final response = await http.get(
         Uri.parse('http://192.168.1.126:6042/posts'),
-      ); // Local IP
+      );
       if (response.statusCode == 200) {
         final List<dynamic> postsJson = jsonDecode(response.body);
-        setState(() {
-          _posts = postsJson.map((json) => Post.fromJson(json)).toList();
-        });
+        if (mounted) {
+          setState(() {
+            _posts = postsJson.map((json) => Post.fromJson(json)).toList();
+          });
+        }
       } else {
-        _scaffoldMessengerKey.currentState?.showSnackBar(
+        if (mounted && scaffoldMessenger != null) {
+          scaffoldMessenger.showSnackBar(
+            SnackBar(
+              content: Text(
+                'Failed to load posts: ${response.statusCode}',
+                style: GoogleFonts.orbitron(
+                  color: Colors.white70,
+                  fontSize: 14,
+                ),
+              ),
+              backgroundColor: Colors.black.withValues(alpha: 0.8),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted && scaffoldMessenger != null) {
+        scaffoldMessenger.showSnackBar(
           SnackBar(
             content: Text(
-              'Failed to load posts: ${response.statusCode}',
+              'Error loading posts: $e',
               style: GoogleFonts.orbitron(color: Colors.white70, fontSize: 14),
             ),
             backgroundColor: Colors.black.withValues(alpha: 0.8),
@@ -50,21 +71,11 @@ class ScrollScreenState extends State<ScrollScreen> {
           ),
         );
       }
-    } catch (e) {
-      _scaffoldMessengerKey.currentState?.showSnackBar(
-        SnackBar(
-          content: Text(
-            'Error loading posts: $e',
-            style: GoogleFonts.orbitron(color: Colors.white70, fontSize: 14),
-          ),
-          backgroundColor: Colors.black.withValues(alpha: 0.8),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
     }
   }
 
   Future<void> _savePostToServer(Post post) async {
+    final scaffoldMessenger = _scaffoldMessengerKey.currentState;
     try {
       final response = await http.post(
         Uri.parse('http://192.168.1.126:6042/posts'),
@@ -74,37 +85,17 @@ class ScrollScreenState extends State<ScrollScreen> {
       if (response.statusCode != 200 && response.statusCode != 201) {
         throw Exception('Failed to save post: ${response.statusCode}');
       }
-      setState(() {
-        _posts.add(post);
-      });
-    } catch (e) {
-      _scaffoldMessengerKey.currentState?.showSnackBar(
-        SnackBar(
-          content: Text(
-            'Error saving post: $e',
-            style: GoogleFonts.orbitron(color: Colors.white70, fontSize: 14),
-          ),
-          backgroundColor: Colors.black.withValues(alpha: 0.8),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-    }
-  }
-
-  void _deletePost(int index) async {
-    try {
-      final response = await http.delete(
-        Uri.parse('http://192.168.1.126:6042/posts/$index'),
-      );
-      if (response.statusCode == 200) {
+      if (mounted) {
         setState(() {
-          _posts.removeAt(index);
+          _posts.add(post);
         });
-      } else {
-        _scaffoldMessengerKey.currentState?.showSnackBar(
+      }
+    } catch (e) {
+      if (mounted && scaffoldMessenger != null) {
+        scaffoldMessenger.showSnackBar(
           SnackBar(
             content: Text(
-              'Failed to delete post: ${response.statusCode}',
+              'Error saving post: $e',
               style: GoogleFonts.orbitron(color: Colors.white70, fontSize: 14),
             ),
             backgroundColor: Colors.black.withValues(alpha: 0.8),
@@ -112,17 +103,51 @@ class ScrollScreenState extends State<ScrollScreen> {
           ),
         );
       }
-    } catch (e) {
-      _scaffoldMessengerKey.currentState?.showSnackBar(
-        SnackBar(
-          content: Text(
-            'Error deleting post: $e',
-            style: GoogleFonts.orbitron(color: Colors.white70, fontSize: 14),
-          ),
-          backgroundColor: Colors.black.withValues(alpha: 0.8),
-          behavior: SnackBarBehavior.floating,
-        ),
+    }
+  }
+
+  void _deletePost(int index) async {
+    final scaffoldMessenger = _scaffoldMessengerKey.currentState;
+    try {
+      final response = await http.delete(
+        Uri.parse('http://192.168.1.126:6042/posts/$index'),
       );
+      if (response.statusCode == 200) {
+        if (mounted) {
+          setState(() {
+            _posts.removeAt(index);
+          });
+        }
+      } else {
+        if (mounted && scaffoldMessenger != null) {
+          scaffoldMessenger.showSnackBar(
+            SnackBar(
+              content: Text(
+                'Failed to delete post: ${response.statusCode}',
+                style: GoogleFonts.orbitron(
+                  color: Colors.white70,
+                  fontSize: 14,
+                ),
+              ),
+              backgroundColor: Colors.black.withValues(alpha: 0.8),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted && scaffoldMessenger != null) {
+        scaffoldMessenger.showSnackBar(
+          SnackBar(
+            content: Text(
+              'Error deleting post: $e',
+              style: GoogleFonts.orbitron(color: Colors.white70, fontSize: 14),
+            ),
+            backgroundColor: Colors.black.withValues(alpha: 0.8),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
     }
   }
 
@@ -172,12 +197,38 @@ class ScrollScreenState extends State<ScrollScreen> {
     );
   }
 
+  Future<void> _handlePostSubmission({
+    required String userName,
+    required String text,
+    required File? mediaFile,
+    required String? mediaType,
+    required double mediaHeight,
+    required VideoPlayerController? videoController,
+    required ChewieController? chewieController,
+  }) async {
+    final newPost = Post(
+      userName: userName,
+      text: text,
+      mediaPath: mediaFile?.path,
+      mediaType: mediaType,
+      timestamp: DateTime.now(),
+      mediaHeight: mediaHeight,
+    );
+    await _savePostToServer(newPost);
+    if (videoController != null) {
+      videoController.dispose(); // Removed await
+    }
+    if (chewieController != null) {
+      chewieController.dispose(); // Removed await
+    }
+  }
+
   void _showPostDialog(BuildContext context) {
     String userName = '';
     String text = '';
     File? mediaFile;
     String? mediaType;
-    double mediaHeight = 200.0; // Default height for preview and post
+    double mediaHeight = 200.0;
     VideoPlayerController? videoController;
     ChewieController? chewieController;
 
@@ -190,17 +241,21 @@ class ScrollScreenState extends State<ScrollScreen> {
               autoPlay: true,
               looping: false,
             );
-            if (mounted) setState(() {});
+            if (mounted) {
+              setState(() {});
+            }
           });
       } else if (mediaFile != null && mediaType == 'image') {
-        if (mounted) setState(() {});
+        if (mounted) {
+          setState(() {});
+        }
       }
     }
 
     showDialog(
       context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setState) => AlertDialog(
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) => AlertDialog(
           backgroundColor: Colors.transparent,
           content: ClipRect(
             child: BackdropFilter(
@@ -287,7 +342,7 @@ class ScrollScreenState extends State<ScrollScreen> {
                                 alpha: 0.3,
                               ),
                               onChanged: (value) {
-                                setState(() {
+                                setDialogState(() {
                                   mediaHeight = value;
                                 });
                               },
@@ -319,6 +374,7 @@ class ScrollScreenState extends State<ScrollScreen> {
                                 mediaFile = File(picked.path);
                                 mediaType = 'image';
                                 updateMediaPreview();
+                                setDialogState(() {});
                               }
                             },
                             child: Text(
@@ -349,6 +405,7 @@ class ScrollScreenState extends State<ScrollScreen> {
                                 mediaFile = File(picked.path);
                                 mediaType = 'video';
                                 updateMediaPreview();
+                                setDialogState(() {});
                               }
                             },
                             child: Text(
@@ -368,42 +425,40 @@ class ScrollScreenState extends State<ScrollScreen> {
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(context),
+              onPressed: () => Navigator.pop(dialogContext),
               child: Text(
                 'Cancel',
                 style: GoogleFonts.orbitron(color: Colors.white70),
               ),
             ),
             TextButton(
-              onPressed: () async {
+              onPressed: () {
                 if (userName.isNotEmpty && text.isNotEmpty) {
-                  final newPost = Post(
-                    userName: userName,
-                    text: text,
-                    mediaPath: mediaFile?.path,
-                    mediaType: mediaType,
-                    timestamp: DateTime.now(),
-                    mediaHeight: mediaHeight,
-                  );
-                  await _savePostToServer(newPost);
-                  Navigator.pop(context);
-                  if (videoController != null) {
-                    videoController!.dispose();
-                  }
-                  if (chewieController != null) {
-                    chewieController!.dispose();
+                  if (Navigator.of(dialogContext).canPop()) {
+                    Navigator.of(dialogContext).pop();
+                    _handlePostSubmission(
+                      userName: userName,
+                      text: text,
+                      mediaFile: mediaFile,
+                      mediaType: mediaType,
+                      mediaHeight: mediaHeight,
+                      videoController: videoController,
+                      chewieController: chewieController,
+                    );
                   }
                 } else {
-                  _scaffoldMessengerKey.currentState?.showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        'Name and status required',
-                        style: GoogleFonts.orbitron(color: Colors.white70),
+                  if (mounted && _scaffoldMessengerKey.currentState != null) {
+                    _scaffoldMessengerKey.currentState!.showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          'Name and status required',
+                          style: GoogleFonts.orbitron(color: Colors.white70),
+                        ),
+                        backgroundColor: Colors.black.withValues(alpha: 0.8),
+                        behavior: SnackBarBehavior.floating,
                       ),
-                      backgroundColor: Colors.black.withValues(alpha: 0.8),
-                      behavior: SnackBarBehavior.floating,
-                    ),
-                  );
+                    );
+                  }
                 }
               },
               child: Text(

@@ -22,10 +22,8 @@ class HomeScreenState extends State<HomeScreen> {
   int _gameScreenIndex =
       0; // Track the current game screen (0 = GamesScreen, 1 = Elements, 2 = ToadJumper, 3 = SocketGame, 4 = CosmicName, 5 = Minesweeper)
   final List<Widget> _mainPages = [
-    LedControlsScreen(onGameSelected: (index) {}), // Placeholder
-    GamesScreen(
-      onGameSelected: (index) {},
-    ), // Placeholder, updated in initState
+    LedControlsScreen(onGameSelected: (index) {}),
+    GamesScreen(onGameSelected: (index) {}),
     const ScrollScreen(),
     const InfoScreen(),
   ];
