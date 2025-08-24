@@ -1,4 +1,4 @@
-name: Build iOS IPA
+name: Build Signed iOS IPA
 
 on:
   push:
@@ -29,20 +29,37 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
-      # Build unsigned iOS app and package into unsigned IPA
-      - name: Build unsigned IPA
+      # Decode and import certificate
+      - name: Import Certificate
         run: |
-          flutter build ios --release --no-codesign
-          cd build/ios/iphoneos
-          mkdir Payload
-          cp -r Runner.app Payload
-          zip -r Runner.ipa Payload
-          rm -rf Payload
-          ls -l Runner.ipa # Verify IPA creation
+          echo "${{ secrets.P12_BASE64 }}" | base64 --decode > certificate.p12
+          security create-keychain -p pwd ~/Library/Keychains/app-signing.keychain-db
+          security default-keychain -s ~/Library/Keychains/app-signing.keychain-db
+          security unlock-keychain -p pwd ~/Library/Keychains/app-signing.keychain-db
+          security import certificate.p12 -k ~/Library/Keychains/app-signing.keychain-db -P "${{ secrets.P12_PASSWORD }}" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k pwd ~/Library/Keychains/app-signing.keychain-db
+
+      # Decode and install provisioning profile
+      - name: Install Provisioning Profile
+        run: |
+          echo "${{ secrets.PROVISIONING_PROFILE_BASE64 }}" | base64 --decode > profile.mobileprovision
+          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+          cp profile.mobileprovision ~/Library/MobileDevice/Provisioning\ Profiles/"${{ secrets.PROFILE_NAME }}".mobileprovision
+
+      # Build signed IPA
+      - name: Build signed IPA
+        run: flutter build ipa --release --export-options-plist=ios/ExportOptions.plist
 
       # Upload the IPA as an artifact
       - name: Upload IPA
         uses: actions/upload-artifact@v4
         with:
           name: app-ipa
-          path: build/ios/iphoneos/Runner.ipa
+          path: build/ios/ipa/*.ipa
+
+      # Cleanup (always run)
+      - name: Cleanup
+        if: always()
+        run: |
+          security delete-keychain ~/Library/Keychains/app-signing.keychain-db || true
+          rm -f certificate.p12 profile.mobileprovision
