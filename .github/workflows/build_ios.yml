@@ -21,7 +21,7 @@ jobs:
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.32.7' # Matches your local Flutter version
+          flutter-version: '3.32.7'
           channel: 'stable'
           cache: true
 
@@ -29,59 +29,20 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
-      # Create exportOptions.plist for unsigned IPA
-      - name: Create exportOptions.plist
-        run: |
-          mkdir -p ios
-          cat << EOF > ios/exportOptions.plist
-          <?xml version="1.0" encoding="UTF-8"?>
-          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-          <plist version="1.0">
-          <dict>
-            <key>method</key>
-            <string>development</string>
-            <key>signingStyle</key>
-            <string>manual</string>
-            <key>compileBitcode</key>
-            <false/>
-            <key>teamID</key>
-            <string>0000000000</string> <!-- Placeholder team ID -->
-            <key>stripSwiftSymbols</key>
-            <true/>
-            <key>generateAppStoreInformation</key>
-            <false/>
-          </dict>
-          </plist>
-          EOF
-          ls -l ios/exportOptions.plist # Verify file creation
-
-      # Build iOS app without signing
-      - name: Build iOS IPA
+      # Build unsigned iOS app and package into unsigned IPA
+      - name: Build unsigned IPA
         run: |
           flutter build ios --release --no-codesign
-          cd ios
-          xcodebuild -workspace Runner.xcworkspace \
-                     -scheme Runner \
-                     -sdk iphoneos \
-                     -configuration Release \
-                     -archivePath build/Runner.xcarchive \
-                     archive \
-                     CODE_SIGNING_ALLOWED=NO \
-                     CODE_SIGNING_REQUIRED=NO \
-                     CODE_SIGN_IDENTITY="" \
-                     CODE_SIGN_ENTITLEMENTS=""
-          xcodebuild -exportArchive \
-                     -archivePath build/Runner.xcarchive \
-                     -exportOptionsPlist exportOptions.plist \
-                     -exportPath build \
-                     CODE_SIGNING_ALLOWED=NO \
-                     CODE_SIGNING_REQUIRED=NO \
-                     CODE_SIGN_IDENTITY=""
-          ls -l build/Runner.ipa # Verify IPA creation
+          cd build/ios/iphoneos
+          mkdir Payload
+          cp -r Runner.app Payload
+          zip -r Runner.ipa Payload
+          rm -rf Payload
+          ls -l Runner.ipa # Verify IPA creation
 
       # Upload the IPA as an artifact
       - name: Upload IPA
         uses: actions/upload-artifact@v4
         with:
           name: app-ipa
-          path: ios/build/Runner.ipa
+          path: build/ios/iphoneos/Runner.ipa

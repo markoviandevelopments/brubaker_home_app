@@ -83,9 +83,12 @@ class _ToadJumperScreenState extends State<ToadJumperScreen>
                   ),
                 ),
                 Expanded(
-                  child: ToadJumperGame(
-                    controller: _controller,
-                    onGameSelected: widget.onGameSelected,
+                  child: Padding(
+                    padding: const EdgeInsets.only(bottom: 80.0),
+                    child: ToadJumperGame(
+                      controller: _controller,
+                      onGameSelected: widget.onGameSelected,
+                    ),
                   ),
                 ),
               ],
@@ -149,10 +152,7 @@ class _ToadJumperGameState extends State<ToadJumperGame> {
     super.didChangeDependencies();
     if (screenSize == null) {
       screenSize = MediaQuery.of(context).size;
-      // Include system padding and estimated BottomNavigationBar height
-      bottomPadding =
-          MediaQuery.of(context).padding.bottom +
-          56.0; // 56.0 is typical BottomNavigationBar height
+      bottomPadding = MediaQuery.of(context).padding.bottom;
     }
     if (toadImage == null && isImageLoading) {
       toadX = screenSize!.width / 2 - 30;
@@ -301,9 +301,9 @@ class _ToadJumperGameState extends State<ToadJumperGame> {
         }
       }
 
-      if (toadY < screenSize!.height / 2) {
-        final dy = screenSize!.height / 2 - toadY;
-        toadY = screenSize!.height / 2;
+      if (toadY < screenSize!.height / 3) {
+        final dy = screenSize!.height / 3 - toadY;
+        toadY = screenSize!.height / 3;
         for (int i = 0; i < platforms.length; i++) {
           platforms[i] = platforms[i].translate(0, dy);
         }
@@ -526,8 +526,9 @@ class _ToadJumperGameState extends State<ToadJumperGame> {
                               ),
                             ),
                             const SizedBox(height: 20),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
+                            Wrap(
+                              alignment: WrapAlignment.center,
+                              spacing: 16,
                               children: [
                                 ElevatedButton(
                                   onPressed: resetGame,
@@ -558,7 +559,6 @@ class _ToadJumperGameState extends State<ToadJumperGame> {
                                     ),
                                   ),
                                 ),
-                                const SizedBox(width: 16),
                                 ElevatedButton(
                                   onPressed: () => widget.onGameSelected(0),
                                   style: ElevatedButton.styleFrom(
