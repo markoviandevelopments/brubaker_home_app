@@ -33,12 +33,13 @@ jobs:
       - name: Import Certificate
         run: |
           echo "${{ secrets.IOS_CERTIFICATE_APPSTORE }}" | base64 --decode > certificate.p12
+          ls -l certificate.p12  # Debug: Check file size
           security create-keychain -p pwd ~/Library/Keychains/app-signing.keychain-db
           security default-keychain -s ~/Library/Keychains/app-signing.keychain-db
           security unlock-keychain -p pwd ~/Library/Keychains/app-signing.keychain-db
-          security import certificate.p12 -k ~/Library/Keychains/app-signing.keychain-db -P "${{ secrets.P12_PASSWORD }}" -T /usr/bin/codesign
+          security import certificate.p12 -k ~/Library/Keychains/app-signing.keychain-db -P "${{ secrets.P12_PASSWORD }}" -T /usr/bin/codesign || echo "Import failed, check password"
           security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k pwd ~/Library/Keychains/app-signing.keychain-db
-
+          
       # Decode and install provisioning profile
       - name: Install Provisioning Profile
         run: |
