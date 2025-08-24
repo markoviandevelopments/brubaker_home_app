@@ -90,7 +90,7 @@ class MinesweeperScreenState extends State<MinesweeperScreen> {
           _buffer += utf8.decode(data, allowMalformed: true);
           _debounceStateUpdate();
         },
-        onError: (error, stackTrace) {
+        onError: (error) {
           _showErrorSnackBar('Connection error: $error');
           if (mounted) {
             setState(() {
@@ -112,7 +112,7 @@ class MinesweeperScreenState extends State<MinesweeperScreen> {
         },
         cancelOnError: true,
       );
-    } catch (e, stackTrace) {
+    } catch (e) {
       _showErrorSnackBar('Failed to connect to server: $e');
       if (mounted) {
         setState(() {
