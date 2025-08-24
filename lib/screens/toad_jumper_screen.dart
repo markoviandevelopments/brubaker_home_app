@@ -2,11 +2,11 @@ import 'dart:async';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
-import 'package:animate_do/animate_do.dart' as animateDo;
+import 'package:animate_do/animate_do.dart' as animate_do;
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter/services.dart';
 import 'package:sensors_plus/sensors_plus.dart';
-import 'dart:io' show Platform;
+import 'dart:io'; // Added for Platform
 import 'package:brubaker_homeapp/screens/star_field.dart';
 
 class ToadJumperScreen extends StatefulWidget {
@@ -15,11 +15,11 @@ class ToadJumperScreen extends StatefulWidget {
   const ToadJumperScreen({super.key, required this.onGameSelected});
 
   @override
-  _ToadJumperScreenState createState() => _ToadJumperScreenState();
+  ToadJumperScreenState createState() => ToadJumperScreenState();
 }
 
-class _ToadJumperScreenState extends State<ToadJumperScreen>
-    with SingleTickerProviderStateMixin {
+class ToadJumperScreenState extends State<ToadJumperScreen>
+    with TickerProviderStateMixin {
   late AnimationController _controller;
 
   @override
@@ -41,16 +41,19 @@ class _ToadJumperScreenState extends State<ToadJumperScreen>
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [Color(0xFF0A0A1E), Color(0xFF1A1A3A)],
+          colors: [
+            Color(0xFF0A0A1E).withValues(alpha: 0.9),
+            Color(0xFF1A1A3A).withValues(alpha: 0.7),
+          ],
         ),
       ),
       child: Stack(
         children: [
-          Positioned.fill(child: StarField(opacity: 0.2)),
+          Positioned.fill(child: StarField(opacity: 0.3)),
           SafeArea(
             child: Column(
               children: [
@@ -108,10 +111,11 @@ class ToadJumperGame extends StatefulWidget {
   });
 
   @override
-  _ToadJumperGameState createState() => _ToadJumperGameState();
+  ToadJumperGameState createState() => ToadJumperGameState();
 }
 
-class _ToadJumperGameState extends State<ToadJumperGame> {
+class ToadJumperGameState extends State<ToadJumperGame>
+    with TickerProviderStateMixin {
   double toadX = 0;
   double toadY = 0;
   double velocityY = 0;
@@ -140,9 +144,10 @@ class _ToadJumperGameState extends State<ToadJumperGame> {
   bool justLanded = false;
   Color bgColorTop = const Color(0xFF0A0A1E);
   Color bgColorBottom = const Color(0xFF1A1A3A);
-  Color platformColorStart = Colors.grey.shade300;
-  Color platformColorEnd = const Color(0xFF00FFD1);
+  Color platformColor = Colors.grey.shade300; // Simplified to single color
   double starOpacity = 0.5;
+  late AnimationController _colorController;
+  late Animation<Color> _colorAnimation; // Explicitly typed as Animation<Color>
 
   @override
   void didChangeDependencies() {
@@ -176,7 +181,7 @@ class _ToadJumperGameState extends State<ToadJumperGame> {
           });
     }
     if (!Platform.isLinux) {
-      accelerometerEvents.listen((AccelerometerEvent event) {
+      accelerometerEventStream().listen((AccelerometerEvent event) {
         if (mounted) {
           setState(() {
             lastAccelerometerEvent = event;
@@ -189,6 +194,26 @@ class _ToadJumperGameState extends State<ToadJumperGame> {
         const fixedDt = 1 / 60;
         updateGame(fixedDt);
         animationPhase += fixedDt;
+        if (_colorController.isAnimating) {
+          setState(() {});
+        }
+      }
+    });
+    _colorController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 2),
+    )..repeat(reverse: true);
+    _colorAnimation = _colorController.drive(
+      Tween<Color>(
+        begin: platformColor,
+        end: const Color(0xFF00FFD1),
+      ).chain(CurveTween(curve: Curves.easeInOut)),
+    ); // Use Tween<Color> directly
+    _colorAnimation.addListener(() {
+      if (mounted) {
+        setState(() {
+          platformColor = _colorAnimation.value;
+        });
       }
     });
   }
@@ -196,6 +221,7 @@ class _ToadJumperGameState extends State<ToadJumperGame> {
   @override
   void dispose() {
     _focusNode.dispose();
+    _colorController.dispose();
     widget.controller.removeListener(() {});
     super.dispose();
   }
@@ -253,9 +279,15 @@ class _ToadJumperGameState extends State<ToadJumperGame> {
       bgSpeed2 = 30;
       bgColorTop = const Color(0xFF0A0A1E);
       bgColorBottom = const Color(0xFF1A1A3A);
-      platformColorStart = Colors.grey.shade300;
-      platformColorEnd = const Color(0xFF00FFD1);
+      platformColor = Colors.grey.shade300;
       starOpacity = 0.5;
+      _colorController.reset();
+      _colorAnimation = _colorController.drive(
+        Tween<Color>(
+          begin: platformColor,
+          end: const Color(0xFF00FFD1),
+        ).chain(CurveTween(curve: Curves.easeInOut)),
+      );
     });
   }
 
@@ -287,23 +319,12 @@ class _ToadJumperGameState extends State<ToadJumperGame> {
         justLanded = false;
       }
 
-      // Prevent toad from falling below the bottom of the screen
-      if (toadY > screenSize!.height - bottomPadding! - 60) {
-        toadY = screenSize!.height - bottomPadding! - 60;
-        velocityY = 0;
-        isJumping = false;
-        if (justLanded && score < 1000) {
-          score++;
-          justLanded = false;
-        }
-      }
-
-      // Game over if toad falls too far below initial platform
+      // Prevent toad from falling below the initial platform height
       if (toadY > screenSize!.height - bottomPadding! + 120) {
-        isGameOver = true;
-        return;
+        isGameOver = true; // Game over if toad falls too far
       }
 
+      // Check for landing on platforms
       final toadRect = Rect.fromLTWH(toadX, toadY, 60, 60);
       for (var platform in platforms) {
         if (toadRect.overlaps(platform) && velocityY >= 0) {
@@ -383,54 +404,58 @@ class _ToadJumperGameState extends State<ToadJumperGame> {
     bgSpeed2 += 3;
 
     final hue = (level * 5.0) % 360;
-    final saturation = 0.7 + math.sin(level * 0.2) * 0.2;
-    final value = 0.2 + math.cos(level * 0.15) * 0.1;
-    bgColorTop = HSVColor.fromAHSV(1.0, hue, saturation, value).toColor();
+    bgColorTop = HSVColor.fromAHSV(1.0, hue, 0.7, 0.2).toColor();
     bgColorBottom = HSVColor.fromAHSV(
       1.0,
       (hue + 30) % 360,
-      saturation * 0.8,
-      value * 1.2,
+      0.56,
+      0.24,
     ).toColor();
 
-    final platformHue = (hue + random.nextDouble() * 40 - 20) % 360;
-    platformColorStart = HSVColor.fromAHSV(
-      1.0,
-      platformHue,
-      0.6,
-      0.7,
-    ).toColor();
-    platformColorEnd = HSVColor.fromAHSV(
-      1.0,
-      (platformHue + 20) % 360,
-      0.8,
-      0.9,
-    ).toColor();
-
+    // Smooth color transition for platforms
+    _colorController.stop();
+    _colorController.reset();
+    _colorAnimation = _colorController.drive(
+      Tween<Color>(
+        begin: platformColor,
+        end: HSVColor.fromAHSV(
+          1.0,
+          (hue + random.nextDouble() * 20 - 10) % 360,
+          0.7,
+          0.5,
+        ).toColor(),
+      ).chain(CurveTween(curve: Curves.easeInOut)),
+    );
+    _colorAnimation.addListener(() {
+      if (mounted) {
+        setState(() {
+          platformColor = _colorAnimation.value;
+        });
+      }
+    });
+    _colorController.forward();
     starOpacity = 0.4 + math.sin(level * 0.05) * 0.15;
   }
 
   @override
   Widget build(BuildContext context) {
     screenSize ??= MediaQuery.of(context).size;
-    return RawKeyboardListener(
+    return KeyboardListener(
       focusNode: _focusNode,
       autofocus: true,
-      onKey: (RawKeyEvent event) {
-        if (event is RawKeyDownEvent && !isGameOver) {
+      onKeyEvent: (KeyEvent event) {
+        if (event is KeyDownEvent && !isGameOver) {
           if (event.logicalKey == LogicalKeyboardKey.space && !isJumping) {
             setState(() {
               velocityY = jumpSpeed;
               isJumping = true;
             });
-          }
-          if (event.logicalKey == LogicalKeyboardKey.arrowLeft) {
+          } else if (event.logicalKey == LogicalKeyboardKey.arrowLeft) {
             setState(() {
               toadX -= horizontalSpeed * (1 / 60);
               if (toadX < 0) toadX = 0;
             });
-          }
-          if (event.logicalKey == LogicalKeyboardKey.arrowRight) {
+          } else if (event.logicalKey == LogicalKeyboardKey.arrowRight) {
             setState(() {
               toadX += horizontalSpeed * (1 / 60);
               if (toadX > screenSize!.width - 60)
@@ -474,8 +499,7 @@ class _ToadJumperGameState extends State<ToadJumperGame> {
                   particleAges: particleAges,
                   bgColorTop: bgColorTop,
                   bgColorBottom: bgColorBottom,
-                  platformColorStart: platformColorStart,
-                  platformColorEnd: platformColorEnd,
+                  platformColor: platformColor,
                 ),
               )
             else
@@ -497,7 +521,7 @@ class _ToadJumperGameState extends State<ToadJumperGame> {
                 ),
               ),
             if (isGameOver)
-              animateDo.BounceInDown(
+              animate_do.BounceInDown(
                 duration: const Duration(milliseconds: 600),
                 child: Center(
                   child: ClipRect(
@@ -508,15 +532,19 @@ class _ToadJumperGameState extends State<ToadJumperGame> {
                         padding: const EdgeInsets.all(16),
                         margin: const EdgeInsets.symmetric(horizontal: 24),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF0A0A1E).withOpacity(0.4),
+                          color: const Color(0xFF0A0A1E).withValues(alpha: 0.4),
                           borderRadius: BorderRadius.circular(16),
                           border: Border.all(
-                            color: const Color(0xFFFF4500),
+                            color: const Color(
+                              0xFFFF4500,
+                            ).withValues(alpha: 0.5),
                             width: 2,
                           ),
                           boxShadow: [
                             BoxShadow(
-                              color: const Color(0xFFFF4500).withOpacity(0.2),
+                              color: const Color(
+                                0xFFFF4500,
+                              ).withValues(alpha: 0.2),
                               blurRadius: 8,
                               spreadRadius: 2,
                             ),
@@ -525,7 +553,7 @@ class _ToadJumperGameState extends State<ToadJumperGame> {
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            animateDo.ShakeX(
+                            animate_do.ShakeX(
                               duration: const Duration(milliseconds: 800),
                               child: Text(
                                 'Game Over',
@@ -535,7 +563,9 @@ class _ToadJumperGameState extends State<ToadJumperGame> {
                                   fontWeight: FontWeight.bold,
                                   shadows: [
                                     Shadow(
-                                      color: Colors.black.withOpacity(0.5),
+                                      color: Colors.black.withValues(
+                                        alpha: 0.5,
+                                      ),
                                       blurRadius: 6,
                                       offset: const Offset(0, 4),
                                     ),
@@ -562,13 +592,13 @@ class _ToadJumperGameState extends State<ToadJumperGame> {
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: const Color(
                                       0xFF00FFD1,
-                                    ).withOpacity(0.3),
+                                    ).withValues(alpha: 0.3),
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(10),
                                       side: BorderSide(
                                         color: const Color(
                                           0xFF00FFD1,
-                                        ).withOpacity(0.5),
+                                        ).withValues(alpha: 0.5),
                                       ),
                                     ),
                                     padding: const EdgeInsets.symmetric(
@@ -589,13 +619,15 @@ class _ToadJumperGameState extends State<ToadJumperGame> {
                                 ElevatedButton(
                                   onPressed: () => widget.onGameSelected(0),
                                   style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.white.withOpacity(
-                                      0.2,
+                                    backgroundColor: Colors.white.withValues(
+                                      alpha: 0.2,
                                     ),
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(10),
                                       side: BorderSide(
-                                        color: Colors.white.withOpacity(0.3),
+                                        color: Colors.white.withValues(
+                                          alpha: 0.3,
+                                        ),
                                       ),
                                     ),
                                     padding: const EdgeInsets.symmetric(
@@ -661,8 +693,7 @@ class ToadJumperPainter extends CustomPainter {
   final List<double> particleAges;
   final Color bgColorTop;
   final Color bgColorBottom;
-  final Color platformColorStart;
-  final Color platformColorEnd;
+  final Color platformColor;
 
   ToadJumperPainter({
     required this.toadX,
@@ -677,15 +708,17 @@ class ToadJumperPainter extends CustomPainter {
     required this.particleAges,
     required this.bgColorTop,
     required this.bgColorBottom,
-    required this.platformColorStart,
-    required this.platformColorEnd,
+    required this.platformColor,
   });
 
   @override
   void paint(Canvas canvas, Size size) {
     final bgPaint = Paint()
       ..shader = LinearGradient(
-        colors: [bgColorTop.withOpacity(0.2), bgColorBottom.withOpacity(0.2)],
+        colors: [
+          bgColorTop.withValues(alpha: 0.2),
+          bgColorBottom.withValues(alpha: 0.2),
+        ],
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
       ).createShader(Rect.fromLTWH(0, bgOffset2, size.width, size.height))
@@ -699,7 +732,7 @@ class ToadJumperPainter extends CustomPainter {
       bgPaint,
     );
 
-    final cityPaint = Paint()..color = Colors.black.withOpacity(0.3);
+    final cityPaint = Paint()..color = Colors.black.withValues(alpha: 0.3);
     canvas.drawPath(
       Path()
         ..moveTo(0, size.height)
@@ -714,7 +747,7 @@ class ToadJumperPainter extends CustomPainter {
     );
 
     final gridPaint = Paint()
-      ..color = const Color(0xFF00FFD1).withOpacity(0.1)
+      ..color = const Color(0xFF00FFD1).withValues(alpha: 0.1)
       ..strokeWidth = 0.5
       ..style = PaintingStyle.stroke;
     for (double y = bgOffset2 % 100; y < size.height; y += 100) {
@@ -729,18 +762,12 @@ class ToadJumperPainter extends CustomPainter {
     }
 
     final platformPaint = Paint()
-      ..shader = LinearGradient(
-        colors: [platformColorStart, platformColorEnd],
-        begin: Alignment.topCenter,
-        end: Alignment.bottomCenter,
-      ).createShader(Rect.fromLTWH(0, 0, 100, 20));
+      ..color = platformColor.withValues(alpha: 0.8)
+      ..style = PaintingStyle.fill;
     final platformBorderPaint = Paint()
-      ..color = platformColorEnd.withOpacity(
-        0.7 + 0.3 * math.sin(animationPhase * 2),
-      )
+      ..color = platformColor.withValues(alpha: 0.7)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 3;
-    final scanPaint = Paint()..color = const Color(0xFFFF4500).withOpacity(0.5);
     for (var platform in platforms) {
       canvas.drawRRect(
         RRect.fromRectAndRadius(platform, const Radius.circular(5)),
@@ -750,26 +777,19 @@ class ToadJumperPainter extends CustomPainter {
         RRect.fromRectAndRadius(platform, const Radius.circular(5)),
         platformBorderPaint,
       );
-      final scanX =
-          platform.left + (platform.width * ((animationPhase * 2) % 1));
-      canvas.drawLine(
-        Offset(scanX, platform.top),
-        Offset(scanX, platform.bottom),
-        scanPaint,
-      );
     }
 
     for (int i = 0; i < particles.length; i++) {
       final opacity = 1.0 - (particleAges[i] / 0.5);
       final paint = Paint()
-        ..color = const Color(0xFF00FFD1).withOpacity(opacity);
+        ..color = const Color(0xFF00FFD1).withValues(alpha: opacity);
       canvas.drawCircle(particles[i], 2, paint);
     }
 
     final glowPaint = Paint()
       ..color = const Color(
         0xFF00FFD1,
-      ).withOpacity(0.5 + 0.2 * math.sin(animationPhase * 2))
+      ).withValues(alpha: 0.5 + 0.2 * math.sin(animationPhase * 2))
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 10);
     canvas.drawCircle(Offset(toadX + 30, toadY + 30), 40, glowPaint);
 
@@ -793,7 +813,7 @@ class ToadJumperPainter extends CustomPainter {
           fontSize: 24,
           shadows: [
             Shadow(
-              color: const Color(0xFFFF4500).withOpacity(0.6),
+              color: const Color(0xFFFF4500).withValues(alpha: 0.6),
               blurRadius: 6,
             ),
           ],
