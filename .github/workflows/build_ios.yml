@@ -4,63 +4,54 @@ on:
   push:
     branches:
       - main
-  pull_request:
-    branches:
-      - main
+  workflow_dispatch:
 
 jobs:
   build-ios:
-    runs-on: macos-13
+    runs-on: macos-latest
 
     steps:
-      # Checkout the repository
-      - name: Checkout code
-        uses: actions/checkout@v4
+    - name: Checkout code
+      uses: actions/checkout@v4
 
-      # Set up Flutter
-      - name: Set up Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          flutter-version: '3.32.7'
-          channel: 'stable'
-          cache: true
+    - name: Set up Flutter
+      uses: subosito/flutter-action@v2
+      with:
+        flutter-version: '3.24.1'
+        channel: 'stable'
 
-      # Install dependencies
-      - name: Install dependencies
-        run: flutter pub get
+    - name: Install dependencies
+      run: flutter pub get
 
-      # Decode and import certificate
-      - name: Import Certificate
-        run: |
-          echo "${{ secrets.IOS_CERTIFICATE_APPSTORE }}" | base64 --decode > certificate.p12
-          ls -l certificate.p12  # Debug: Check file size
-          security create-keychain -p pwd ~/Library/Keychains/app-signing.keychain-db
-          security default-keychain -s ~/Library/Keychains/app-signing.keychain-db
-          security unlock-keychain -p pwd ~/Library/Keychains/app-signing.keychain-db
-          security import certificate.p12 -k ~/Library/Keychains/app-signing.keychain-db -P "${{ secrets.P12_PASSWORD }}" -T /usr/bin/codesign || echo "Import failed, check password"
-          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k pwd ~/Library/Keychains/app-signing.keychain-db
-          
-      # Decode and install provisioning profile
-      - name: Install Provisioning Profile
-        run: |
-          echo "${{ secrets.PROVISIONING_PROFILE_APPSTORE }}" | base64 --decode > profile.mobileprovision
-          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
-          cp profile.mobileprovision ~/Library/MobileDevice/Provisioning\ Profiles/"${{ secrets.PROFILE_NAME }}".mobileprovision
+    - name: Decode certificate
+      run: |
+        echo "${{ secrets.IOS_CERTIFICATE_APPSTORE }}" | base64 --decode > appstore.p12 || { echo "Certificate decode failed"; exit 1; }
+        ls -l appstore.p12  # Diagnostic: Check file size (should be ~3KB or more)
+        file appstore.p12  # Diagnostic: Check file type (should be PKCS#12)
 
-      # Build signed IPA
-      - name: Build signed IPA
-        run: flutter build ipa --release --export-options-plist=ios/ExportOptions.plist
+    - name: Decode provisioning profile
+      run: |
+        echo "${{ secrets.PROVISIONING_PROFILE_APPSTORE }}" | base64 --decode > appstore.mobileprovision || { echo "Profile decode failed"; exit 1; }
+        ls -l appstore.mobileprovision  # Diagnostic: Check file size
+        security cms -D -i appstore.mobileprovision | grep UUID  # Diagnostic: Verify UUID
 
-      # Upload the IPA as an artifact
-      - name: Upload IPA
-        uses: actions/upload-artifact@v4
-        with:
-          name: app-ipa
-          path: build/ios/ipa/*.ipa
+    - name: Setup keychain
+      run: |
+        security create-keychain -p pwd build.keychain
+        security default-keychain -s build.keychain
+        security unlock-keychain -p pwd build.keychain
 
-      # Cleanup (always run)
-      - name: Cleanup
-        if: always()
-        run: |
-          security delete-keychain ~/Library/Keychains/app-signing.keychain-db || true
-          rm -f certificate.p12 profile.mobileprovision
+    - name: Import certificate
+      run: |
+        security import appstore.p12 -k build.keychain -P "${{ secrets.P12_PASSWORD }}" -T /usr/bin/codesign || { echo "Certificate import failed - verify password and file integrity"; exit 1; }
+        security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k pwd build.keychain
+        security find-identity -v -p codesigning  # Diagnostic: List identities (should show your certificate)
+
+    - name: Build IPA
+      run: flutter build ipa --release --export-method app-store --bundle-version 1.0.0 --bundle-short-version-string 1.0 --provisioning-profile-uuid 0b68e1cd-eff0-4306-a2c4-878008e53bcb
+
+    - name: Archive artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: brubaker-home-app-ipa
+        path: build/ios/ipa/*.ipa
