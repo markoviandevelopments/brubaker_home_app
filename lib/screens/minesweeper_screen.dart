@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:brubaker_homeapp/screens/star_field.dart';
-import 'dart:io';
+import 'dart:io'; // Required for Socket
 import 'dart:convert';
 import 'dart:ui';
 import 'package:animate_do/animate_do.dart';
@@ -13,10 +13,10 @@ class MinesweeperScreen extends StatefulWidget {
   const MinesweeperScreen({super.key, required this.onGameSelected});
 
   @override
-  _MinesweeperScreenState createState() => _MinesweeperScreenState();
+  MinesweeperScreenState createState() => MinesweeperScreenState();
 }
 
-class _MinesweeperScreenState extends State<MinesweeperScreen> {
+class MinesweeperScreenState extends State<MinesweeperScreen> {
   Socket? _socket;
   StreamSubscription<List<int>>? _subscription;
   List<List<dynamic>> _board = [];
@@ -30,6 +30,12 @@ class _MinesweeperScreenState extends State<MinesweeperScreen> {
   String _buffer = '';
   bool _showWinOverlay = false;
   bool _showLoseOverlay = false;
+  int _retryAttempts = 0;
+  static const int _maxRetries = 5; // Limit retries
+  static const Duration _retryDelay = Duration(
+    seconds: 2,
+  ); // Delay between retries
+  Timer? _debounceTimer; // For debouncing state updates
 
   @override
   void initState() {
@@ -39,6 +45,7 @@ class _MinesweeperScreenState extends State<MinesweeperScreen> {
 
   @override
   void dispose() {
+    _debounceTimer?.cancel();
     _subscription?.cancel();
     _socket?.close();
     _socket = null;
@@ -46,94 +53,121 @@ class _MinesweeperScreenState extends State<MinesweeperScreen> {
   }
 
   Future<void> _connectToServer() async {
+    if (_retryAttempts >= _maxRetries) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _isConnected = false;
+          _errorMessage =
+              'Unable to connect after $_maxRetries attempts. Tap Retry to try again.';
+        });
+      }
+      return;
+    }
+
     await _disconnect();
     if (!mounted) return;
     setState(() {
       _isLoading = true;
       _errorMessage = '';
     });
+
     try {
       _socket = await Socket.connect(
         '108.254.1.184',
         5091,
-      ).timeout(const Duration(seconds: 15));
-      print('Connected to server at 108.254.1.184:5091');
+      ).timeout(const Duration(seconds: 20)); // Increased timeout
       if (mounted) {
         setState(() {
           _isLoading = false;
           _isConnected = true;
+          _retryAttempts = 0; // Reset retries on success
         });
       }
       _subscription = _socket!.listen(
         (List<int> data) {
           if (!mounted) return;
           _buffer += utf8.decode(data, allowMalformed: true);
-          print('Received data: $_buffer');
-          var lines = _buffer.split('\n');
-          for (int i = 0; i < lines.length - 1; i++) {
-            var line = lines[i].trim();
-            if (line.isEmpty) continue;
-            print('Processing line: $line');
-            try {
-              final jsonData = jsonDecode(line);
-              print('Parsed JSON: $jsonData');
-              if (jsonData['type'] == 'state' && mounted) {
-                setState(() {
-                  _board = (jsonData['board'] as List)
-                      .map((row) => (row as List).cast<dynamic>())
-                      .toList();
-                  _status = jsonData['status'] ?? 'ongoing';
-                  _width = jsonData['width'] ?? 10;
-                  _height = jsonData['height'] ?? 10;
-                  _mines = jsonData['mines'] ?? 10;
-                  _showWinOverlay = _isWinStatus();
-                  _showLoseOverlay = _status.toLowerCase() == 'lose';
-                  _isLoading = false;
-                });
-              } else {
-                print('Ignoring non-state message: ${jsonData['type']}');
-              }
-            } catch (e, stackTrace) {
-              _showErrorSnackBar('Error parsing server data: $e');
-              print('Error parsing data: $e\nStack trace: $stackTrace');
-            }
-          }
-          _buffer = lines.last;
+          _debounceStateUpdate();
         },
         onError: (error, stackTrace) {
           _showErrorSnackBar('Connection error: $error');
-          print('Socket error: $error\nStack trace: $stackTrace');
           if (mounted) {
             setState(() {
               _isConnected = false;
               _board = _createFallbackBoard();
             });
           }
-          _connectToServer();
+          _scheduleReconnect();
         },
         onDone: () {
           _showErrorSnackBar('Server connection closed');
-          print('Socket connection closed');
           if (mounted) {
             setState(() {
               _isConnected = false;
               _board = _createFallbackBoard();
             });
           }
-          _connectToServer();
+          _scheduleReconnect();
         },
         cancelOnError: true,
       );
     } catch (e, stackTrace) {
       _showErrorSnackBar('Failed to connect to server: $e');
-      print('Connection error: $e\nStack trace: $stackTrace');
       if (mounted) {
         setState(() {
           _isConnected = false;
           _board = _createFallbackBoard();
         });
       }
-      _connectToServer();
+      _scheduleReconnect();
+    }
+  }
+
+  void _scheduleReconnect() {
+    _retryAttempts++;
+    if (_retryAttempts < _maxRetries && mounted) {
+      Future.delayed(_retryDelay, _connectToServer);
+    }
+  }
+
+  void _debounceStateUpdate() {
+    if (_debounceTimer?.isActive ?? false) return;
+    _debounceTimer = Timer(const Duration(milliseconds: 100), () {
+      if (!mounted) return;
+      _processBuffer();
+    });
+  }
+
+  void _processBuffer() {
+    var lines = _buffer.split('\n');
+    if (lines.length > 1) {
+      for (int i = 0; i < lines.length - 1; i++) {
+        var line = lines[i].trim();
+        if (line.isEmpty) continue;
+        try {
+          final jsonData = jsonDecode(line);
+          if (jsonData['type'] == 'state') {
+            if (mounted) {
+              setState(() {
+                _board = (jsonData['board'] as List)
+                    .map((row) => (row as List).cast<dynamic>())
+                    .toList();
+                _status = jsonData['status'] ?? 'ongoing';
+                _width = jsonData['width'] ?? 10;
+                _height = jsonData['height'] ?? 10;
+                _mines = jsonData['mines'] ?? 10;
+                _showWinOverlay = _isWinStatus();
+                _showLoseOverlay = _status.toLowerCase() == 'lose';
+                _isLoading = false;
+              });
+            }
+          }
+        } catch (e) {
+          _showErrorSnackBar('Error parsing server data: $e');
+        }
+      }
+      _buffer = lines.last;
     }
   }
 
@@ -156,7 +190,6 @@ class _MinesweeperScreenState extends State<MinesweeperScreen> {
   }
 
   List<List<dynamic>> _createFallbackBoard() {
-    print('Using fallback board');
     return List.generate(
       _height,
       (_) => List.generate(_width, (_) => 'hidden'),
@@ -172,10 +205,8 @@ class _MinesweeperScreenState extends State<MinesweeperScreen> {
       try {
         final actionJson = '${jsonEncode(action)}\n';
         _socket!.write(actionJson);
-        print('Sent action: $actionJson');
-      } catch (e, stackTrace) {
+      } catch (e) {
         _showErrorSnackBar('Error sending action: $e');
-        print('Error sending action: $e\nStack trace: $stackTrace');
         _connectToServer();
       }
     } else if (mounted) {
@@ -197,7 +228,7 @@ class _MinesweeperScreenState extends State<MinesweeperScreen> {
             message,
             style: GoogleFonts.orbitron(color: Colors.white70),
           ),
-          backgroundColor: const Color(0xFFFF4500).withOpacity(0.8),
+          backgroundColor: const Color(0xFFFF4500).withValues(alpha: 0.8),
           action: SnackBarAction(
             label: 'Retry',
             textColor: Colors.white70,
@@ -212,7 +243,7 @@ class _MinesweeperScreenState extends State<MinesweeperScreen> {
     final value = _board[row][col];
     IconData? icon;
     String text = '';
-    Color cellColor = const Color(0xFF1A1A3A).withOpacity(0.9);
+    Color cellColor = const Color(0xFF1A1A3A).withValues(alpha: 0.9);
     Color textColor = Colors.white70;
     double opacity = 0.9;
 
@@ -220,15 +251,15 @@ class _MinesweeperScreenState extends State<MinesweeperScreen> {
       cellColor = const Color(0xFF1A1A3A);
     } else if (value == 'flag') {
       icon = Icons.flag;
-      cellColor = const Color(0xFF00FFD1).withOpacity(0.3);
+      cellColor = const Color(0xFF00FFD1).withValues(alpha: 0.3);
       opacity = 0.3;
     } else if (value == 'mine') {
       icon = Icons.warning_amber;
-      cellColor = const Color(0xFFFF4500).withOpacity(0.8);
+      cellColor = const Color(0xFFFF4500).withValues(alpha: 0.8);
       opacity = 0.8;
     } else if (value is int) {
       text = value > 0 ? value.toString() : '';
-      cellColor = const Color(0xFF0A0A1E).withOpacity(0.2);
+      cellColor = const Color(0xFF0A0A1E).withValues(alpha: 0.2);
       opacity = 0.2;
       textColor = [
         Colors.white,
@@ -251,43 +282,46 @@ class _MinesweeperScreenState extends State<MinesweeperScreen> {
       },
       onLongPress: () {
         if (_status == 'ongoing' && (value == 'hidden' || value == 'flag')) {
-          _sendAction({'action': 'flag', 'x': col, 'y': row});
+          _sendAction({'action': 'flag', 'x': col, 'y': row}); // Fixed syntax
         }
       },
       child: ZoomIn(
         duration: const Duration(milliseconds: 200),
         child: ClipRect(
           child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 3, sigmaY: 3),
+            filter: ImageFilter.blur(sigmaX: 6, sigmaY: 6),
             child: Container(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [cellColor, cellColor.withOpacity(opacity)],
+                  colors: [
+                    cellColor,
+                    cellColor.withValues(alpha: opacity * 0.8),
+                  ],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
                 border: Border.all(
-                  color: Colors.white.withOpacity(0.3),
-                  width: 1.5,
+                  color: Colors.white.withValues(alpha: 0.4),
+                  width: 2,
                 ),
-                borderRadius: BorderRadius.circular(6),
+                borderRadius: BorderRadius.circular(8),
                 boxShadow: [
                   BoxShadow(
-                    color: const Color(0xFF00FFD1).withOpacity(0.2),
-                    blurRadius: 4,
-                    spreadRadius: 1,
+                    color: const Color(0xFF00FFD1).withValues(alpha: 0.3),
+                    blurRadius: 6,
+                    spreadRadius: 2,
                   ),
                 ],
               ),
               child: Center(
                 child: icon != null
-                    ? Icon(icon, color: Colors.white70, size: 26)
+                    ? Icon(icon, color: Colors.white70, size: 28)
                     : Text(
                         text,
                         style: GoogleFonts.orbitron(
                           color: textColor,
                           fontWeight: FontWeight.bold,
-                          fontSize: 20,
+                          fontSize: 22,
                         ),
                       ),
               ),
@@ -304,34 +338,45 @@ class _MinesweeperScreenState extends State<MinesweeperScreen> {
         : _status == 'lose'
         ? 'Black Hole Defeat!'
         : 'Mines: $_mines';
-    Color bgColor = const Color(0xFF0A0A1E).withOpacity(0.3);
+    Color bgColor = const Color(0xFF0A0A1E).withValues(alpha: 0.3);
 
     return FadeIn(
       duration: const Duration(milliseconds: 500),
       child: ClipRect(
         child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 4, sigmaY: 4),
+          filter: ImageFilter.blur(sigmaX: 6, sigmaY: 6),
           child: Container(
-            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 24),
-            margin: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
+            padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 24),
+            margin: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
             decoration: BoxDecoration(
-              color: bgColor,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.white.withOpacity(0.3)),
+              gradient: LinearGradient(
+                colors: [bgColor, bgColor.withValues(alpha: 0.2)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(15),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.4)),
               boxShadow: [
                 BoxShadow(
-                  color: const Color(0xFF00FFD1).withOpacity(0.2),
-                  blurRadius: 6,
-                  spreadRadius: 2,
+                  color: const Color(0xFF00FFD1).withValues(alpha: 0.3),
+                  blurRadius: 8,
+                  spreadRadius: 3,
                 ),
               ],
             ),
             child: Text(
               message,
               style: GoogleFonts.orbitron(
-                fontSize: 26,
+                fontSize: 28,
                 fontWeight: FontWeight.bold,
-                color: Colors.white70,
+                color: Colors.white,
+                shadows: [
+                  Shadow(
+                    color: const Color(0xFF00FFD1).withValues(alpha: 0.4),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
               ),
               textAlign: TextAlign.center,
             ),
@@ -352,40 +397,47 @@ class _MinesweeperScreenState extends State<MinesweeperScreen> {
           children: [
             ClipRect(
               child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
                 child: Container(
-                  color: const Color(0xFF0A0A1E).withOpacity(0.4),
+                  color: const Color(0xFF0A0A1E).withValues(alpha: 0.5),
                   child: Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Pulse(
-                          duration: const Duration(milliseconds: 1000),
+                          duration: const Duration(milliseconds: 1200),
                           child: Text(
                             'GALACTIC VICTORY!',
                             textAlign: TextAlign.center,
                             style: GoogleFonts.orbitron(
-                              fontSize: 44,
+                              fontSize: 48,
                               fontWeight: FontWeight.bold,
                               color: const Color(0xFF00FFD1),
                               shadows: [
                                 Shadow(
-                                  color: Colors.black.withOpacity(0.5),
-                                  blurRadius: 8,
-                                  offset: const Offset(0, 4),
+                                  color: Colors.black.withValues(alpha: 0.6),
+                                  blurRadius: 12,
+                                  offset: const Offset(0, 8),
+                                ),
+                                Shadow(
+                                  color: const Color(
+                                    0xFF00FFD1,
+                                  ).withValues(alpha: 0.5),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, -2),
                                 ),
                               ],
                             ),
                           ),
                         ),
-                        const SizedBox(height: 24),
+                        const SizedBox(height: 30),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Expanded(
                               child: Padding(
                                 padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
+                                  horizontal: 10,
                                 ),
                                 child: ElevatedButton(
                                   onPressed: () {
@@ -397,27 +449,36 @@ class _MinesweeperScreenState extends State<MinesweeperScreen> {
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: const Color(
                                       0xFF00FFD1,
-                                    ).withOpacity(0.3),
+                                    ).withValues(alpha: 0.5),
                                     padding: const EdgeInsets.symmetric(
-                                      vertical: 12,
-                                      horizontal: 16,
+                                      vertical: 16,
+                                      horizontal: 24,
                                     ),
                                     shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(10),
+                                      borderRadius: BorderRadius.circular(15),
                                       side: BorderSide(
                                         color: const Color(
                                           0xFF00FFD1,
-                                        ).withOpacity(0.5),
+                                        ).withValues(alpha: 0.7),
                                       ),
                                     ),
-                                    elevation: 8,
+                                    elevation: 12,
                                   ),
                                   child: Text(
                                     'New Mission',
                                     style: GoogleFonts.orbitron(
-                                      fontSize: 18,
+                                      fontSize: 22,
                                       fontWeight: FontWeight.bold,
-                                      color: Colors.white70,
+                                      color: Colors.white,
+                                      shadows: [
+                                        Shadow(
+                                          color: const Color(
+                                            0xFF00FFD1,
+                                          ).withValues(alpha: 0.6),
+                                          blurRadius: 8,
+                                          offset: const Offset(0, 2),
+                                        ),
+                                      ],
                                     ),
                                     textAlign: TextAlign.center,
                                   ),
@@ -427,34 +488,45 @@ class _MinesweeperScreenState extends State<MinesweeperScreen> {
                             Expanded(
                               child: Padding(
                                 padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
+                                  horizontal: 10,
                                 ),
                                 child: ElevatedButton(
                                   onPressed: () => widget.onGameSelected(
                                     0,
                                   ), // Return to GamesScreen
                                   style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.white.withOpacity(
-                                      0.2,
+                                    backgroundColor: Colors.white.withValues(
+                                      alpha: 0.3,
                                     ),
                                     padding: const EdgeInsets.symmetric(
-                                      vertical: 12,
-                                      horizontal: 16,
+                                      vertical: 16,
+                                      horizontal: 24,
                                     ),
                                     shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(10),
+                                      borderRadius: BorderRadius.circular(15),
                                       side: BorderSide(
-                                        color: Colors.white.withOpacity(0.3),
+                                        color: Colors.white.withValues(
+                                          alpha: 0.5,
+                                        ),
                                       ),
                                     ),
-                                    elevation: 8,
+                                    elevation: 12,
                                   ),
                                   child: Text(
                                     'Back to Games',
                                     style: GoogleFonts.orbitron(
-                                      fontSize: 18,
+                                      fontSize: 22,
                                       fontWeight: FontWeight.bold,
                                       color: Colors.white70,
+                                      shadows: [
+                                        Shadow(
+                                          color: Colors.white.withValues(
+                                            alpha: 0.4,
+                                          ),
+                                          blurRadius: 8,
+                                          offset: const Offset(0, 2),
+                                        ),
+                                      ],
                                     ),
                                     textAlign: TextAlign.center,
                                   ),
@@ -470,10 +542,10 @@ class _MinesweeperScreenState extends State<MinesweeperScreen> {
               ),
             ),
             Positioned(
-              top: 40,
+              top: 50,
               right: 20,
               child: IconButton(
-                icon: const Icon(Icons.close, color: Colors.white70, size: 32),
+                icon: const Icon(Icons.close, color: Colors.white70, size: 36),
                 onPressed: () {
                   if (mounted) {
                     setState(() => _showWinOverlay = false);
@@ -498,9 +570,9 @@ class _MinesweeperScreenState extends State<MinesweeperScreen> {
           children: [
             ClipRect(
               child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
                 child: Container(
-                  color: const Color(0xFF0A0A1E).withOpacity(0.4),
+                  color: const Color(0xFF0A0A1E).withValues(alpha: 0.5),
                   child: Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -513,28 +585,35 @@ class _MinesweeperScreenState extends State<MinesweeperScreen> {
                               'BLACK HOLE DEFEAT!',
                               textAlign: TextAlign.center,
                               style: GoogleFonts.orbitron(
-                                fontSize: 44,
+                                fontSize: 48,
                                 fontWeight: FontWeight.bold,
                                 color: const Color(0xFFFF4500),
                                 shadows: [
                                   Shadow(
-                                    color: Colors.black.withOpacity(0.5),
-                                    blurRadius: 8,
-                                    offset: const Offset(0, 4),
+                                    color: Colors.black.withValues(alpha: 0.6),
+                                    blurRadius: 12,
+                                    offset: const Offset(0, 8),
+                                  ),
+                                  Shadow(
+                                    color: const Color(
+                                      0xFFFF4500,
+                                    ).withValues(alpha: 0.5),
+                                    blurRadius: 10,
+                                    offset: const Offset(0, -2),
                                   ),
                                 ],
                               ),
                             ),
                           ),
                         ),
-                        const SizedBox(height: 24),
+                        const SizedBox(height: 30),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Expanded(
                               child: Padding(
                                 padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
+                                  horizontal: 10,
                                 ),
                                 child: ElevatedButton(
                                   onPressed: () {
@@ -546,27 +625,36 @@ class _MinesweeperScreenState extends State<MinesweeperScreen> {
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: const Color(
                                       0xFFFF4500,
-                                    ).withOpacity(0.3),
+                                    ).withValues(alpha: 0.5),
                                     padding: const EdgeInsets.symmetric(
-                                      vertical: 12,
-                                      horizontal: 16,
+                                      vertical: 16,
+                                      horizontal: 24,
                                     ),
                                     shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(10),
+                                      borderRadius: BorderRadius.circular(15),
                                       side: BorderSide(
                                         color: const Color(
                                           0xFFFF4500,
-                                        ).withOpacity(0.5),
+                                        ).withValues(alpha: 0.7),
                                       ),
                                     ),
-                                    elevation: 8,
+                                    elevation: 12,
                                   ),
                                   child: Text(
                                     'Retry Mission',
                                     style: GoogleFonts.orbitron(
-                                      fontSize: 18,
+                                      fontSize: 22,
                                       fontWeight: FontWeight.bold,
-                                      color: Colors.white70,
+                                      color: Colors.white,
+                                      shadows: [
+                                        Shadow(
+                                          color: const Color(
+                                            0xFFFF4500,
+                                          ).withValues(alpha: 0.6),
+                                          blurRadius: 8,
+                                          offset: const Offset(0, 2),
+                                        ),
+                                      ],
                                     ),
                                     textAlign: TextAlign.center,
                                   ),
@@ -576,34 +664,45 @@ class _MinesweeperScreenState extends State<MinesweeperScreen> {
                             Expanded(
                               child: Padding(
                                 padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
+                                  horizontal: 10,
                                 ),
                                 child: ElevatedButton(
                                   onPressed: () => widget.onGameSelected(
                                     0,
                                   ), // Return to GamesScreen
                                   style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.white.withOpacity(
-                                      0.2,
+                                    backgroundColor: Colors.white.withValues(
+                                      alpha: 0.3,
                                     ),
                                     padding: const EdgeInsets.symmetric(
-                                      vertical: 12,
-                                      horizontal: 16,
+                                      vertical: 16,
+                                      horizontal: 24,
                                     ),
                                     shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(10),
+                                      borderRadius: BorderRadius.circular(15),
                                       side: BorderSide(
-                                        color: Colors.white.withOpacity(0.3),
+                                        color: Colors.white.withValues(
+                                          alpha: 0.5,
+                                        ),
                                       ),
                                     ),
-                                    elevation: 8,
+                                    elevation: 12,
                                   ),
                                   child: Text(
                                     'Back to Games',
                                     style: GoogleFonts.orbitron(
-                                      fontSize: 18,
+                                      fontSize: 22,
                                       fontWeight: FontWeight.bold,
                                       color: Colors.white70,
+                                      shadows: [
+                                        Shadow(
+                                          color: Colors.white.withValues(
+                                            alpha: 0.4,
+                                          ),
+                                          blurRadius: 8,
+                                          offset: const Offset(0, 2),
+                                        ),
+                                      ],
                                     ),
                                     textAlign: TextAlign.center,
                                   ),
@@ -619,10 +718,10 @@ class _MinesweeperScreenState extends State<MinesweeperScreen> {
               ),
             ),
             Positioned(
-              top: 40,
+              top: 50,
               right: 20,
               child: IconButton(
-                icon: const Icon(Icons.close, color: Colors.white70, size: 32),
+                icon: const Icon(Icons.close, color: Colors.white70, size: 36),
                 onPressed: () {
                   if (mounted) {
                     setState(() => _showLoseOverlay = false);
@@ -643,21 +742,28 @@ class _MinesweeperScreenState extends State<MinesweeperScreen> {
       child: Center(
         child: ClipRect(
           child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
             child: Container(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(18),
               margin: const EdgeInsets.symmetric(horizontal: 24),
               decoration: BoxDecoration(
-                color: const Color(0xFF0A0A1E).withOpacity(0.4),
-                borderRadius: BorderRadius.circular(12),
+                gradient: LinearGradient(
+                  colors: [
+                    const Color(0xFF0A0A1E).withValues(alpha: 0.5),
+                    const Color(0xFFFF4500).withValues(alpha: 0.2),
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(15),
                 border: Border.all(
-                  color: const Color(0xFFFF4500).withOpacity(0.5),
+                  color: const Color(0xFFFF4500).withValues(alpha: 0.6),
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: const Color(0xFFFF4500).withOpacity(0.2),
-                    blurRadius: 6,
-                    spreadRadius: 2,
+                    color: const Color(0xFFFF4500).withValues(alpha: 0.3),
+                    blurRadius: 8,
+                    spreadRadius: 3,
                   ),
                 ],
               ),
@@ -668,12 +774,19 @@ class _MinesweeperScreenState extends State<MinesweeperScreen> {
                     _errorMessage,
                     style: GoogleFonts.orbitron(
                       color: const Color(0xFFFF4500),
-                      fontSize: 18,
+                      fontSize: 20,
                       fontWeight: FontWeight.w600,
+                      shadows: [
+                        Shadow(
+                          color: Colors.black.withValues(alpha: 0.4),
+                          blurRadius: 6,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
                     ),
                     textAlign: TextAlign.center,
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 18),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
@@ -685,17 +798,17 @@ class _MinesweeperScreenState extends State<MinesweeperScreen> {
                             style: ElevatedButton.styleFrom(
                               backgroundColor: const Color(
                                 0xFFFF4500,
-                              ).withOpacity(0.3),
+                              ).withValues(alpha: 0.4),
                               padding: const EdgeInsets.symmetric(
-                                vertical: 12,
-                                horizontal: 16,
+                                vertical: 14,
+                                horizontal: 20,
                               ),
                               shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10),
+                                borderRadius: BorderRadius.circular(12),
                                 side: BorderSide(
                                   color: const Color(
                                     0xFFFF4500,
-                                  ).withOpacity(0.5),
+                                  ).withValues(alpha: 0.6),
                                 ),
                               ),
                             ),
@@ -703,8 +816,17 @@ class _MinesweeperScreenState extends State<MinesweeperScreen> {
                               'Retry Connection',
                               style: GoogleFonts.orbitron(
                                 color: Colors.white70,
-                                fontSize: 18,
+                                fontSize: 20,
                                 fontWeight: FontWeight.bold,
+                                shadows: [
+                                  Shadow(
+                                    color: const Color(
+                                      0xFFFF4500,
+                                    ).withValues(alpha: 0.5),
+                                    blurRadius: 6,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
                               ),
                               textAlign: TextAlign.center,
                             ),
@@ -719,15 +841,17 @@ class _MinesweeperScreenState extends State<MinesweeperScreen> {
                               0,
                             ), // Return to GamesScreen
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.white.withOpacity(0.2),
+                              backgroundColor: Colors.white.withValues(
+                                alpha: 0.3,
+                              ),
                               padding: const EdgeInsets.symmetric(
-                                vertical: 12,
-                                horizontal: 16,
+                                vertical: 14,
+                                horizontal: 20,
                               ),
                               shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10),
+                                borderRadius: BorderRadius.circular(12),
                                 side: BorderSide(
-                                  color: Colors.white.withOpacity(0.3),
+                                  color: Colors.white.withValues(alpha: 0.5),
                                 ),
                               ),
                             ),
@@ -735,8 +859,15 @@ class _MinesweeperScreenState extends State<MinesweeperScreen> {
                               'Back to Games',
                               style: GoogleFonts.orbitron(
                                 color: Colors.white70,
-                                fontSize: 18,
+                                fontSize: 20,
                                 fontWeight: FontWeight.bold,
+                                shadows: [
+                                  Shadow(
+                                    color: Colors.white.withValues(alpha: 0.4),
+                                    blurRadius: 6,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
                               ),
                               textAlign: TextAlign.center,
                             ),
@@ -757,16 +888,19 @@ class _MinesweeperScreenState extends State<MinesweeperScreen> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [Color(0xFF0A0A1E), Color(0xFF1A1A3A)],
+          colors: [
+            Color(0xFF0A0A1E).withValues(alpha: 0.9),
+            Color(0xFF1A1A3A).withValues(alpha: 0.6),
+          ],
         ),
       ),
       child: Stack(
         children: [
-          Positioned.fill(child: StarField(opacity: 0.2)),
+          Positioned.fill(child: StarField(opacity: 0.3)),
           SafeArea(
             child: Column(
               children: [
@@ -784,18 +918,30 @@ class _MinesweeperScreenState extends State<MinesweeperScreen> {
                           color: Colors.white70,
                           size: 30,
                         ),
-                        onPressed: () =>
-                            widget.onGameSelected(0), // Return to GamesScreen
+                        onPressed: () => widget.onGameSelected(0),
                       ),
-                      Text(
-                        'Galactic Minesweeper',
-                        style: GoogleFonts.orbitron(
-                          color: Colors.white70,
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
+                      Expanded(
+                        // Wrap title in Expanded to prevent overflow
+                        child: Text(
+                          'Galactic Minesweeper',
+                          style: GoogleFonts.orbitron(
+                            color: Colors.white70,
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                            shadows: [
+                              Shadow(
+                                color: const Color(
+                                  0xFF00FFD1,
+                                ).withValues(alpha: 0.4),
+                                blurRadius: 8,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          textAlign: TextAlign.center,
                         ),
                       ),
-                      const SizedBox(width: 30), // Placeholder for symmetry
+                      const SizedBox(width: 30), // Keep for symmetry
                     ],
                   ),
                 ),
@@ -817,6 +963,15 @@ class _MinesweeperScreenState extends State<MinesweeperScreen> {
                                 color: Colors.white70,
                                 fontSize: 18,
                                 fontWeight: FontWeight.w600,
+                                shadows: [
+                                  Shadow(
+                                    color: const Color(
+                                      0xFF00FFD1,
+                                    ).withValues(alpha: 0.3),
+                                    blurRadius: 6,
+                                    offset: const Offset(0, 1),
+                                  ),
+                                ],
                               ),
                             ),
                           ],
@@ -830,26 +985,38 @@ class _MinesweeperScreenState extends State<MinesweeperScreen> {
                       padding: const EdgeInsets.all(12),
                       child: ClipRect(
                         child: BackdropFilter(
-                          filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+                          filter: ImageFilter.blur(sigmaX: 6, sigmaY: 6),
                           child: Container(
                             decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.2),
-                              border: Border.all(
-                                color: Colors.white.withOpacity(0.3),
+                              gradient: LinearGradient(
+                                colors: [
+                                  const Color(
+                                    0xFF0A0A1E,
+                                  ).withValues(alpha: 0.3),
+                                  const Color(
+                                    0xFF1A1A3A,
+                                  ).withValues(alpha: 0.2),
+                                ],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
                               ),
-                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: Colors.white.withValues(alpha: 0.4),
+                                width: 2,
+                              ),
+                              borderRadius: BorderRadius.circular(15),
                               boxShadow: [
                                 BoxShadow(
                                   color: const Color(
                                     0xFF00FFD1,
-                                  ).withOpacity(0.2),
-                                  blurRadius: 8,
-                                  spreadRadius: 2,
+                                  ).withValues(alpha: 0.3),
+                                  blurRadius: 10,
+                                  spreadRadius: 3,
                                 ),
                               ],
                             ),
                             child: GridView.builder(
-                              padding: const EdgeInsets.all(4),
+                              padding: const EdgeInsets.all(6),
                               gridDelegate:
                                   SliverGridDelegateWithFixedCrossAxisCount(
                                     crossAxisCount: _width,
@@ -873,25 +1040,36 @@ class _MinesweeperScreenState extends State<MinesweeperScreen> {
                   child: ElevatedButton(
                     onPressed: () => _sendAction({'action': 'new_game'}),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF00FFD1).withOpacity(0.3),
+                      backgroundColor: const Color(
+                        0xFF00FFD1,
+                      ).withValues(alpha: 0.4),
                       padding: const EdgeInsets.symmetric(
-                        vertical: 12,
+                        vertical: 14,
                         horizontal: 24,
                       ),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
+                        borderRadius: BorderRadius.circular(12),
                         side: BorderSide(
-                          color: const Color(0xFF00FFD1).withOpacity(0.5),
+                          color: const Color(0xFF00FFD1).withValues(alpha: 0.6),
                         ),
                       ),
-                      elevation: 8,
+                      elevation: 10,
                     ),
                     child: Text(
                       'New Mission',
                       style: GoogleFonts.orbitron(
-                        color: Colors.white70,
-                        fontSize: 18,
+                        color: Colors.white,
+                        fontSize: 20,
                         fontWeight: FontWeight.bold,
+                        shadows: [
+                          Shadow(
+                            color: const Color(
+                              0xFF00FFD1,
+                            ).withValues(alpha: 0.5),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
                       ),
                     ),
                   ),
