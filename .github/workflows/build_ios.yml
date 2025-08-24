@@ -44,8 +44,12 @@ jobs:
             <string>manual</string>
             <key>compileBitcode</key>
             <false/>
+            <key>teamID</key>
+            <string>0000000000</string> <!-- Placeholder team ID -->
             <key>stripSwiftSymbols</key>
             <true/>
+            <key>generateAppStoreInformation</key>
+            <false/>
           </dict>
           </plist>
           EOF
@@ -64,7 +68,8 @@ jobs:
                      archive \
                      CODE_SIGNING_ALLOWED=NO \
                      CODE_SIGNING_REQUIRED=NO \
-                     CODE_SIGN_IDENTITY=""
+                     CODE_SIGN_IDENTITY="" \
+                     CODE_SIGN_ENTITLEMENTS=""
           xcodebuild -exportArchive \
                      -archivePath build/Runner.xcarchive \
                      -exportOptionsPlist exportOptions.plist \
@@ -72,6 +77,7 @@ jobs:
                      CODE_SIGNING_ALLOWED=NO \
                      CODE_SIGNING_REQUIRED=NO \
                      CODE_SIGN_IDENTITY=""
+          ls -l build/Runner.ipa # Verify IPA creation
 
       # Upload the IPA as an artifact
       - name: Upload IPA
