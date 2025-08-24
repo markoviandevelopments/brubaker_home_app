@@ -7,10 +7,10 @@ class StarField extends StatefulWidget {
   const StarField({super.key, this.opacity = 0.3, this.offset = 0.0});
 
   @override
-  _StarFieldState createState() => _StarFieldState();
+  StarFieldState createState() => StarFieldState();
 }
 
-class _StarFieldState extends State<StarField>
+class StarFieldState extends State<StarField>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   final List<Offset> _stars = [];
@@ -36,8 +36,8 @@ class _StarFieldState extends State<StarField>
         random == 0
             ? Colors.white
             : random == 1
-            ? const Color(0xFF00FFFF).withOpacity(0.5)
-            : const Color(0xFFFFFF00).withOpacity(0.5),
+            ? const Color(0xFF00FFFF).withValues(alpha: 0.5)
+            : const Color(0xFFFFFF00).withValues(alpha: 0.5),
       );
     }
   }
@@ -85,7 +85,7 @@ class _StarPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     for (int i = 0; i < stars.length; i++) {
-      final paint = Paint()..color = colors[i].withOpacity(opacity);
+      final paint = Paint()..color = colors[i].withValues(alpha: opacity);
       final scale = 1.0 + math.sin(animationValue * 2 * math.pi) * 0.3;
       final yPos =
           (stars[i].dy + offset) % size.height; // Apply offset to y-position
