@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:animate_do/animate_do.dart' as animateDo;
-import '../screens/star_field.dart'; // Ensure this file exists and is correct
+import 'package:animate_do/animate_do.dart' as animate_do;
+import '../screens/star_field.dart';
 import 'dart:async';
 import 'dart:ui';
 
@@ -9,10 +9,10 @@ class InfoScreen extends StatefulWidget {
   const InfoScreen({super.key});
 
   @override
-  _InfoScreenState createState() => _InfoScreenState();
+  InfoScreenState createState() => InfoScreenState();
 }
 
-class _InfoScreenState extends State<InfoScreen> {
+class InfoScreenState extends State<InfoScreen> {
   late Timer _timer;
   String _countdownMode = 'days';
   String _countdownText = '';
@@ -86,9 +86,9 @@ class _InfoScreenState extends State<InfoScreen> {
             child: Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.2),
+                color: Colors.white.withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.white.withOpacity(0.3)),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -202,9 +202,9 @@ class _InfoScreenState extends State<InfoScreen> {
             child: Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.2),
+                color: Colors.white.withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.white.withOpacity(0.3)),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -241,22 +241,25 @@ class _InfoScreenState extends State<InfoScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Color(0xFF0A0A1E), Color(0xFF1A1A3A)],
+            colors: [
+              Color(0xFF0A0A1E).withValues(alpha: 0.9),
+              Color(0xFF1A1A3A).withValues(alpha: 0.7),
+            ],
           ),
         ),
         child: Stack(
           children: [
-            Positioned.fill(child: StarField(opacity: 0.2)),
+            Positioned.fill(child: StarField(opacity: 0.3)),
             SafeArea(
               child: Center(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    animateDo.FadeIn(
+                    animate_do.FadeIn(
                       duration: const Duration(milliseconds: 800),
                       child: Text(
                         '2 Years!! 🎉',
@@ -264,52 +267,91 @@ class _InfoScreenState extends State<InfoScreen> {
                           color: Colors.white70,
                           fontWeight: FontWeight.bold,
                           fontSize: 24,
+                          shadows: [
+                            Shadow(
+                              color: Colors.purpleAccent.withValues(alpha: 0.5),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
                         ),
                         textAlign: TextAlign.center,
                       ),
                     ),
                     const SizedBox(height: 20),
                     if (_countdownMode == 'days')
-                      animateDo.BounceIn(
+                      animate_do.BounceIn(
                         duration: const Duration(milliseconds: 600),
                         child: Text(
                           _countdownText,
                           style: GoogleFonts.orbitron(
                             color: Colors.white,
                             fontSize: 20,
+                            shadows: [
+                              Shadow(
+                                color: Colors.cyanAccent.withValues(alpha: 0.4),
+                                blurRadius: 6,
+                                offset: const Offset(0, 1),
+                              ),
+                            ],
                           ),
                         ),
                       )
                     else if (_countdownMode == 'coffee_thursdays')
-                      animateDo.JelloIn(
+                      animate_do.JelloIn(
                         duration: const Duration(milliseconds: 800),
                         child: Text(
                           _countdownText,
                           style: GoogleFonts.orbitron(
                             color: Colors.white,
                             fontSize: 20,
+                            shadows: [
+                              Shadow(
+                                color: Colors.greenAccent.withValues(
+                                  alpha: 0.4,
+                                ),
+                                blurRadius: 6,
+                                offset: const Offset(0, 1),
+                              ),
+                            ],
                           ),
                         ),
                       )
                     else if (_countdownMode == 'paychecks')
-                      animateDo.Swing(
+                      animate_do.Swing(
                         duration: const Duration(milliseconds: 1000),
                         child: Text(
                           _countdownText,
                           style: GoogleFonts.orbitron(
                             color: Colors.white,
                             fontSize: 20,
+                            shadows: [
+                              Shadow(
+                                color: Colors.yellowAccent.withValues(
+                                  alpha: 0.4,
+                                ),
+                                blurRadius: 6,
+                                offset: const Offset(0, 1),
+                              ),
+                            ],
                           ),
                         ),
                       )
                     else
-                      animateDo.Pulse(
+                      animate_do.Pulse(
                         duration: const Duration(milliseconds: 600),
                         child: Text(
                           _countdownText,
                           style: GoogleFonts.orbitron(
                             color: Colors.white,
                             fontSize: 20,
+                            shadows: [
+                              Shadow(
+                                color: Colors.redAccent.withValues(alpha: 0.4),
+                                blurRadius: 6,
+                                offset: const Offset(0, 1),
+                              ),
+                            ],
                           ),
                         ),
                       ),
@@ -337,12 +379,19 @@ class _InfoScreenState extends State<InfoScreen> {
         ),
       ),
       floatingActionButton: FloatingActionButton(
-        backgroundColor: Colors.white.withOpacity(0.2),
-        elevation: 5,
+        backgroundColor: Colors.white.withValues(alpha: 0.2),
+        elevation: 8,
         child: Container(
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            border: Border.all(color: Colors.white.withOpacity(0.3)),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.4)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.purpleAccent.withValues(alpha: 0.5),
+                blurRadius: 10,
+                spreadRadius: 2,
+              ),
+            ],
           ),
           child: const Icon(Icons.info_outline, color: Colors.white70),
         ),
@@ -355,18 +404,18 @@ class _InfoScreenState extends State<InfoScreen> {
     Widget button = ElevatedButton(
       style: ElevatedButton.styleFrom(
         backgroundColor: _countdownMode == mode
-            ? Colors.white.withOpacity(0.3)
-            : Colors.white.withOpacity(0.2),
+            ? Colors.white.withValues(alpha: 0.3)
+            : Colors.white.withValues(alpha: 0.2),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(8),
           side: BorderSide(
             color: _countdownMode == mode
-                ? Colors.white.withOpacity(0.8)
-                : Colors.white.withOpacity(0.3),
+                ? Colors.white.withValues(alpha: 0.8)
+                : Colors.white.withValues(alpha: 0.3),
             width: 2,
           ),
         ),
-        elevation: 5,
+        elevation: 6,
       ),
       onPressed: () {
         setState(() {
@@ -382,22 +431,22 @@ class _InfoScreenState extends State<InfoScreen> {
 
     switch (animationType) {
       case 'BounceIn':
-        return animateDo.BounceIn(
+        return animate_do.BounceIn(
           duration: const Duration(milliseconds: 600),
           child: button,
         );
       case 'JelloIn':
-        return animateDo.JelloIn(
+        return animate_do.JelloIn(
           duration: const Duration(milliseconds: 800),
           child: button,
         );
       case 'Swing':
-        return animateDo.Swing(
+        return animate_do.Swing(
           duration: const Duration(milliseconds: 1000),
           child: button,
         );
       case 'Pulse':
-        return animateDo.Pulse(
+        return animate_do.Pulse(
           duration: const Duration(milliseconds: 600),
           child: button,
         );
