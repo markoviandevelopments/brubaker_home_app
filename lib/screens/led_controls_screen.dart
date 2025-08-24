@@ -4,9 +4,10 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:brubaker_homeapp/screens/star_field.dart';
 import 'dart:convert';
 import 'dart:ui';
+import 'dart:io'; // Added for SocketException handling
 
 class LedControlsScreen extends StatefulWidget {
-  final Function(int)? onGameSelected; // Added for consistency, may not be used
+  final Function(int)? onGameSelected;
 
   const LedControlsScreen({super.key, this.onGameSelected});
 
@@ -16,7 +17,9 @@ class LedControlsScreen extends StatefulWidget {
 
 class _LedControlsScreenState extends State<LedControlsScreen>
     with SingleTickerProviderStateMixin {
-  final String serverUrl = 'http://108.254.1.184:5000';
+  static const String localServerUrl = 'http://192.168.1.126:5000';
+  static const String publicServerUrl = 'http://108.254.1.184:5000';
+  String serverUrl = localServerUrl; // Default to local
   final List<Map<String, String>> modes = [
     {'name': 'off', 'image': 'assets/modes/off.png'},
     {'name': 'rainbow-flow', 'image': 'assets/modes/rainbow-flow.png'},
@@ -89,7 +92,7 @@ class _LedControlsScreenState extends State<LedControlsScreen>
   @override
   void initState() {
     super.initState();
-    fetchCurrentMode();
+    checkServerAvailability();
     _glowController = AnimationController(
       duration: const Duration(seconds: 2),
       vsync: this,
@@ -103,6 +106,28 @@ class _LedControlsScreenState extends State<LedControlsScreen>
   void dispose() {
     _glowController.dispose();
     super.dispose();
+  }
+
+  Future<void> checkServerAvailability() async {
+    if (!mounted) return;
+    setState(() => isLoading = true);
+    try {
+      // Try local server first
+      final response = await http
+          .get(Uri.parse('$localServerUrl/mode'))
+          .timeout(const Duration(seconds: 2)); // Short timeout for quick check
+      if (response.statusCode == 200) {
+        setState(() => serverUrl = localServerUrl); // Local server is available
+      } else {
+        setState(() => serverUrl = publicServerUrl); // Fallback to public
+      }
+    } catch (e) {
+      setState(
+        () => serverUrl = publicServerUrl,
+      ); // Fallback to public on error
+    } finally {
+      await fetchCurrentMode(); // Fetch mode after determining server
+    }
   }
 
   Future<void> fetchCurrentMode() async {
@@ -122,6 +147,11 @@ class _LedControlsScreenState extends State<LedControlsScreen>
       }
     } catch (e) {
       _showSnackBar('Connection error: $e');
+      // Optionally retry with public server if local fails
+      if (serverUrl == localServerUrl) {
+        setState(() => serverUrl = publicServerUrl);
+        await fetchCurrentMode(); // Retry with public server
+      }
     } finally {
       if (mounted) {
         setState(() => isLoading = false);
@@ -150,6 +180,11 @@ class _LedControlsScreenState extends State<LedControlsScreen>
       }
     } catch (e) {
       _showSnackBar('Connection error: $e');
+      // Optionally retry with public server if local fails
+      if (serverUrl == localServerUrl) {
+        setState(() => serverUrl = publicServerUrl);
+        await updateMode(newMode); // Retry with public server
+      }
     } finally {
       if (mounted) {
         setState(() => isUpdating = false);

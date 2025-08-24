@@ -83,12 +83,9 @@ class _ToadJumperScreenState extends State<ToadJumperScreen>
                   ),
                 ),
                 Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.only(bottom: 80.0),
-                    child: ToadJumperGame(
-                      controller: _controller,
-                      onGameSelected: widget.onGameSelected,
-                    ),
+                  child: ToadJumperGame(
+                    controller: _controller,
+                    onGameSelected: widget.onGameSelected,
                   ),
                 ),
               ],
@@ -152,11 +149,13 @@ class _ToadJumperGameState extends State<ToadJumperGame> {
     super.didChangeDependencies();
     if (screenSize == null) {
       screenSize = MediaQuery.of(context).size;
-      bottomPadding = MediaQuery.of(context).padding.bottom;
+      bottomPadding =
+          MediaQuery.of(context).padding.bottom +
+          80.0; // Adjusted for BottomNavigationBar
     }
     if (toadImage == null && isImageLoading) {
       toadX = screenSize!.width / 2 - 30;
-      toadY = screenSize!.height - 220 - (bottomPadding ?? 0);
+      toadY = screenSize!.height - 60 - bottomPadding!; // Toad on ground
       spawnInitialPlatforms();
       _loadImage('assets/images/toad.png')
           .then((image) {
@@ -204,14 +203,25 @@ class _ToadJumperGameState extends State<ToadJumperGame> {
   void spawnInitialPlatforms() {
     if (screenSize == null || bottomPadding == null) return;
     platforms.clear();
+    // Initial platform (toad's starting platform)
     platforms.add(
-      Rect.fromLTWH(toadX, screenSize!.height - 160 - bottomPadding!, 100, 20),
+      Rect.fromLTWH(toadX, screenSize!.height - bottomPadding!, 100, 20),
     );
+    // One platform below
+    platforms.add(
+      Rect.fromLTWH(
+        random.nextDouble() * (screenSize!.width - 100),
+        screenSize!.height - bottomPadding! + 120,
+        100,
+        20,
+      ),
+    );
+    // Platforms above
     for (int i = 1; i < 10; i++) {
       platforms.add(
         Rect.fromLTWH(
           random.nextDouble() * (screenSize!.width - 100),
-          screenSize!.height - 160 - bottomPadding! - i * 120,
+          screenSize!.height - bottomPadding! - i * 120,
           100,
           20,
         ),
@@ -233,7 +243,7 @@ class _ToadJumperGameState extends State<ToadJumperGame> {
       particleAges.clear();
       if (screenSize != null) {
         toadX = screenSize!.width / 2 - 30;
-        toadY = screenSize!.height - 220 - (bottomPadding ?? 0);
+        toadY = screenSize!.height - 60 - (bottomPadding ?? 0);
         platforms.clear();
         spawnInitialPlatforms();
       }
@@ -263,7 +273,7 @@ class _ToadJumperGameState extends State<ToadJumperGame> {
   }
 
   void updateGame(double dt) {
-    if (!mounted || screenSize == null) return;
+    if (!mounted || screenSize == null || bottomPadding == null) return;
     setState(() {
       if (isJumping || !isOnPlatform()) {
         velocityY += gravity * dt;
@@ -277,7 +287,19 @@ class _ToadJumperGameState extends State<ToadJumperGame> {
         justLanded = false;
       }
 
-      if (toadY > screenSize!.height + 100) {
+      // Prevent toad from falling below the bottom of the screen
+      if (toadY > screenSize!.height - bottomPadding! - 60) {
+        toadY = screenSize!.height - bottomPadding! - 60;
+        velocityY = 0;
+        isJumping = false;
+        if (justLanded && score < 1000) {
+          score++;
+          justLanded = false;
+        }
+      }
+
+      // Game over if toad falls too far below initial platform
+      if (toadY > screenSize!.height - bottomPadding! + 120) {
         isGameOver = true;
         return;
       }
@@ -301,6 +323,7 @@ class _ToadJumperGameState extends State<ToadJumperGame> {
         }
       }
 
+      // Camera follows toad only when above one-third of screen height
       if (toadY < screenSize!.height / 3) {
         final dy = screenSize!.height / 3 - toadY;
         toadY = screenSize!.height / 3;
@@ -321,7 +344,9 @@ class _ToadJumperGameState extends State<ToadJumperGame> {
           );
         }
 
-        platforms.removeWhere((p) => p.top > screenSize!.height + 100);
+        platforms.removeWhere(
+          (p) => p.top > screenSize!.height - bottomPadding! + 120,
+        );
       }
 
       bgOffset1 += bgSpeed1 * dt;
@@ -479,7 +504,8 @@ class _ToadJumperGameState extends State<ToadJumperGame> {
                     child: BackdropFilter(
                       filter: ui.ImageFilter.blur(sigmaX: 10, sigmaY: 10),
                       child: Container(
-                        padding: const EdgeInsets.all(20),
+                        constraints: const BoxConstraints(maxWidth: 400),
+                        padding: const EdgeInsets.all(16),
                         margin: const EdgeInsets.symmetric(horizontal: 24),
                         decoration: BoxDecoration(
                           color: const Color(0xFF0A0A1E).withOpacity(0.4),
@@ -504,7 +530,7 @@ class _ToadJumperGameState extends State<ToadJumperGame> {
                               child: Text(
                                 'Game Over',
                                 style: GoogleFonts.orbitron(
-                                  fontSize: 32,
+                                  fontSize: 28,
                                   color: const Color(0xFFFF4500),
                                   fontWeight: FontWeight.bold,
                                   shadows: [
@@ -517,18 +543,19 @@ class _ToadJumperGameState extends State<ToadJumperGame> {
                                 ),
                               ),
                             ),
-                            const SizedBox(height: 20),
+                            const SizedBox(height: 16),
                             Text(
                               'Score: $score',
                               style: GoogleFonts.orbitron(
-                                fontSize: 24,
+                                fontSize: 20,
                                 color: const Color(0xFF00FFD1),
                               ),
                             ),
-                            const SizedBox(height: 20),
+                            const SizedBox(height: 16),
                             Wrap(
                               alignment: WrapAlignment.center,
-                              spacing: 16,
+                              spacing: 10,
+                              runSpacing: 10,
                               children: [
                                 ElevatedButton(
                                   onPressed: resetGame,
@@ -537,7 +564,7 @@ class _ToadJumperGameState extends State<ToadJumperGame> {
                                       0xFF00FFD1,
                                     ).withOpacity(0.3),
                                     shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12),
+                                      borderRadius: BorderRadius.circular(10),
                                       side: BorderSide(
                                         color: const Color(
                                           0xFF00FFD1,
@@ -545,15 +572,15 @@ class _ToadJumperGameState extends State<ToadJumperGame> {
                                       ),
                                     ),
                                     padding: const EdgeInsets.symmetric(
-                                      vertical: 12,
-                                      horizontal: 24,
+                                      vertical: 8,
+                                      horizontal: 16,
                                     ),
-                                    elevation: 8,
+                                    elevation: 6,
                                   ),
                                   child: Text(
                                     'Restart',
                                     style: GoogleFonts.orbitron(
-                                      fontSize: 18,
+                                      fontSize: 14,
                                       color: Colors.white70,
                                       fontWeight: FontWeight.bold,
                                     ),
@@ -566,21 +593,21 @@ class _ToadJumperGameState extends State<ToadJumperGame> {
                                       0.2,
                                     ),
                                     shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12),
+                                      borderRadius: BorderRadius.circular(10),
                                       side: BorderSide(
                                         color: Colors.white.withOpacity(0.3),
                                       ),
                                     ),
                                     padding: const EdgeInsets.symmetric(
-                                      vertical: 12,
-                                      horizontal: 24,
+                                      vertical: 8,
+                                      horizontal: 16,
                                     ),
-                                    elevation: 8,
+                                    elevation: 6,
                                   ),
                                   child: Text(
                                     'Back to Games',
                                     style: GoogleFonts.orbitron(
-                                      fontSize: 18,
+                                      fontSize: 14,
                                       color: Colors.white70,
                                       fontWeight: FontWeight.bold,
                                     ),
