@@ -14,11 +14,13 @@ class ScrollScreen extends StatefulWidget {
   const ScrollScreen({super.key});
 
   @override
-  _ScrollScreenState createState() => _ScrollScreenState();
+  ScrollScreenState createState() => ScrollScreenState();
 }
 
-class _ScrollScreenState extends State<ScrollScreen> {
+class ScrollScreenState extends State<ScrollScreen> {
   List<Post> _posts = [];
+  final GlobalKey<ScaffoldMessengerState> _scaffoldMessengerKey =
+      GlobalKey<ScaffoldMessengerState>(); // Safe context handling
 
   @override
   void initState() {
@@ -47,13 +49,13 @@ class _ScrollScreenState extends State<ScrollScreen> {
       _posts.removeAt(index);
     });
     await _savePosts();
-    ScaffoldMessenger.of(context).showSnackBar(
+    _scaffoldMessengerKey.currentState?.showSnackBar(
       SnackBar(
         content: Text(
           'Post deleted',
           style: GoogleFonts.orbitron(color: Colors.white70, fontSize: 14),
         ),
-        backgroundColor: Colors.black.withOpacity(0.8),
+        backgroundColor: Colors.black.withValues(alpha: 0.8),
         behavior: SnackBarBehavior.floating,
       ),
     );
@@ -62,17 +64,21 @@ class _ScrollScreenState extends State<ScrollScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      key: _scaffoldMessengerKey, // Assign the key to Scaffold
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Color(0xFF0A0A1E), Color(0xFF1A1A3A)],
+            colors: [
+              Color(0xFF0A0A1E).withValues(alpha: 0.9),
+              Color(0xFF1A1A3A).withValues(alpha: 0.7),
+            ],
           ),
         ),
         child: Stack(
           children: [
-            Positioned.fill(child: StarField(opacity: 0.2)),
+            Positioned.fill(child: StarField(opacity: 0.3)),
             ListView.builder(
               padding: const EdgeInsets.all(16.0),
               itemCount: _posts.length,
@@ -87,12 +93,12 @@ class _ScrollScreenState extends State<ScrollScreen> {
         ),
       ),
       floatingActionButton: FloatingActionButton(
-        backgroundColor: Colors.white.withOpacity(0.2),
-        elevation: 5,
+        backgroundColor: Colors.white.withValues(alpha: 0.2),
+        elevation: 6,
         child: Container(
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            border: Border.all(color: Colors.white.withOpacity(0.3)),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.4)),
           ),
           child: const Icon(Icons.add, color: Colors.white70),
         ),
@@ -106,153 +112,245 @@ class _ScrollScreenState extends State<ScrollScreen> {
     String text = '';
     File? mediaFile;
     String? mediaType;
+    double mediaHeight = 200.0; // Default height for preview and post
+    VideoPlayerController? videoController;
+    ChewieController? chewieController;
+
+    void _updateMediaPreview() {
+      if (mediaFile != null && mediaType == 'video') {
+        videoController = VideoPlayerController.file(mediaFile!)
+          ..initialize().then((_) {
+            chewieController = ChewieController(
+              videoPlayerController: videoController!,
+              autoPlay: true,
+              looping: false,
+            );
+            if (mounted) setState(() {});
+          });
+      } else if (mediaFile != null && mediaType == 'image') {
+        if (mounted) setState(() {});
+      }
+    }
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: Colors.transparent,
-        content: ClipRect(
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
-            child: Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.white.withOpacity(0.3)),
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextField(
-                    decoration: InputDecoration(
-                      labelText: 'Your Name',
-                      labelStyle: GoogleFonts.orbitron(color: Colors.white70),
-                      enabledBorder: UnderlineInputBorder(
-                        borderSide: BorderSide(
-                          color: Colors.white.withOpacity(0.3),
-                        ),
-                      ),
-                    ),
-                    style: GoogleFonts.orbitron(color: Colors.white70),
-                    onChanged: (value) => userName = value,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          backgroundColor: Colors.transparent,
+          content: ClipRect(
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 6, sigmaY: 6),
+              child: Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.3),
                   ),
-                  TextField(
-                    decoration: InputDecoration(
-                      labelText: 'Status Update',
-                      labelStyle: GoogleFonts.orbitron(color: Colors.white70),
-                      enabledBorder: UnderlineInputBorder(
-                        borderSide: BorderSide(
-                          color: Colors.white.withOpacity(0.3),
-                        ),
-                      ),
-                    ),
-                    style: GoogleFonts.orbitron(color: Colors.white70),
-                    onChanged: (value) => text = value,
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                ),
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.white.withOpacity(0.2),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            side: BorderSide(
-                              color: Colors.white.withOpacity(0.3),
+                      TextField(
+                        decoration: InputDecoration(
+                          labelText: 'Your Name',
+                          labelStyle: GoogleFonts.orbitron(
+                            color: Colors.white70,
+                          ),
+                          enabledBorder: UnderlineInputBorder(
+                            borderSide: BorderSide(
+                              color: Colors.white.withValues(alpha: 0.3),
                             ),
                           ),
-                          elevation: 5,
                         ),
-                        onPressed: () async {
-                          final picked = await ImagePicker().pickImage(
-                            source: ImageSource.gallery,
-                          );
-                          if (picked != null) {
-                            mediaFile = File(picked.path);
-                            mediaType = 'image';
-                          }
-                        },
-                        child: Text(
-                          'Image',
-                          style: GoogleFonts.orbitron(color: Colors.white70),
-                        ),
+                        style: GoogleFonts.orbitron(color: Colors.white70),
+                        onChanged: (value) => userName = value,
                       ),
-                      ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.white.withOpacity(0.2),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            side: BorderSide(
-                              color: Colors.white.withOpacity(0.3),
+                      TextField(
+                        decoration: InputDecoration(
+                          labelText: 'Status Update',
+                          labelStyle: GoogleFonts.orbitron(
+                            color: Colors.white70,
+                          ),
+                          enabledBorder: UnderlineInputBorder(
+                            borderSide: BorderSide(
+                              color: Colors.white.withValues(alpha: 0.3),
                             ),
                           ),
-                          elevation: 5,
                         ),
-                        onPressed: () async {
-                          final picked = await ImagePicker().pickVideo(
-                            source: ImageSource.gallery,
-                          );
-                          if (picked != null) {
-                            mediaFile = File(picked.path);
-                            mediaType = 'video';
-                          }
-                        },
-                        child: Text(
-                          'Video',
-                          style: GoogleFonts.orbitron(color: Colors.white70),
+                        style: GoogleFonts.orbitron(color: Colors.white70),
+                        onChanged: (value) => text = value,
+                      ),
+                      const SizedBox(height: 16),
+                      if (mediaFile != null)
+                        Column(
+                          children: [
+                            mediaType == 'image'
+                                ? Image.file(
+                                    mediaFile!,
+                                    height: mediaHeight,
+                                    width: double.infinity,
+                                    fit: BoxFit.contain,
+                                  )
+                                : chewieController != null &&
+                                      chewieController!
+                                          .videoPlayerController
+                                          .value
+                                          .isInitialized
+                                ? SizedBox(
+                                    height: mediaHeight,
+                                    width: double.infinity,
+                                    child: Chewie(
+                                      controller: chewieController!,
+                                    ),
+                                  )
+                                : const CircularProgressIndicator(
+                                    color: Colors.white70,
+                                  ),
+                            Slider(
+                              value: mediaHeight,
+                              min: 100.0,
+                              max: 400.0,
+                              divisions: 6,
+                              label: '${mediaHeight.round()}px',
+                              activeColor: const Color(
+                                0xFF00FFD1,
+                              ).withValues(alpha: 0.7),
+                              inactiveColor: Colors.white.withValues(
+                                alpha: 0.3,
+                              ),
+                              onChanged: (value) {
+                                setState(() {
+                                  mediaHeight = value;
+                                });
+                              },
+                            ),
+                          ],
                         ),
+                      const SizedBox(height: 16),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: [
+                          ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.white.withValues(
+                                alpha: 0.2,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                                side: BorderSide(
+                                  color: Colors.white.withValues(alpha: 0.3),
+                                ),
+                              ),
+                              elevation: 6,
+                            ),
+                            onPressed: () async {
+                              final picked = await ImagePicker().pickImage(
+                                source: ImageSource.gallery,
+                              );
+                              if (picked != null) {
+                                mediaFile = File(picked.path);
+                                mediaType = 'image';
+                                _updateMediaPreview();
+                              }
+                            },
+                            child: Text(
+                              'Image',
+                              style: GoogleFonts.orbitron(
+                                color: Colors.white70,
+                              ),
+                            ),
+                          ),
+                          ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.white.withValues(
+                                alpha: 0.2,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                                side: BorderSide(
+                                  color: Colors.white.withValues(alpha: 0.3),
+                                ),
+                              ),
+                              elevation: 6,
+                            ),
+                            onPressed: () async {
+                              final picked = await ImagePicker().pickVideo(
+                                source: ImageSource.gallery,
+                              );
+                              if (picked != null) {
+                                mediaFile = File(picked.path);
+                                mediaType = 'video';
+                                _updateMediaPreview();
+                              }
+                            },
+                            child: Text(
+                              'Video',
+                              style: GoogleFonts.orbitron(
+                                color: Colors.white70,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
-                ],
+                ),
               ),
             ),
           ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(
-              'Cancel',
-              style: GoogleFonts.orbitron(color: Colors.white70),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text(
+                'Cancel',
+                style: GoogleFonts.orbitron(color: Colors.white70),
+              ),
             ),
-          ),
-          TextButton(
-            onPressed: () async {
-              if (userName.isNotEmpty && text.isNotEmpty) {
-                final newPost = Post(
-                  userName: userName,
-                  text: text,
-                  mediaPath: mediaFile?.path,
-                  mediaType: mediaType,
-                  timestamp: DateTime.now(),
-                );
-                setState(() {
-                  _posts.add(newPost);
-                });
-                await _savePosts();
-                Navigator.pop(context);
-              } else {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      'Name and status required',
-                      style: GoogleFonts.orbitron(color: Colors.white70),
+            TextButton(
+              onPressed: () async {
+                if (userName.isNotEmpty && text.isNotEmpty) {
+                  final newPost = Post(
+                    userName: userName,
+                    text: text,
+                    mediaPath: mediaFile?.path,
+                    mediaType: mediaType,
+                    timestamp: DateTime.now(),
+                    mediaHeight: mediaHeight, // Store the selected height
+                  );
+                  setState(() {
+                    _posts.add(newPost);
+                  });
+                  await _savePosts();
+                  Navigator.pop(context);
+                  if (videoController != null) {
+                    videoController!.dispose();
+                  }
+                  if (chewieController != null) {
+                    chewieController!.dispose();
+                  }
+                } else {
+                  _scaffoldMessengerKey.currentState?.showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        'Name and status required',
+                        style: GoogleFonts.orbitron(color: Colors.white70),
+                      ),
+                      backgroundColor: Colors.black.withValues(alpha: 0.8),
+                      behavior: SnackBarBehavior.floating,
                     ),
-                    backgroundColor: Colors.black.withOpacity(0.8),
-                    behavior: SnackBarBehavior.floating,
-                  ),
-                );
-              }
-            },
-            child: Text(
-              'Post',
-              style: GoogleFonts.orbitron(color: Colors.white70),
+                  );
+                }
+              },
+              child: Text(
+                'Post',
+                style: GoogleFonts.orbitron(color: Colors.white70),
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -270,13 +368,13 @@ class PostWidget extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: ClipRect(
         child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+          filter: ImageFilter.blur(sigmaX: 6, sigmaY: 6),
           child: Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.2),
+              color: Colors.white.withValues(alpha: 0.2),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.white.withOpacity(0.3)),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -302,9 +400,9 @@ class PostWidget extends StatelessWidget {
                   post.mediaType == 'image'
                       ? Image.file(
                           File(post.mediaPath!),
-                          height: 200,
+                          height: post.mediaHeight,
                           width: double.infinity,
-                          fit: BoxFit.cover,
+                          fit: BoxFit.contain,
                         )
                       : Chewie(
                           controller: ChewieController(
@@ -313,6 +411,7 @@ class PostWidget extends StatelessWidget {
                             )..initialize(),
                             autoPlay: false,
                             looping: false,
+                            aspectRatio: 16 / 9,
                           ),
                         ),
                 ],

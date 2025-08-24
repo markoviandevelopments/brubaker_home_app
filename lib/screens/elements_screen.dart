@@ -8,10 +8,10 @@ import 'dart:math' as math;
 import 'dart:async';
 import 'package:animate_do/animate_do.dart';
 
-const int gridW = 30; // Renamed to lowerCamelCase
+const int gridW = 30;
 
 class ElementsScreen extends StatefulWidget {
-  final Function(int) onGameSelected; // Required for navigation
+  final Function(int) onGameSelected;
 
   const ElementsScreen({super.key, required this.onGameSelected});
 
