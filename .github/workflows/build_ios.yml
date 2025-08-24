@@ -25,17 +25,21 @@ jobs:
 
     - name: Decode certificate
       run: |
-        echo "${{ secrets.IOS_CERTIFICATE_APPSTORE }}" | base64 --decode > appstore.p12 || { echo "Certificate decode failed - check base64 secret"; exit 1; }
+        echo "${{ secrets.IOS_CERTIFICATE_APPSTORE }}" | base64 --decode > appstore.p12 || { echo "Certificate decode failed - check base64 secret in GitHub"; exit 1; }
         ls -l appstore.p12  # Diagnostic: Check file size (should be non-zero, ~3KB)
         file appstore.p12  # Diagnostic: Check file type (should be PKCS#12)
 
+    - name: Check password length
+      run: |
+        echo "Password length (masked): ${{ secrets.P12_PASSWORD | length }}"  # Diagnostic: Check if password is too short (should be 9 for 'Not$erp01')
+
     - name: Test decoded p12 locally
       run: |
-        openssl pkcs12 -in appstore.p12 -info -noout -passin pass:"${{ secrets.P12_PASSWORD }}" || { echo "Decoded .p12 verification failed - wrong password or corrupted file"; exit 1; }
+        openssl pkcs12 -in appstore.p12 -info -noout -passin pass:"${{ secrets.P12_PASSWORD }}" 2>&1 || { echo "Decoded .p12 verification failed - wrong password or corrupted file"; openssl pkcs12 -in appstore.p12 -info -noout -passin pass:"${{ secrets.P12_PASSWORD }}" 2>&1; exit 1; }  # Diagnostic: Full OpenSSL output on failure
 
     - name: Decode provisioning profile
       run: |
-        echo "${{ secrets.PROVISIONING_PROFILE_APPSTORE }}" | base64 --decode > appstore.mobileprovision || { echo "Profile decode failed - check base64 secret"; exit 1; }
+        echo "${{ secrets.PROVISIONING_PROFILE_APPSTORE }}" | base64 --decode > appstore.mobileprovision || { echo "Profile decode failed - check base64 secret in GitHub"; exit 1; }
         ls -l appstore.mobileprovision  # Diagnostic: Check file size
         security cms -D -i appstore.mobileprovision | grep UUID  # Diagnostic: Verify UUID
 
