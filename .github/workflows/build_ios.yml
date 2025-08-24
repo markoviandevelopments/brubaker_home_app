@@ -32,7 +32,7 @@ jobs:
       # Decode and import certificate
       - name: Import Certificate
         run: |
-          echo "${{ secrets.P12_BASE64 }}" | base64 --decode > certificate.p12
+          echo "${{ secrets.IOS_CERTIFICATE_APPSTORE }}" | base64 --decode > certificate.p12
           security create-keychain -p pwd ~/Library/Keychains/app-signing.keychain-db
           security default-keychain -s ~/Library/Keychains/app-signing.keychain-db
           security unlock-keychain -p pwd ~/Library/Keychains/app-signing.keychain-db
@@ -42,7 +42,7 @@ jobs:
       # Decode and install provisioning profile
       - name: Install Provisioning Profile
         run: |
-          echo "${{ secrets.PROVISIONING_PROFILE_BASE64 }}" | base64 --decode > profile.mobileprovision
+          echo "${{ secrets.PROVISIONING_PROFILE_APPSTORE }}" | base64 --decode > profile.mobileprovision
           mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
           cp profile.mobileprovision ~/Library/MobileDevice/Provisioning\ Profiles/"${{ secrets.PROFILE_NAME }}".mobileprovision
 
