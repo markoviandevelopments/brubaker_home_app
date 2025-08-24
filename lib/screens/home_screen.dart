@@ -14,11 +14,11 @@ class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
   @override
-  _HomeScreenState createState() => _HomeScreenState();
+  HomeScreenState createState() => HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
-  int _selectedIndex = 0; // Initialize to LedControlsScreen
+class HomeScreenState extends State<HomeScreen> {
+  int _selectedIndex = 0;
   int _gameScreenIndex =
       0; // Track the current game screen (0 = GamesScreen, 1 = Elements, 2 = ToadJumper, 3 = SocketGame, 4 = CosmicName, 5 = Minesweeper)
   final List<Widget> _mainPages = [
@@ -34,7 +34,6 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    // Initialize game pages with onGameSelected callbacks
     _gamePages = [
       GamesScreen(onGameSelected: _selectGame),
       ElementsScreen(onGameSelected: _selectGame),
@@ -43,14 +42,14 @@ class _HomeScreenState extends State<HomeScreen> {
       CosmicNameScreen(onGameSelected: _selectGame),
       MinesweeperScreen(onGameSelected: _selectGame),
     ];
-    _mainPages[1] = _gamePages[0]; // Set GamesScreen as default for Games tab
+    _mainPages[1] = _gamePages[0];
   }
 
   void _onItemTapped(int index) {
     setState(() {
       _selectedIndex = index;
       if (index != 1) {
-        _gameScreenIndex = 0; // Reset to GamesScreen when leaving Games tab
+        _gameScreenIndex = 0;
       }
     });
   }
@@ -58,8 +57,8 @@ class _HomeScreenState extends State<HomeScreen> {
   void _selectGame(int gameIndex) {
     setState(() {
       if (gameIndex >= 0 && gameIndex < _gamePages.length) {
-        _selectedIndex = 1; // Stay on Games tab
-        _gameScreenIndex = gameIndex; // Select specific game
+        _selectedIndex = 1;
+        _gameScreenIndex = gameIndex;
       }
     });
   }
@@ -69,12 +68,12 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       body: Stack(
         children: [
-          Positioned.fill(child: StarField(opacity: 0.2)),
+          Positioned.fill(child: StarField(opacity: 0.3, offset: 0.0)),
           IndexedStack(
             index: _selectedIndex,
             children: _mainPages.map((page) {
               if (page is GamesScreen) {
-                return _gamePages[_gameScreenIndex]; // Show the selected game
+                return _gamePages[_gameScreenIndex];
               }
               return page;
             }).toList(),
@@ -89,8 +88,8 @@ class _HomeScreenState extends State<HomeScreen> {
           BottomNavigationBarItem(icon: Icon(Icons.favorite), label: ''),
         ],
         currentIndex: _selectedIndex,
-        selectedItemColor: const Color(0xFF00FFD1), // Electric greenish teal
-        unselectedItemColor: const Color(0xFFFF4500), // Red-orange
+        selectedItemColor: const Color(0xFF00FFD1),
+        unselectedItemColor: const Color(0xFFFF4500),
         onTap: _onItemTapped,
         type: BottomNavigationBarType.fixed,
         showSelectedLabels: false,
