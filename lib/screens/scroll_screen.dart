@@ -5,8 +5,8 @@ import 'package:chewie/chewie.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:video_player/video_player.dart';
+import 'package:http/http.dart' as http; // For server communication
 import '../screens/star_field.dart';
 import '../models/post.dart';
 
@@ -25,46 +25,111 @@ class ScrollScreenState extends State<ScrollScreen> {
   @override
   void initState() {
     super.initState();
-    _loadPosts();
+    _loadPostsFromServer();
   }
 
-  Future<void> _loadPosts() async {
-    final prefs = await SharedPreferences.getInstance();
-    final postsJson = prefs.getStringList('posts') ?? [];
-    setState(() {
-      _posts = postsJson
-          .map((jsonStr) => Post.fromJson(jsonDecode(jsonStr)))
-          .toList();
-    });
+  Future<void> _loadPostsFromServer() async {
+    try {
+      final response = await http.get(
+        Uri.parse('http://192.168.1.126:6042/posts'),
+      ); // Local IP
+      if (response.statusCode == 200) {
+        final List<dynamic> postsJson = jsonDecode(response.body);
+        setState(() {
+          _posts = postsJson.map((json) => Post.fromJson(json)).toList();
+        });
+      } else {
+        _scaffoldMessengerKey.currentState?.showSnackBar(
+          SnackBar(
+            content: Text(
+              'Failed to load posts: ${response.statusCode}',
+              style: GoogleFonts.orbitron(color: Colors.white70, fontSize: 14),
+            ),
+            backgroundColor: Colors.black.withValues(alpha: 0.8),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (e) {
+      _scaffoldMessengerKey.currentState?.showSnackBar(
+        SnackBar(
+          content: Text(
+            'Error loading posts: $e',
+            style: GoogleFonts.orbitron(color: Colors.white70, fontSize: 14),
+          ),
+          backgroundColor: Colors.black.withValues(alpha: 0.8),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
   }
 
-  Future<void> _savePosts() async {
-    final prefs = await SharedPreferences.getInstance();
-    final postsJson = _posts.map((post) => jsonEncode(post.toJson())).toList();
-    await prefs.setStringList('posts', postsJson);
+  Future<void> _savePostToServer(Post post) async {
+    try {
+      final response = await http.post(
+        Uri.parse('http://192.168.1.126:6042/posts'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(post.toJson()),
+      );
+      if (response.statusCode != 200 && response.statusCode != 201) {
+        throw Exception('Failed to save post: ${response.statusCode}');
+      }
+      setState(() {
+        _posts.add(post);
+      });
+    } catch (e) {
+      _scaffoldMessengerKey.currentState?.showSnackBar(
+        SnackBar(
+          content: Text(
+            'Error saving post: $e',
+            style: GoogleFonts.orbitron(color: Colors.white70, fontSize: 14),
+          ),
+          backgroundColor: Colors.black.withValues(alpha: 0.8),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
   }
 
   void _deletePost(int index) async {
-    setState(() {
-      _posts.removeAt(index);
-    });
-    await _savePosts();
-    _scaffoldMessengerKey.currentState?.showSnackBar(
-      SnackBar(
-        content: Text(
-          'Post deleted',
-          style: GoogleFonts.orbitron(color: Colors.white70, fontSize: 14),
+    try {
+      final response = await http.delete(
+        Uri.parse('http://192.168.1.126:6042/posts/$index'),
+      );
+      if (response.statusCode == 200) {
+        setState(() {
+          _posts.removeAt(index);
+        });
+      } else {
+        _scaffoldMessengerKey.currentState?.showSnackBar(
+          SnackBar(
+            content: Text(
+              'Failed to delete post: ${response.statusCode}',
+              style: GoogleFonts.orbitron(color: Colors.white70, fontSize: 14),
+            ),
+            backgroundColor: Colors.black.withValues(alpha: 0.8),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (e) {
+      _scaffoldMessengerKey.currentState?.showSnackBar(
+        SnackBar(
+          content: Text(
+            'Error deleting post: $e',
+            style: GoogleFonts.orbitron(color: Colors.white70, fontSize: 14),
+          ),
+          backgroundColor: Colors.black.withValues(alpha: 0.8),
+          behavior: SnackBarBehavior.floating,
         ),
-        backgroundColor: Colors.black.withValues(alpha: 0.8),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      key: _scaffoldMessengerKey, // Assign the key to Scaffold
+      key: _scaffoldMessengerKey,
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
@@ -116,7 +181,7 @@ class ScrollScreenState extends State<ScrollScreen> {
     VideoPlayerController? videoController;
     ChewieController? chewieController;
 
-    void _updateMediaPreview() {
+    void updateMediaPreview() {
       if (mediaFile != null && mediaType == 'video') {
         videoController = VideoPlayerController.file(mediaFile!)
           ..initialize().then((_) {
@@ -253,7 +318,7 @@ class ScrollScreenState extends State<ScrollScreen> {
                               if (picked != null) {
                                 mediaFile = File(picked.path);
                                 mediaType = 'image';
-                                _updateMediaPreview();
+                                updateMediaPreview();
                               }
                             },
                             child: Text(
@@ -283,7 +348,7 @@ class ScrollScreenState extends State<ScrollScreen> {
                               if (picked != null) {
                                 mediaFile = File(picked.path);
                                 mediaType = 'video';
-                                _updateMediaPreview();
+                                updateMediaPreview();
                               }
                             },
                             child: Text(
@@ -318,12 +383,9 @@ class ScrollScreenState extends State<ScrollScreen> {
                     mediaPath: mediaFile?.path,
                     mediaType: mediaType,
                     timestamp: DateTime.now(),
-                    mediaHeight: mediaHeight, // Store the selected height
+                    mediaHeight: mediaHeight,
                   );
-                  setState(() {
-                    _posts.add(newPost);
-                  });
-                  await _savePosts();
+                  await _savePostToServer(newPost);
                   Navigator.pop(context);
                   if (videoController != null) {
                     videoController!.dispose();

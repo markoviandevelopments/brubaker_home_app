@@ -8,7 +8,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:brubaker_homeapp/main.dart'; // Import GuestApp
-import 'package:brubaker_homeapp/theme.dart'; // Corrected import for theme
 
 void main() {
   testWidgets('App launches with GuestApp and HomeScreen', (
