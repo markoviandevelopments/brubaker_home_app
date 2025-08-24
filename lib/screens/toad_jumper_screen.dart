@@ -458,8 +458,9 @@ class ToadJumperGameState extends State<ToadJumperGame>
           } else if (event.logicalKey == LogicalKeyboardKey.arrowRight) {
             setState(() {
               toadX += horizontalSpeed * (1 / 60);
-              if (toadX > screenSize!.width - 60)
+              if (toadX > screenSize!.width - 60) {
                 toadX = screenSize!.width - 60;
+              }
             });
           }
         }
