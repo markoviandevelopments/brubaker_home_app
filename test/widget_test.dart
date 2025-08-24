@@ -7,24 +7,27 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-
-import 'package:brubaker_homeapp/main.dart';
+import 'package:brubaker_homeapp/main.dart'; // Import GuestApp
+import 'package:brubaker_homeapp/theme.dart'; // Corrected import for theme
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+  testWidgets('App launches with GuestApp and HomeScreen', (
+    WidgetTester tester,
+  ) async {
+    // Build our app with the theme and trigger a frame.
+    await tester.pumpWidget(GuestApp());
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+    // Verify that the HomeScreen loads and displays the title 'Toad Jumper'.
+    expect(find.text('Toad Jumper'), findsOneWidget);
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
+    // Verify the bottom navigation bar is present.
+    expect(find.byType(BottomNavigationBar), findsOneWidget);
 
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    // Verify the theme is applied (e.g., check AppBar title style).
+    final appBar = tester.widget<AppBar>(find.byType(AppBar));
+    expect(
+      appBar.titleTextStyle!.fontFamily,
+      equals('Courier'),
+    ); // From theme.dart
   });
 }
