@@ -1,21 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:brubaker_homeapp/screens/star_field.dart';
-import 'dart:io';
 import 'dart:convert';
 import 'dart:ui';
 import 'dart:async';
+import 'dart:io';
 
-class IndianNameScreen extends StatefulWidget {
-  final Function(int) onGameSelected; // Required for navigation
+class CosmicNameScreen extends StatefulWidget {
+  final Function(int) onGameSelected;
 
-  const IndianNameScreen({super.key, required this.onGameSelected});
+  const CosmicNameScreen({super.key, required this.onGameSelected});
 
   @override
-  _IndianNameScreenState createState() => _IndianNameScreenState();
+  CosmicNameScreenState createState() => CosmicNameScreenState();
 }
 
-class _IndianNameScreenState extends State<IndianNameScreen>
+class CosmicNameScreenState extends State<CosmicNameScreen>
     with SingleTickerProviderStateMixin {
   String _epochTime = '';
   String _randomNumber = '';
@@ -213,13 +213,15 @@ class _IndianNameScreenState extends State<IndianNameScreen>
                                       child: Container(
                                         padding: const EdgeInsets.all(12),
                                         decoration: BoxDecoration(
-                                          color: Colors.white.withOpacity(0.2),
+                                          color: Colors.white.withValues(
+                                            alpha: 0.2,
+                                          ),
                                           borderRadius: BorderRadius.circular(
                                             12,
                                           ),
                                           border: Border.all(
-                                            color: Colors.white.withOpacity(
-                                              0.3,
+                                            color: Colors.white.withValues(
+                                              alpha: 0.3,
                                             ),
                                           ),
                                         ),
@@ -246,13 +248,15 @@ class _IndianNameScreenState extends State<IndianNameScreen>
                                       child: Container(
                                         padding: const EdgeInsets.all(16),
                                         decoration: BoxDecoration(
-                                          color: Colors.white.withOpacity(0.2),
+                                          color: Colors.white.withValues(
+                                            alpha: 0.2,
+                                          ),
                                           borderRadius: BorderRadius.circular(
                                             12,
                                           ),
                                           border: Border.all(
-                                            color: Colors.white.withOpacity(
-                                              0.3,
+                                            color: Colors.white.withValues(
+                                              alpha: 0.3,
                                             ),
                                           ),
                                         ),
@@ -316,8 +320,8 @@ class _IndianNameScreenState extends State<IndianNameScreen>
                                     borderRadius: BorderRadius.circular(12),
                                     boxShadow: [
                                       BoxShadow(
-                                        color: Colors.white.withOpacity(
-                                          0.4 * _fadeAnimation.value,
+                                        color: Colors.white.withValues(
+                                          alpha: 0.4 * _fadeAnimation.value,
                                         ),
                                         blurRadius: 10 * _fadeAnimation.value,
                                         spreadRadius: 2 * _fadeAnimation.value,
@@ -326,13 +330,15 @@ class _IndianNameScreenState extends State<IndianNameScreen>
                                   ),
                                   child: ElevatedButton(
                                     style: ElevatedButton.styleFrom(
-                                      backgroundColor: Colors.white.withOpacity(
-                                        0.2,
+                                      backgroundColor: Colors.white.withValues(
+                                        alpha: 0.2,
                                       ),
                                       shape: RoundedRectangleBorder(
                                         borderRadius: BorderRadius.circular(12),
                                         side: BorderSide(
-                                          color: Colors.white.withOpacity(0.3),
+                                          color: Colors.white.withValues(
+                                            alpha: 0.3,
+                                          ),
                                         ),
                                       ),
                                       padding: const EdgeInsets.symmetric(
@@ -360,8 +366,8 @@ class _IndianNameScreenState extends State<IndianNameScreen>
                                     borderRadius: BorderRadius.circular(12),
                                     boxShadow: [
                                       BoxShadow(
-                                        color: Colors.white.withOpacity(
-                                          0.4 * _fadeAnimation.value,
+                                        color: Colors.white.withValues(
+                                          alpha: 0.4 * _fadeAnimation.value,
                                         ),
                                         blurRadius: 10 * _fadeAnimation.value,
                                         spreadRadius: 2 * _fadeAnimation.value,
@@ -370,13 +376,15 @@ class _IndianNameScreenState extends State<IndianNameScreen>
                                   ),
                                   child: ElevatedButton(
                                     style: ElevatedButton.styleFrom(
-                                      backgroundColor: Colors.white.withOpacity(
-                                        0.2,
+                                      backgroundColor: Colors.white.withValues(
+                                        alpha: 0.2,
                                       ),
                                       shape: RoundedRectangleBorder(
                                         borderRadius: BorderRadius.circular(12),
                                         side: BorderSide(
-                                          color: Colors.white.withOpacity(0.3),
+                                          color: Colors.white.withValues(
+                                            alpha: 0.3,
+                                          ),
                                         ),
                                       ),
                                       padding: const EdgeInsets.symmetric(

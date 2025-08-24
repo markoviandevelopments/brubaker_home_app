@@ -135,7 +135,7 @@ class _GamesScreenState extends State<GamesScreen>
                     const SizedBox(height: 20),
                     _buildGameButton(
                       context,
-                      title: 'Silly Name',
+                      title: 'Cosmic Name',
                       gradient: LinearGradient(
                         colors: [
                           Color(0xFFFF4500),

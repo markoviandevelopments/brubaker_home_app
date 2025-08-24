@@ -4,7 +4,7 @@ import 'package:brubaker_homeapp/screens/scroll_screen.dart';
 import 'package:brubaker_homeapp/screens/info_screen.dart';
 import 'package:brubaker_homeapp/screens/games_screen.dart';
 import 'package:brubaker_homeapp/screens/socket_game_screen.dart';
-import 'package:brubaker_homeapp/screens/indian_name_screen.dart';
+import 'package:brubaker_homeapp/screens/cosmic_name_screen.dart';
 import 'package:brubaker_homeapp/screens/minesweeper_screen.dart';
 import 'package:brubaker_homeapp/screens/toad_jumper_screen.dart';
 import 'package:brubaker_homeapp/screens/elements_screen.dart';
@@ -20,7 +20,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0; // Initialize to LedControlsScreen
   int _gameScreenIndex =
-      0; // Track the current game screen (0 = GamesScreen, 1 = Elements, 2 = ToadJumper, 3 = SocketGame, 4 = IndianName, 5 = Minesweeper)
+      0; // Track the current game screen (0 = GamesScreen, 1 = Elements, 2 = ToadJumper, 3 = SocketGame, 4 = CosmicName, 5 = Minesweeper)
   final List<Widget> _mainPages = [
     LedControlsScreen(onGameSelected: (index) {}), // Placeholder
     GamesScreen(
@@ -40,7 +40,7 @@ class _HomeScreenState extends State<HomeScreen> {
       ElementsScreen(onGameSelected: _selectGame),
       ToadJumperScreen(onGameSelected: _selectGame),
       SocketGameScreen(onGameSelected: _selectGame),
-      IndianNameScreen(onGameSelected: _selectGame),
+      CosmicNameScreen(onGameSelected: _selectGame),
       MinesweeperScreen(onGameSelected: _selectGame),
     ];
     _mainPages[1] = _gamePages[0]; // Set GamesScreen as default for Games tab
