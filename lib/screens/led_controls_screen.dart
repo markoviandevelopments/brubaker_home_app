@@ -4,7 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:brubaker_homeapp/screens/star_field.dart';
 import 'dart:convert';
 import 'dart:ui';
-import 'dart:io'; // Added for SocketException handling
+import 'dart:async';
 
 class LedControlsScreen extends StatefulWidget {
   final Function(int)? onGameSelected;
@@ -12,10 +12,10 @@ class LedControlsScreen extends StatefulWidget {
   const LedControlsScreen({super.key, this.onGameSelected});
 
   @override
-  _LedControlsScreenState createState() => _LedControlsScreenState();
+  LedControlsScreenState createState() => LedControlsScreenState();
 }
 
-class _LedControlsScreenState extends State<LedControlsScreen>
+class LedControlsScreenState extends State<LedControlsScreen>
     with SingleTickerProviderStateMixin {
   static const String localServerUrl = 'http://192.168.1.126:5000';
   static const String publicServerUrl = 'http://108.254.1.184:5000';
@@ -200,7 +200,7 @@ class _LedControlsScreenState extends State<LedControlsScreen>
           message,
           style: GoogleFonts.orbitron(color: Colors.white70, fontSize: 14),
         ),
-        backgroundColor: Colors.black.withOpacity(0.8),
+        backgroundColor: Colors.black.withValues(alpha: 0.8),
         behavior: SnackBarBehavior.floating,
       ),
     );
@@ -216,16 +216,19 @@ class _LedControlsScreenState extends State<LedControlsScreen>
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [Color(0xFF0A0A1E), Color(0xFF1A1A3A)],
+          colors: [
+            Color(0xFF0A0A1E).withValues(alpha: 0.9),
+            Color(0xFF1A1A3A).withValues(alpha: 0.7),
+          ],
         ),
       ),
       child: Stack(
         children: [
-          Positioned.fill(child: StarField(opacity: 0.2)),
+          Positioned.fill(child: StarField(opacity: 0.3)),
           SafeArea(
             child: Column(
               children: [
@@ -264,10 +267,12 @@ class _LedControlsScreenState extends State<LedControlsScreen>
                                 child: Container(
                                   padding: const EdgeInsets.all(12),
                                   decoration: BoxDecoration(
-                                    color: Colors.white.withOpacity(0.2),
+                                    color: Colors.white.withValues(alpha: 0.2),
                                     borderRadius: BorderRadius.circular(12),
                                     border: Border.all(
-                                      color: Colors.white.withOpacity(0.3),
+                                      color: Colors.white.withValues(
+                                        alpha: 0.3,
+                                      ),
                                     ),
                                   ),
                                   child: Row(
@@ -282,8 +287,9 @@ class _LedControlsScreenState extends State<LedControlsScreen>
                                               boxShadow: [
                                                 BoxShadow(
                                                   color: Colors.white
-                                                      .withOpacity(
-                                                        0.4 *
+                                                      .withValues(
+                                                        alpha:
+                                                            0.4 *
                                                             _glowAnimation
                                                                 .value,
                                                       ),
@@ -341,10 +347,14 @@ class _LedControlsScreenState extends State<LedControlsScreen>
                                     return Container(
                                       padding: const EdgeInsets.all(12),
                                       decoration: BoxDecoration(
-                                        color: Colors.white.withOpacity(0.2),
+                                        color: Colors.white.withValues(
+                                          alpha: 0.2,
+                                        ),
                                         borderRadius: BorderRadius.circular(12),
                                         border: Border.all(
-                                          color: Colors.white.withOpacity(0.3),
+                                          color: Colors.white.withValues(
+                                            alpha: 0.3,
+                                          ),
                                         ),
                                       ),
                                       child: Text(
@@ -389,21 +399,22 @@ class _LedControlsScreenState extends State<LedControlsScreen>
                                         builder: (context, child) {
                                           return Container(
                                             decoration: BoxDecoration(
-                                              color: Colors.white.withOpacity(
-                                                0.2,
+                                              color: Colors.white.withValues(
+                                                alpha: 0.2,
                                               ),
                                               borderRadius:
                                                   BorderRadius.circular(12),
                                               border: Border.all(
                                                 color:
                                                     mode['name'] == currentMode
-                                                    ? Colors.white.withOpacity(
-                                                        0.8 *
+                                                    ? Colors.white.withValues(
+                                                        alpha:
+                                                            0.8 *
                                                             _glowAnimation
                                                                 .value,
                                                       )
-                                                    : Colors.white.withOpacity(
-                                                        0.3,
+                                                    : Colors.white.withValues(
+                                                        alpha: 0.3,
                                                       ),
                                               ),
                                               boxShadow: [
@@ -411,14 +422,15 @@ class _LedControlsScreenState extends State<LedControlsScreen>
                                                   color:
                                                       mode['name'] ==
                                                           currentMode
-                                                      ? Colors.white
-                                                            .withOpacity(
+                                                      ? Colors.white.withValues(
+                                                          alpha:
                                                               0.4 *
-                                                                  _glowAnimation
-                                                                      .value,
-                                                            )
-                                                      : Colors.black
-                                                            .withOpacity(0.3),
+                                                              _glowAnimation
+                                                                  .value,
+                                                        )
+                                                      : Colors.black.withValues(
+                                                          alpha: 0.3,
+                                                        ),
                                                   blurRadius:
                                                       10 * _glowAnimation.value,
                                                   spreadRadius:
