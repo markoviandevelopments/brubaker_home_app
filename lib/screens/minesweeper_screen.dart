@@ -170,7 +170,7 @@ class _MinesweeperScreenState extends State<MinesweeperScreen> {
   void _sendAction(Map<String, dynamic> action) {
     if (_socket != null && _isConnected && mounted) {
       try {
-        final actionJson = jsonEncode(action) + '\n';
+        final actionJson = '${jsonEncode(action)}\n';
         _socket!.write(actionJson);
         print('Sent action: $actionJson');
       } catch (e, stackTrace) {

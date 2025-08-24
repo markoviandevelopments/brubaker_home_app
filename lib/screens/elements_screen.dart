@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:flutter/scheduler.dart';
 import 'package:brubaker_homeapp/screens/star_field.dart';
 import 'dart:io';
 import 'dart:convert';
@@ -28,7 +27,7 @@ class _ElementsScreenState extends State<ElementsScreen>
     GRID_W,
     (_) => List.generate(GRID_W, (_) => 'nothing'),
   );
-  List<List<bool>> _candleLit = List.generate(
+  final List<List<bool>> _candleLit = List.generate(
     GRID_W,
     (_) => List.generate(GRID_W, (_) => false),
   );
@@ -317,7 +316,7 @@ class _ElementsScreenState extends State<ElementsScreen>
   void _sendAction(Map<String, dynamic> action) {
     if (_socket != null && action['element'] != null && _isConnected) {
       try {
-        final actionJson = jsonEncode(action) + '\n';
+        final actionJson = '${jsonEncode(action)}\n';
         _socket!.write(actionJson);
         _showPlacementFeedback(action['x'], action['y']);
       } catch (e) {

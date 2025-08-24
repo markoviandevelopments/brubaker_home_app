@@ -21,21 +21,21 @@ class _SocketGameScreenState extends State<SocketGameScreen>
   int currentCol = 0;
   int score = 0;
   int level = 1;
-  int movesLeft = 20; // For Level 2
-  int timeLeft = 30; // For Level 3 (in seconds)
+  int cycle = 0; // CHANGED: Added cycle counter for infinite play
+  int movesLeft = 100;
+  int timeLeft = 35; // CHANGED: Reduced from 45 to 35 for Level 3
   final Random random = Random();
   late List<List<bool>> hasCollectible;
-  late List<List<bool>>
-  hasObstacle; // For walls (Level 2) and hazards (Level 3)
+  late List<List<bool>> hasObstacle;
   late List<List<Color>> gridColors;
-  int? targetRow, targetCol; // For Level 3 target
+  int? targetRow, targetCol;
   Timer? _moveTimer;
-  Timer? _hazardTimer; // For moving hazards in Level 3
-  Timer? _countdownTimer; // For Level 3 timer
+  Timer? _hazardTimer;
+  Timer? _countdownTimer;
   bool isGameOver = false;
   Offset _joystickDelta = Offset.zero;
   final double _joystickRadius = 60.0;
-  final double _moveThreshold = 30.0;
+  final double _moveThreshold = 40.0; // CHANGED: Increased from 30.0 to 40.0
   Direction _currentMoveDirection = Direction.none;
 
   @override
@@ -58,18 +58,22 @@ class _SocketGameScreenState extends State<SocketGameScreen>
       );
       currentRow = 0;
       currentCol = 0;
-      movesLeft = level == 2 ? 20 : -1; // Moves only for Level 2
-      timeLeft = level == 3 ? 30 : -1; // Timer only for Level 3
+      movesLeft = level == 2
+          ? (30 - cycle * 2).clamp(15, 30)
+          : -1; // CHANGED: Scale moves with cycle
+      timeLeft = level == 3
+          ? (35 - cycle * 2).clamp(20, 35)
+          : -1; // CHANGED: Scale time with cycle
       isGameOver = false;
 
       if (level == 1) {
-        _spawnCollectibles(3); // Spawn 3 stars
+        _spawnCollectibles(3 + cycle); // CHANGED: Scale stars with cycle
       } else if (level == 2) {
-        _spawnCollectibles(2); // Spawn 2 gems
-        _spawnObstacles(5); // Spawn 5 walls
+        _spawnCollectibles(3 + cycle); // CHANGED: Scale gems with cycle
+        _spawnObstacles(3 + cycle); // CHANGED: Scale walls with cycle
       } else if (level == 3) {
-        _spawnTarget(); // Spawn target tile
-        _spawnObstacles(3); // Spawn 3 moving hazards
+        _spawnTarget();
+        _spawnObstacles(3 + cycle); // CHANGED: Increased to 3 + cycle hazards
         _startHazardTimer();
         _startCountdownTimer();
       }
@@ -105,7 +109,8 @@ class _SocketGameScreenState extends State<SocketGameScreen>
   }
 
   void _spawnObstacles(int count) {
-    for (int i = 0; i < count; i++) {
+    for (int i = 0; i < count.clamp(0, 20); i++) {
+      // CHANGED: Cap obstacles to prevent grid lock
       int x = random.nextInt(10);
       int y = random.nextInt(10);
       if (!hasCollectible[x][y] &&
@@ -127,7 +132,8 @@ class _SocketGameScreenState extends State<SocketGameScreen>
 
   void _startHazardTimer() {
     _hazardTimer?.cancel();
-    _hazardTimer = Timer.periodic(const Duration(seconds: 2), (timer) {
+    _hazardTimer = Timer.periodic(const Duration(milliseconds: 2500), (timer) {
+      // CHANGED: Set to 2.5 seconds
       if (!mounted) {
         timer.cancel();
         return;
@@ -198,9 +204,7 @@ class _SocketGameScreenState extends State<SocketGameScreen>
         content: Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(
-              0.3,
-            ), // Increased opacity for clarity
+            color: Colors.white.withOpacity(0.3),
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: Colors.white.withOpacity(0.3)),
           ),
@@ -217,7 +221,7 @@ class _SocketGameScreenState extends State<SocketGameScreen>
               ),
               const SizedBox(height: 16),
               Text(
-                'Score: $score\nLevel: $level',
+                'Score: $score\nLevel: $level\nCycle: $cycle', // CHANGED: Show cycle
                 style: GoogleFonts.orbitron(
                   color: Colors.white70,
                   fontSize: 18,
@@ -235,6 +239,7 @@ class _SocketGameScreenState extends State<SocketGameScreen>
                         setState(() {
                           score = 0;
                           level = 1;
+                          cycle = 0; // CHANGED: Reset cycle
                           _initializeLevel();
                         });
                       }
@@ -257,7 +262,7 @@ class _SocketGameScreenState extends State<SocketGameScreen>
                   ElevatedButton(
                     onPressed: () {
                       Navigator.pop(context);
-                      widget.onGameSelected?.call(0); // Return to GamesScreen
+                      widget.onGameSelected?.call(0);
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.white.withOpacity(0.2),
@@ -306,7 +311,6 @@ class _SocketGameScreenState extends State<SocketGameScreen>
           return;
       }
 
-      // Check for obstacles
       if (hasObstacle[newRow][newCol]) return;
 
       currentRow = newRow;
@@ -325,29 +329,28 @@ class _SocketGameScreenState extends State<SocketGameScreen>
         if (hasCollectible[currentRow][currentCol]) {
           score++;
           hasCollectible[currentRow][currentCol] = false;
-          _spawnCollectibles(level == 1 ? 1 : 2);
+          _spawnCollectibles(level == 1 ? 1 : 3 + cycle); // CHANGED: Scale gems
         }
       } else if (level == 3 &&
           currentRow == targetRow &&
           currentCol == targetCol) {
         score += 10;
-        _initializeLevel(); // Restart Level 3
+        _initializeLevel();
       }
 
-      // Level up thresholds: 5, 15, 30
+      // CHANGED: Adjusted score thresholds with cycle scaling
       if (score >=
           (level == 1
-              ? 5
+              ? 5 + cycle * 2
               : level == 2
-              ? 15
-              : 30)) {
+              ? 10 + cycle * 3
+              : 30 + cycle * 5)) {
         level++;
         if (level > 3) {
-          isGameOver = true;
-          _showGameOverDialog();
-        } else {
-          _initializeLevel();
+          level = 1; // CHANGED: Loop back to Level 1
+          cycle++; // CHANGED: Increment cycle
         }
+        _initializeLevel();
       }
     });
   }
@@ -390,8 +393,7 @@ class _SocketGameScreenState extends State<SocketGameScreen>
           centerTitle: true,
           leading: IconButton(
             icon: const Icon(Icons.arrow_back, color: Colors.white70),
-            onPressed: () =>
-                widget.onGameSelected?.call(0), // Return to GamesScreen
+            onPressed: () => widget.onGameSelected?.call(0),
           ),
         ),
         body: Container(
@@ -418,9 +420,7 @@ class _SocketGameScreenState extends State<SocketGameScreen>
                             horizontal: 24,
                           ),
                           decoration: BoxDecoration(
-                            color: Colors.black.withOpacity(
-                              0.4,
-                            ), // Increased opacity
+                            color: Colors.black.withOpacity(0.4),
                             border: Border.all(
                               color: Colors.white.withOpacity(0.3),
                             ),
@@ -435,10 +435,10 @@ class _SocketGameScreenState extends State<SocketGameScreen>
                           ),
                           child: Text(
                             level == 1
-                                ? 'Level $level: Collect Stars\nScore: $score'
+                                ? 'Level $level (Cycle $cycle): Collect Stars\nScore: $score'
                                 : level == 2
-                                ? 'Level $level: Collect Gems\nScore: $score\nMoves: $movesLeft'
-                                : 'Level $level: Reach Target\nScore: $score\nTime: $timeLeft s',
+                                ? 'Level $level (Cycle $cycle): Collect Gems\nScore: $score\nMoves: $movesLeft'
+                                : 'Level $level (Cycle $cycle): Reach Target\nScore: $score\nTime: $timeLeft s',
                             style: GoogleFonts.orbitron(
                               fontSize: 20,
                               fontWeight: FontWeight.bold,
@@ -463,9 +463,7 @@ class _SocketGameScreenState extends State<SocketGameScreen>
                               height: maxSize,
                               child: Container(
                                 decoration: BoxDecoration(
-                                  color: Colors.black.withOpacity(
-                                    0.5,
-                                  ), // Increased opacity
+                                  color: Colors.black.withOpacity(0.5),
                                   border: Border.all(
                                     color: Colors.white.withOpacity(0.3),
                                   ),
@@ -510,16 +508,10 @@ class _SocketGameScreenState extends State<SocketGameScreen>
                                                   milliseconds: 1000,
                                                 ),
                                                 child: Transform.scale(
-                                                  scale:
-                                                      1.0, // Reduced scale for clarity
+                                                  scale: 1.0,
                                                   child: Image.asset(
                                                     'assets/cat.png',
                                                     fit: BoxFit.contain,
-                                                    color: const Color(
-                                                      0xFF00FFFF,
-                                                    ).withOpacity(0.9),
-                                                    colorBlendMode:
-                                                        BlendMode.modulate,
                                                   ),
                                                 ),
                                               )
@@ -632,7 +624,9 @@ class _SocketGameScreenState extends State<SocketGameScreen>
                       if (newDirection != Direction.none) {
                         _moveInDirection(newDirection);
                         _moveTimer = Timer.periodic(
-                          const Duration(milliseconds: 200),
+                          const Duration(
+                            milliseconds: 300,
+                          ), // CHANGED: Increased to 300ms
                           (timer) {
                             if (!mounted) {
                               timer.cancel();
@@ -656,7 +650,7 @@ class _SocketGameScreenState extends State<SocketGameScreen>
                     height: _joystickRadius * 2,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: Colors.black.withOpacity(0.3), // Increased opacity
+                      color: Colors.black.withOpacity(0.3),
                       border: Border.all(
                         color: const Color(0xFF00FFFF).withOpacity(0.5),
                         width: 2,
@@ -673,16 +667,20 @@ class _SocketGameScreenState extends State<SocketGameScreen>
                       alignment: Alignment.center,
                       children: [
                         Positioned(
-                          left: _joystickRadius + _joystickDelta.dx - 15,
-                          top: _joystickRadius + _joystickDelta.dy - 15,
+                          left:
+                              _joystickRadius +
+                              _joystickDelta.dx -
+                              17.5, // CHANGED: Adjusted for larger circle
+                          top:
+                              _joystickRadius +
+                              _joystickDelta.dy -
+                              17.5, // CHANGED: Adjusted for larger circle
                           child: Container(
-                            width: 30,
-                            height: 30,
+                            width: 35, // CHANGED: Increased from 30 to 35
+                            height: 35, // CHANGED: Increased from 30 to 35
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
-                              color: Colors.white.withOpacity(
-                                0.3,
-                              ), // Increased opacity
+                              color: Colors.white.withOpacity(0.3),
                               boxShadow: [
                                 BoxShadow(
                                   color: const Color(
@@ -721,7 +719,7 @@ class _NebulaPainter extends CustomPainter {
     final paint = Paint()
       ..shader = LinearGradient(
         colors: [
-          Colors.purple.withOpacity(0.3), // Increased opacity for clarity
+          Colors.purple.withOpacity(0.3),
           Colors.blue.withOpacity(0.2),
           Colors.transparent,
         ],
@@ -738,7 +736,7 @@ class _NebulaPainter extends CustomPainter {
     canvas.drawCircle(
       Offset(size.width * 0.7, size.height * 0.7),
       size.width * 0.4,
-      paint..color = Colors.purple.withOpacity(0.25), // Increased opacity
+      paint..color = Colors.purple.withOpacity(0.25),
     );
   }
 
