@@ -8,7 +8,7 @@ import 'dart:math' as math;
 import 'dart:async';
 import 'package:animate_do/animate_do.dart';
 
-const int GRID_W = 30;
+const int gridW = 30; // Renamed to lowerCamelCase
 
 class ElementsScreen extends StatefulWidget {
   final Function(int) onGameSelected; // Required for navigation
@@ -16,20 +16,20 @@ class ElementsScreen extends StatefulWidget {
   const ElementsScreen({super.key, required this.onGameSelected});
 
   @override
-  _ElementsScreenState createState() => _ElementsScreenState();
+  ElementsScreenState createState() => ElementsScreenState();
 }
 
-class _ElementsScreenState extends State<ElementsScreen>
+class ElementsScreenState extends State<ElementsScreen>
     with SingleTickerProviderStateMixin {
   Socket? _socket;
   StreamSubscription<List<int>>? _subscription;
   List<List<String>> _grid = List.generate(
-    GRID_W,
-    (_) => List.generate(GRID_W, (_) => 'nothing'),
+    gridW,
+    (_) => List.generate(gridW, (_) => 'nothing'),
   );
   final List<List<bool>> _candleLit = List.generate(
-    GRID_W,
-    (_) => List.generate(GRID_W, (_) => false),
+    gridW,
+    (_) => List.generate(gridW, (_) => false),
   );
   String _errorMessage = '';
   bool _isLoading = false;
@@ -185,10 +185,10 @@ class _ElementsScreenState extends State<ElementsScreen>
                             .toList(),
                       )
                       .toList();
-                  if (newGrid.length == GRID_W &&
-                      newGrid.every((row) => row.length == GRID_W)) {
-                    for (int y = 0; y < GRID_W; y++) {
-                      for (int x = 0; x < GRID_W; x++) {
+                  if (newGrid.length == gridW &&
+                      newGrid.every((row) => row.length == gridW)) {
+                    for (int y = 0; y < gridW; y++) {
+                      for (int x = 0; x < gridW; x++) {
                         if (newGrid[y][x] == 'candle') {
                           _candleLit[y][x] = math.Random().nextDouble() < 0.1;
                         } else {
@@ -269,8 +269,8 @@ class _ElementsScreenState extends State<ElementsScreen>
 
   List<List<String>> _createFallbackGrid() {
     final grid = List.generate(
-      GRID_W,
-      (_) => List.generate(GRID_W, (_) => 'nothing'),
+      gridW,
+      (_) => List.generate(gridW, (_) => 'nothing'),
     );
     for (int y = 10; y < 20; y++) {
       for (int x = 10; x < 20; x++) {
@@ -281,36 +281,6 @@ class _ElementsScreenState extends State<ElementsScreen>
       }
     }
     return grid;
-  }
-
-  void _showErrorSnackBar(String message) {
-    if (!mounted) return;
-    setState(() {
-      _errorMessage = message;
-      _isLoading = false;
-    });
-    final scaffoldMessenger = ScaffoldMessenger.maybeOf(context);
-    if (scaffoldMessenger != null) {
-      scaffoldMessenger.showSnackBar(
-        SnackBar(
-          content: Text(
-            message,
-            style: GoogleFonts.orbitron(color: Colors.white70),
-          ),
-          backgroundColor: const Color(0xFFFF4500).withOpacity(0.8),
-          action: SnackBarAction(
-            label: 'Retry',
-            textColor: Colors.white70,
-            onPressed: () {
-              if (mounted) {
-                setState(() => _retryAttempts = 0);
-                _connectToServer();
-              }
-            },
-          ),
-        ),
-      );
-    }
   }
 
   void _sendAction(Map<String, dynamic> action) {
@@ -342,11 +312,11 @@ class _ElementsScreenState extends State<ElementsScreen>
       case 'up':
         return row > 0 && _grid[row - 1][col] == 'water';
       case 'down':
-        return row < GRID_W - 1 && _grid[row + 1][col] == 'water';
+        return row < gridW - 1 && _grid[row + 1][col] == 'water';
       case 'left':
         return col > 0 && _grid[row][col - 1] == 'water';
       case 'right':
-        return col < GRID_W - 1 && _grid[row][col + 1] == 'water';
+        return col < gridW - 1 && _grid[row][col + 1] == 'water';
       default:
         return false;
     }
@@ -365,7 +335,7 @@ class _ElementsScreenState extends State<ElementsScreen>
             BoxShadow(
               color: const Color(
                 0xFF00FFD1,
-              ).withOpacity(0.3 * _glowAnimation.value),
+              ).withValues(alpha: 0.3 * _glowAnimation.value),
               blurRadius: 6,
               spreadRadius: 2,
             ),
@@ -379,7 +349,7 @@ class _ElementsScreenState extends State<ElementsScreen>
               child: Container(
                 width: 1,
                 height: 1,
-                color: const Color(0xFFD2B48C).withOpacity(0.5),
+                color: const Color(0xFFD2B48C).withValues(alpha: 0.5),
               ),
             );
           }).toList(),
@@ -387,8 +357,8 @@ class _ElementsScreenState extends State<ElementsScreen>
         break;
       case 'water':
         List<Color> waterColors = [
-          const Color(0xFF00FFD1).withOpacity(0.8),
-          const Color(0xFF1A4A8A),
+          const Color(0xFF00FFD1).withValues(alpha: 0.8),
+          const Color(0xFF1A4A8A).withValues(alpha: 0.8),
         ];
         Gradient gradient;
         if (_isWaterAdjacent(row, col, 'left') &&
@@ -414,7 +384,7 @@ class _ElementsScreenState extends State<ElementsScreen>
             BoxShadow(
               color: const Color(
                 0xFF00FFD1,
-              ).withOpacity(0.4 * _glowAnimation.value),
+              ).withValues(alpha: 0.4 * _glowAnimation.value),
               blurRadius: 8,
               spreadRadius: 2,
             ),
@@ -427,7 +397,9 @@ class _ElementsScreenState extends State<ElementsScreen>
               child: Container(
                 height: 2,
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.2 * _glowAnimation.value),
+                  color: Colors.white.withValues(
+                    alpha: 0.2 * _glowAnimation.value,
+                  ),
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -440,7 +412,7 @@ class _ElementsScreenState extends State<ElementsScreen>
           color: const Color(0xFF646464),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.3),
+              color: Colors.black.withValues(alpha: 0.3),
               blurRadius: 4,
               spreadRadius: 1,
               offset: const Offset(2, 2),
@@ -448,7 +420,7 @@ class _ElementsScreenState extends State<ElementsScreen>
             BoxShadow(
               color: const Color(
                 0xFF00FFD1,
-              ).withOpacity(0.2 * _glowAnimation.value),
+              ).withValues(alpha: 0.2 * _glowAnimation.value),
               blurRadius: 6,
               spreadRadius: 2,
             ),
@@ -472,19 +444,23 @@ class _ElementsScreenState extends State<ElementsScreen>
         break;
       case 'cloud':
         decoration = BoxDecoration(
-          gradient: RadialGradient(
+          gradient: SweepGradient(
             colors: [
-              const Color(0xFFADD8E6).withOpacity(0.7 * _glowAnimation.value),
-              Colors.white.withOpacity(0.5 * _glowAnimation.value),
+              const Color(
+                0xFFADD8E6,
+              ).withValues(alpha: 0.6 * _glowAnimation.value),
+              Colors.white.withValues(alpha: 0.3 * _glowAnimation.value),
             ],
-            radius: 0.8,
+            startAngle: 0,
+            endAngle: 2 * math.pi,
+            tileMode: TileMode.mirror,
           ),
           boxShadow: [
             BoxShadow(
               color: const Color(
                 0xFF00FFD1,
-              ).withOpacity(0.3 * _glowAnimation.value),
-              blurRadius: 6,
+              ).withValues(alpha: 0.3 * _glowAnimation.value),
+              blurRadius: 8,
               spreadRadius: 2,
             ),
           ],
@@ -498,7 +474,9 @@ class _ElementsScreenState extends State<ElementsScreen>
                 width: 8,
                 height: 8,
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.4),
+                  color: Colors.white.withValues(
+                    alpha: 0.4 * _glowAnimation.value,
+                  ),
                   shape: BoxShape.circle,
                 ),
               ),
@@ -510,7 +488,9 @@ class _ElementsScreenState extends State<ElementsScreen>
                 width: 6,
                 height: 6,
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.3),
+                  color: Colors.white.withValues(
+                    alpha: 0.2 * _glowAnimation.value,
+                  ),
                   shape: BoxShape.circle,
                 ),
               ),
@@ -520,20 +500,26 @@ class _ElementsScreenState extends State<ElementsScreen>
         break;
       case 'gas':
         decoration = BoxDecoration(
-          gradient: RadialGradient(
+          gradient: SweepGradient(
             colors: [
-              const Color(0xFFF50B94).withOpacity(0.8),
-              const Color(0xFF8B008B),
+              const Color(
+                0xFFF50B94,
+              ).withValues(alpha: 0.7 * _glowAnimation.value),
+              const Color(
+                0xFF8B008B,
+              ).withValues(alpha: 0.4 * _glowAnimation.value),
             ],
-            radius: 0.6,
+            startAngle: -math.pi / 2,
+            endAngle: 3 * math.pi / 2,
+            tileMode: TileMode.repeated,
           ),
           boxShadow: [
             BoxShadow(
               color: const Color(
                 0xFF00FFD1,
-              ).withOpacity(0.4 * _glowAnimation.value),
-              blurRadius: 8,
-              spreadRadius: 2,
+              ).withValues(alpha: 0.5 * _glowAnimation.value),
+              blurRadius: 10,
+              spreadRadius: 3,
             ),
           ],
         );
@@ -543,9 +529,11 @@ class _ElementsScreenState extends State<ElementsScreen>
               left: offset.dx,
               top: offset.dy,
               child: Container(
-                width: 1,
-                height: 1,
-                color: Colors.white.withOpacity(0.6 * _glowAnimation.value),
+                width: 2,
+                height: 2,
+                color: Colors.white.withValues(
+                  alpha: 0.7 * _glowAnimation.value,
+                ),
               ),
             );
           }).toList(),
@@ -556,7 +544,7 @@ class _ElementsScreenState extends State<ElementsScreen>
           color: const Color(0xFF1E0000),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.5),
+              color: Colors.black.withValues(alpha: 0.5),
               blurRadius: 10,
               spreadRadius: 2,
             ),
@@ -571,7 +559,7 @@ class _ElementsScreenState extends State<ElementsScreen>
             BoxShadow(
               color: const Color(
                 0xFF00FFD1,
-              ).withOpacity(0.4 * _glowAnimation.value),
+              ).withValues(alpha: 0.4 * _glowAnimation.value),
               blurRadius: 8,
               spreadRadius: 2,
             ),
@@ -589,7 +577,7 @@ class _ElementsScreenState extends State<ElementsScreen>
             BoxShadow(
               color: const Color(
                 0xFFFF4500,
-              ).withOpacity(0.5 * _glowAnimation.value),
+              ).withValues(alpha: 0.5 * _glowAnimation.value),
               blurRadius: 10,
               spreadRadius: 3,
             ),
@@ -602,7 +590,7 @@ class _ElementsScreenState extends State<ElementsScreen>
               child: ClipPath(
                 clipper: FlameClipper(),
                 child: Container(
-                  color: const Color(0xFFFFD700).withOpacity(0.6),
+                  color: const Color(0xFFFFD700).withValues(alpha: 0.6),
                   height: 12,
                   width: 8,
                 ),
@@ -618,7 +606,7 @@ class _ElementsScreenState extends State<ElementsScreen>
             BoxShadow(
               color: const Color(
                 0xFF00FFD1,
-              ).withOpacity(0.3 * _glowAnimation.value),
+              ).withValues(alpha: 0.3 * _glowAnimation.value),
               blurRadius: 6,
               spreadRadius: 2,
             ),
@@ -635,7 +623,7 @@ class _ElementsScreenState extends State<ElementsScreen>
             BoxShadow(
               color: const Color(
                 0xFF00FFD1,
-              ).withOpacity(0.4 * _glowAnimation.value),
+              ).withValues(alpha: 0.4 * _glowAnimation.value),
               blurRadius: 8,
               spreadRadius: 2,
             ),
@@ -669,7 +657,7 @@ class _ElementsScreenState extends State<ElementsScreen>
             BoxShadow(
               color: const Color(
                 0xFF00FFD1,
-              ).withOpacity(0.4 * _glowAnimation.value),
+              ).withValues(alpha: 0.4 * _glowAnimation.value),
               blurRadius: 8,
               spreadRadius: 2,
             ),
@@ -693,10 +681,10 @@ class _ElementsScreenState extends State<ElementsScreen>
               color: _candleLit[row][col]
                   ? const Color(
                       0xFFFF4500,
-                    ).withOpacity(0.5 * _glowAnimation.value)
+                    ).withValues(alpha: 0.5 * _glowAnimation.value)
                   : const Color(
                       0xFF00FFD1,
-                    ).withOpacity(0.3 * _glowAnimation.value),
+                    ).withValues(alpha: 0.3 * _glowAnimation.value),
               blurRadius: 8,
               spreadRadius: 2,
             ),
@@ -722,7 +710,7 @@ class _ElementsScreenState extends State<ElementsScreen>
                     shape: BoxShape.circle,
                     boxShadow: [
                       BoxShadow(
-                        color: const Color(0xFFFFD700).withOpacity(0.6),
+                        color: const Color(0xFFFFD700).withValues(alpha: 0.6),
                         blurRadius: 4,
                         spreadRadius: 1,
                       ),
@@ -757,10 +745,10 @@ class _ElementsScreenState extends State<ElementsScreen>
           _gridKey.currentContext?.findRenderObject() as RenderBox?;
       if (box == null) return;
       final Offset localPosition = box.globalToLocal(event.position);
-      final int row = (localPosition.dy / (box.size.height / GRID_W)).floor();
-      final int col = (localPosition.dx / (box.size.width / GRID_W)).floor();
+      final int row = (localPosition.dy / (box.size.height / gridW)).floor();
+      final int col = (localPosition.dx / (box.size.width / gridW)).floor();
 
-      if (row >= 0 && row < GRID_W && col >= 0 && col < GRID_W) {
+      if (row >= 0 && row < gridW && col >= 0 && col < gridW) {
         _sendAction({
           'action': 'place',
           'x': col,
@@ -794,19 +782,19 @@ class _ElementsScreenState extends State<ElementsScreen>
               margin: const EdgeInsets.symmetric(horizontal: 4.0),
               decoration: BoxDecoration(
                 color: isSelected
-                    ? const Color(0xFF00FFD1).withOpacity(0.8)
-                    : Colors.white.withOpacity(0.2),
+                    ? const Color(0xFF00FFD1).withValues(alpha: 0.8)
+                    : Colors.white.withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
                   color: isSelected
-                      ? const Color(0xFF00FFD1).withOpacity(0.7)
-                      : Colors.white.withOpacity(0.3),
+                      ? const Color(0xFF00FFD1).withValues(alpha: 0.7)
+                      : Colors.white.withValues(alpha: 0.3),
                 ),
                 boxShadow: [
                   BoxShadow(
                     color: const Color(
                       0xFF00FFD1,
-                    ).withOpacity(0.2 * _glowAnimation.value),
+                    ).withValues(alpha: 0.2 * _glowAnimation.value),
                     blurRadius: 6,
                     spreadRadius: 1,
                   ),
@@ -847,14 +835,14 @@ class _ElementsScreenState extends State<ElementsScreen>
               padding: const EdgeInsets.all(16),
               margin: const EdgeInsets.symmetric(horizontal: 24),
               decoration: BoxDecoration(
-                color: const Color(0xFF0A0A1E).withOpacity(0.4),
+                color: const Color(0xFF0A0A1E).withValues(alpha: 0.4),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
-                  color: const Color(0xFFFF4500).withOpacity(0.5),
+                  color: const Color(0xFFFF4500).withValues(alpha: 0.5),
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: const Color(0xFFFF4500).withOpacity(0.2),
+                    color: const Color(0xFFFF4500).withValues(alpha: 0.2),
                     blurRadius: 6,
                     spreadRadius: 2,
                   ),
@@ -886,7 +874,7 @@ class _ElementsScreenState extends State<ElementsScreen>
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(
                             0xFFFF4500,
-                          ).withOpacity(0.3),
+                          ).withValues(alpha: 0.3),
                           padding: const EdgeInsets.symmetric(
                             vertical: 12,
                             horizontal: 24,
@@ -894,7 +882,9 @@ class _ElementsScreenState extends State<ElementsScreen>
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(10),
                             side: BorderSide(
-                              color: const Color(0xFFFF4500).withOpacity(0.5),
+                              color: const Color(
+                                0xFFFF4500,
+                              ).withValues(alpha: 0.5),
                             ),
                           ),
                         ),
@@ -911,7 +901,7 @@ class _ElementsScreenState extends State<ElementsScreen>
                       ElevatedButton(
                         onPressed: () => widget.onGameSelected(0),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.white.withOpacity(0.2),
+                          backgroundColor: Colors.white.withValues(alpha: 0.2),
                           padding: const EdgeInsets.symmetric(
                             vertical: 12,
                             horizontal: 24,
@@ -919,7 +909,7 @@ class _ElementsScreenState extends State<ElementsScreen>
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(10),
                             side: BorderSide(
-                              color: Colors.white.withOpacity(0.3),
+                              color: Colors.white.withValues(alpha: 0.3),
                             ),
                           ),
                         ),
@@ -1047,13 +1037,13 @@ class _ElementsScreenState extends State<ElementsScreen>
                                 physics: const NeverScrollableScrollPhysics(),
                                 gridDelegate:
                                     const SliverGridDelegateWithFixedCrossAxisCount(
-                                      crossAxisCount: GRID_W,
+                                      crossAxisCount: gridW,
                                       childAspectRatio: 1,
                                     ),
-                                itemCount: GRID_W * GRID_W,
+                                itemCount: gridW * gridW,
                                 itemBuilder: (context, index) {
-                                  final row = index ~/ GRID_W;
-                                  final col = index % GRID_W;
+                                  final row = index ~/ gridW;
+                                  final col = index % gridW;
                                   return _buildCell(row, col);
                                 },
                               ),
