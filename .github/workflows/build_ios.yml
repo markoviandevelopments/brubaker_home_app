@@ -12,7 +12,7 @@ jobs:
 
     env:
       KEYCHAIN_PATH: build.keychain-db
-      KEYCHAIN_PASSWORD: Not$erp01
+      KEYCHAIN_PASSWORD: Pre$ton01
 
     steps:
       - name: Checkout code
@@ -30,14 +30,14 @@ jobs:
         run: flutter analyze
 
       #- name: Run tests
-      #  run: flutter test
+      # run: flutter test
 
       - name: Set up keychain
         run: |
-          security create-keychain -p "Not$erp01" $KEYCHAIN_PATH
+          security create-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
           security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
           security default-keychain -s $KEYCHAIN_PATH
-          security unlock-keychain -p "Not$erp01" $KEYCHAIN_PATH
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
 
       - name: Download certificate
         run: echo "${{ secrets.IOS_CERTIFICATE_APPSTORE }}" | base64 --decode > /tmp/apple_cert.p12
@@ -102,6 +102,9 @@ jobs:
 
       - name: Build IPA
         run: flutter build ipa --release --export-options-plist=exportOptions.plist
+
+      - name: Upload to App Store Connect
+        run: xcrun altool --upload-app --type ios -f build/ios/ipa/*.ipa -u "${{ secrets.APPLE_ID }}" -p "${{ secrets.APP_SPECIFIC_PASSWORD }}"
 
       - name: Upload IPA artifact
         uses: actions/upload-artifact@v4
