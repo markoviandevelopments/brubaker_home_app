@@ -112,8 +112,6 @@ jobs:
             </dict>
           </dict>
           </plist
-EOF
-          cat exportOptions.plist  # Print for debugging
 
       - name: Build IPA
         run: flutter build ipa --release --export-options-plist=exportOptions.plist
