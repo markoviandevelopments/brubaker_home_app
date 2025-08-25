@@ -12,7 +12,7 @@ jobs:
 
     env:
       KEYCHAIN_PATH: build.keychain-db
-      KEYCHAIN_PASSWORD: ${{ secrets.P12_PASSWORD }}
+      KEYCHAIN_PASSWORD: pwd  # You can make this a secret if desired, but a simple password is fine for temp keychain
 
     steps:
       - name: Checkout code
@@ -29,6 +29,9 @@ jobs:
       - name: Analyze Dart code
         run: flutter analyze
 
+      - name: Run tests
+        run: flutter test
+
       - name: Set up keychain
         run: |
           security create-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
@@ -41,7 +44,7 @@ jobs:
 
       - name: Import certificate
         run: security import /tmp/apple_cert.p12 -P "${{ secrets.P12_PASSWORD }}" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
-        continue-on-error: false 
+        continue-on-error: false  # Fail if import fails
 
       - name: Download provisioning profile
         run: echo "${{ secrets.PROVISIONING_PROFILE_APPSTORE }}" | base64 --decode > /tmp/app.mobileprovision
@@ -105,10 +108,4 @@ jobs:
         with:
           name: ios-app
           path: build/ios/ipa/*.ipa
-          retention-days: 5
-
-      - name: Clean up keychain
-        if: always()
-        run: |
-          security delete-keychain $KEYCHAIN_PATH || true
-          rm -f /tmp/apple_cert.p12 /tmp/app.mobileprovision /tmp/decoded.plist
+          retention-days: 5  # Adjust as needed
