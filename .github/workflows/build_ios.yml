@@ -116,6 +116,9 @@ jobs:
           echo '</plist>' >> exportOptions.plist
           cat exportOptions.plist  # Print for debugging
 
+      - name: Remove FinderInfo xattr
+        run: sudo xattr -r -d com.apple.FinderInfo .
+
       - name: Build IPA
         run: flutter build ipa --release --export-options-plist=exportOptions.plist -v
 
