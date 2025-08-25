@@ -130,7 +130,7 @@ jobs:
         shell: /bin/bash -e {0}
 
       - name: Build IPA
-        run: flutter build ipa --release --export-options-plist=exportOptions.plist
+        run: flutter build ipa --release --export-options-plist=exportOptions.plist -v
 
       - name: Upload IPA artifact
         uses: actions/upload-artifact@v4
