@@ -64,7 +64,6 @@ jobs:
         run: |
           security cms -D -i /tmp/app.mobileprovision > /tmp/decoded.plist
           PROFILE_UUID=$(/usr/libexec/PlistBuddy -c "Print :UUID" /tmp/decoded.plist)
-          TEAM_ID=$(/usr/libexec/PlistBuddy -c "Print :TeamID" /tmp/decoded.plist)
           PROFILE_SPECIFIER=$(/usr/libexec/PlistBuddy -c "Print :Name" /tmp/decoded.plist)
           echo "PROFILE_UUID=$PROFILE_UUID" >> $GITHUB_ENV
           echo "TEAM_ID=$TEAM_ID" >> $GITHUB_ENV
@@ -83,6 +82,11 @@ jobs:
           BUNDLE_ID=$(/usr/libexec/PlistBuddy -c "Print :CFBundleIdentifier" ios/Runner/Info.plist)
           echo "BUNDLE_ID=$BUNDLE_ID" >> $GITHUB_ENV
           echo "Extracted BUNDLE_ID: $BUNDLE_ID"
+
+      - name: Set hardcoded Team ID
+        run: |
+          echo "TEAM_ID=D296S46TFC" >> $GITHUB_ENV
+          echo "Hardcoded TEAM_ID: $TEAM_ID"
 
       - name: Update Xcode project for manual signing
         run: |
