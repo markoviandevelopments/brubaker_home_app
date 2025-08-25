@@ -12,7 +12,7 @@ jobs:
 
     env:
       KEYCHAIN_PATH: build.keychain-db
-      KEYCHAIN_PASSWORD: Not$erp01
+      KEYCHAIN_PASSWORD: ${{ secrets.P12_PASSWORD }}
 
     steps:
       - name: Checkout code
@@ -41,7 +41,7 @@ jobs:
 
       - name: Import certificate
         run: security import /tmp/apple_cert.p12 -P "${{ secrets.P12_PASSWORD }}" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
-        continue-on-error: false  # Fail if import fails
+        continue-on-error: false 
 
       - name: Download provisioning profile
         run: echo "${{ secrets.PROVISIONING_PROFILE_APPSTORE }}" | base64 --decode > /tmp/app.mobileprovision
