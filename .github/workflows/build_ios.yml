@@ -12,7 +12,7 @@ jobs:
 
     env:
       KEYCHAIN_PATH: build.keychain-db
-      KEYCHAIN_PASSWORD: Not$erp01
+      KEYCHAIN_PASSWORD: Pre$ton01
 
     steps:
       - name: Checkout code
@@ -42,12 +42,22 @@ jobs:
       - name: Download certificate
         run: echo "${{ secrets.IOS_CERTIFICATE_APPSTORE }}" | base64 --decode > /tmp/apple_cert.p12
 
+      - name: Check decoded certificate file
+        run: |
+          ls -l /tmp/apple_cert.p12
+          file /tmp/apple_cert.p12 || echo "File type check failed - may not be a valid PKCS12 file"
+
       - name: Import certificate
         run: security import /tmp/apple_cert.p12 -P "${{ secrets.P12_PASSWORD }}" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
         continue-on-error: false  # Fail if import fails
 
       - name: Download provisioning profile
         run: echo "${{ secrets.PROVISIONING_PROFILE_APPSTORE }}" | base64 --decode > /tmp/app.mobileprovision
+
+      - name: Check decoded provisioning profile
+        run: |
+          ls -l /tmp/app.mobileprovision
+          file /tmp/app.mobileprovision || echo "File type check failed - may not be a valid mobileprovision file"
 
       - name: Extract provisioning profile details
         run: |
@@ -58,6 +68,9 @@ jobs:
           echo "PROFILE_UUID=$PROFILE_UUID" >> $GITHUB_ENV
           echo "TEAM_ID=$TEAM_ID" >> $GITHUB_ENV
           echo "PROFILE_SPECIFIER=$PROFILE_SPECIFIER" >> $GITHUB_ENV
+          echo "Extracted PROFILE_UUID: $PROFILE_UUID"
+          echo "Extracted TEAM_ID: $TEAM_ID"
+          echo "Extracted PROFILE_SPECIFIER: $PROFILE_SPECIFIER"
 
       - name: Install provisioning profile
         run: |
@@ -68,6 +81,7 @@ jobs:
         run: |
           BUNDLE_ID=$(/usr/libexec/PlistBuddy -c "Print :CFBundleIdentifier" ios/Runner/Info.plist)
           echo "BUNDLE_ID=$BUNDLE_ID" >> $GITHUB_ENV
+          echo "Extracted BUNDLE_ID: $BUNDLE_ID"
 
       - name: Update Xcode project for manual signing
         run: |
@@ -97,14 +111,12 @@ jobs:
               <string>${{ env.PROFILE_SPECIFIER }}</string>
             </dict>
           </dict>
-          </plist>
-          EOF
+          </plist
+EOF
+          cat exportOptions.plist  # Print for debugging
 
       - name: Build IPA
         run: flutter build ipa --release --export-options-plist=exportOptions.plist
-
-      - name: Upload to App Store Connect
-        run: xcrun altool --upload-app --type ios -f build/ios/ipa/*.ipa -u "${{ secrets.APPLE_ID }}" -p "${{ secrets.APP_SPECIFIC_PASSWORD }}"
 
       - name: Upload IPA artifact
         uses: actions/upload-artifact@v4
