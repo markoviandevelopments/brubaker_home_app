@@ -12,7 +12,7 @@ jobs:
 
     env:
       KEYCHAIN_PATH: build.keychain-db
-      KEYCHAIN_PASSWORD: Not$erp01
+      KEYCHAIN_PASSWORD: Pre$ton01
 
     steps:
       - name: Checkout code
