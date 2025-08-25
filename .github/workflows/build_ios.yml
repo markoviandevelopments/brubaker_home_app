@@ -13,6 +13,7 @@ jobs:
     env:
       KEYCHAIN_PATH: build.keychain-db
       KEYCHAIN_PASSWORD: Pre$ton01
+      P12_PASSWORD: Not$erp01  # Hardcoded P12 password - update if different
 
     steps:
       - name: Checkout code
@@ -40,22 +41,19 @@ jobs:
           security unlock-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
 
       - name: Download certificate
-        run: echo "${{ secrets.IOS_CERTIFICATE_APPSTORE }}" | base64 --decode > /tmp/apple_cert.p12
+        run: echo "CERT_BASE64_PLACEHOLDER" | base64 --decode > /tmp/apple_cert.p12  # Replace CERT_BASE64_PLACEHOLDER with your base64 string
 
       - name: Check decoded certificate file
         run: |
           ls -l /tmp/apple_cert.p12
           file /tmp/apple_cert.p12 || echo "File type check failed - may not be a valid PKCS12 file"
 
-      - name: Debug print P12_PASSWORD
-        run: echo "Using P12_PASSWORD: ${{ secrets.P12_PASSWORD }} (should be Not$erp01, masked as *** if correct)"
-
       - name: Import certificate
-        run: security import /tmp/apple_cert.p12 -P "${{ secrets.P12_PASSWORD }}" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
+        run: security import /tmp/apple_cert.p12 -P "$P12_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
         continue-on-error: false  # Fail if import fails
 
       - name: Download provisioning profile
-        run: echo "${{ secrets.PROVISIONING_PROFILE_APPSTORE }}" | base64 --decode > /tmp/app.mobileprovision
+        run: echo "PROFILE_BASE64_PLACEHOLDER" | base64 --decode > /tmp/app.mobileprovision  # Replace PROFILE_BASE64_PLACEHOLDER with your base64 string
 
       - name: Check decoded provisioning profile
         run: |
@@ -65,9 +63,9 @@ jobs:
       - name: Extract provisioning profile details
         run: |
           security cms -D -i /tmp/app.mobileprovision > /tmp/decoded.plist
-          PROFILE_UUID=$(/usr/libexec/PlistBuddy -c "Print :UUID" /tmp/decoded.plist || echo "UUID extraction failed")
-          TEAM_ID=$(/usr/libexec/PlistBuddy -c "Print :TeamID" /tmp/decoded.plist || echo "TeamID extraction failed")
-          PROFILE_SPECIFIER=$(/usr/libexec/PlistBuddy -c "Print :Name" /tmp/decoded.plist || echo "Name extraction failed")
+          PROFILE_UUID=$(/usr/libexec/PlistBuddy -c "Print :UUID" /tmp/decoded.plist)
+          TEAM_ID=$(/usr/libexec/PlistBuddy -c "Print :TeamID" /tmp/decoded.plist)
+          PROFILE_SPECIFIER=$(/usr/libexec/PlistBuddy -c "Print :Name" /tmp/decoded.plist)
           echo "PROFILE_UUID=$PROFILE_UUID" >> $GITHUB_ENV
           echo "TEAM_ID=$TEAM_ID" >> $GITHUB_ENV
           echo "PROFILE_SPECIFIER=$PROFILE_SPECIFIER" >> $GITHUB_ENV
