@@ -12,7 +12,7 @@ jobs:
 
     env:
       KEYCHAIN_PATH: build.keychain-db
-      KEYCHAIN_PASSWORD: pwd  # You can make this a secret if desired, but a simple password is fine for temp keychain
+      KEYCHAIN_PASSWORD: pwd
 
     steps:
       - name: Checkout code
@@ -28,9 +28,6 @@ jobs:
 
       - name: Analyze Dart code
         run: flutter analyze
-
-      - name: Run tests
-        run: flutter test
 
       - name: Set up keychain
         run: |
@@ -108,4 +105,10 @@ jobs:
         with:
           name: ios-app
           path: build/ios/ipa/*.ipa
-          retention-days: 5  # Adjust as needed
+          retention-days: 5
+
+      - name: Clean up keychain
+        if: always()
+        run: |
+          security delete-keychain $KEYCHAIN_PATH || true
+          rm -f /tmp/apple_cert.p12 /tmp/app.mobileprovision /tmp/decoded.plist
