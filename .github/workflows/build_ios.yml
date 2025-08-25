@@ -65,9 +65,9 @@ jobs:
       - name: Extract provisioning profile details
         run: |
           security cms -D -i /tmp/app.mobileprovision > /tmp/decoded.plist
-          PROFILE_UUID=$(/usr/libexec/PlistBuddy -c "Print :UUID" /tmp/decoded.plist)
-          TEAM_ID=$(/usr/libexec/PlistBuddy -c "Print :TeamID" /tmp/decoded.plist)
-          PROFILE_SPECIFIER=$(/usr/libexec/PlistBuddy -c "Print :Name" /tmp/decoded.plist)
+          PROFILE_UUID=$(/usr/libexec/PlistBuddy -c "Print :UUID" /tmp/decoded.plist || echo "UUID extraction failed")
+          TEAM_ID=$(/usr/libexec/PlistBuddy -c "Print :TeamID" /tmp/decoded.plist || echo "TeamID extraction failed")
+          PROFILE_SPECIFIER=$(/usr/libexec/PlistBuddy -c "Print :Name" /tmp/decoded.plist || echo "Name extraction failed")
           echo "PROFILE_UUID=$PROFILE_UUID" >> $GITHUB_ENV
           echo "TEAM_ID=$TEAM_ID" >> $GITHUB_ENV
           echo "PROFILE_SPECIFIER=$PROFILE_SPECIFIER" >> $GITHUB_ENV
