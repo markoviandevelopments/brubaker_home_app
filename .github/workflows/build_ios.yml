@@ -34,10 +34,10 @@ jobs:
 
       - name: Set up keychain
         run: |
-          security create-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+          security create-keychain -p "Not$erp01" $KEYCHAIN_PATH
           security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
           security default-keychain -s $KEYCHAIN_PATH
-          security unlock-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+          security unlock-keychain -p "Not$erp01" $KEYCHAIN_PATH
 
       - name: Download certificate
         run: echo "${{ secrets.IOS_CERTIFICATE_APPSTORE }}" | base64 --decode > /tmp/apple_cert.p12
