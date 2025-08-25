@@ -66,10 +66,8 @@ jobs:
           PROFILE_UUID=$(/usr/libexec/PlistBuddy -c "Print :UUID" /tmp/decoded.plist)
           PROFILE_SPECIFIER=$(/usr/libexec/PlistBuddy -c "Print :Name" /tmp/decoded.plist)
           echo "PROFILE_UUID=$PROFILE_UUID" >> $GITHUB_ENV
-          echo "TEAM_ID=$TEAM_ID" >> $GITHUB_ENV
           echo "PROFILE_SPECIFIER=$PROFILE_SPECIFIER" >> $GITHUB_ENV
           echo "Extracted PROFILE_UUID: $PROFILE_UUID"
-          echo "Extracted TEAM_ID: $TEAM_ID"
           echo "Extracted PROFILE_SPECIFIER: $PROFILE_SPECIFIER"
 
       - name: Install provisioning profile
@@ -117,6 +115,19 @@ jobs:
           echo '</dict>' >> exportOptions.plist
           echo '</plist>' >> exportOptions.plist
           cat exportOptions.plist  # Print for debugging
+
+      - name: Add Release build configuration
+        run: |
+          PROJECT_PATH="ios/Runner.xcodeproj/project.pbxproj"
+          # Check if Release configuration exists, if not, duplicate Profile
+          if ! grep -q "Release" "$PROJECT_PATH"; then
+            sed -i '' '/Profile.*buildConfigurationList/!b;n;s/Profile/Release/' "$PROJECT_PATH"
+            sed -i '' '/Profile.*buildSettings/!b;n;s/Profile/Release/' "$PROJECT_PATH"
+            echo "Added Release configuration by duplicating Profile"
+          else
+            echo "Release configuration already exists"
+          fi
+        shell: /bin/bash -e {0}
 
       - name: Build IPA
         run: flutter build ipa --release --export-options-plist=exportOptions.plist
