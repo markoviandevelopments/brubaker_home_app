@@ -47,6 +47,9 @@ jobs:
           ls -l /tmp/apple_cert.p12
           file /tmp/apple_cert.p12 || echo "File type check failed - may not be a valid PKCS12 file"
 
+      - name: Debug print P12_PASSWORD
+        run: echo "Using P12_PASSWORD: ${{ secrets.P12_PASSWORD }} (should be Not$erp01, masked as *** if correct)"
+
       - name: Import certificate
         run: security import /tmp/apple_cert.p12 -P "${{ secrets.P12_PASSWORD }}" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
         continue-on-error: false  # Fail if import fails
@@ -94,24 +97,24 @@ jobs:
 
       - name: Create export options plist
         run: |
-          cat << EOF > exportOptions.plist
-          <?xml version="1.0" encoding="UTF-8"?>
-          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-          <plist version="1.0">
-          <dict>
-            <key>compileBitcode</key>
-            <false/>
-            <key>method</key>
-            <string>app-store</string>
-            <key>teamID</key>
-            <string>${{ env.TEAM_ID }}</string>
-            <key>provisioningProfiles</key>
-            <dict>
-              <key>${{ env.BUNDLE_ID }}</key>
-              <string>${{ env.PROFILE_SPECIFIER }}</string>
-            </dict>
-          </dict>
-          </plist
+          echo '<?xml version="1.0" encoding="UTF-8"?>' > exportOptions.plist
+          echo '<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">' >> exportOptions.plist
+          echo '<plist version="1.0">' >> exportOptions.plist
+          echo '<dict>' >> exportOptions.plist
+          echo '  <key>compileBitcode</key>' >> exportOptions.plist
+          echo '  <false/>' >> exportOptions.plist
+          echo '  <key>method</key>' >> exportOptions.plist
+          echo '  <string>app-store</string>' >> exportOptions.plist
+          echo '  <key>teamID</key>' >> exportOptions.plist
+          echo "  <string>${{ env.TEAM_ID }}</string>" >> exportOptions.plist
+          echo '  <key>provisioningProfiles</key>' >> exportOptions.plist
+          echo '  <dict>' >> exportOptions.plist
+          echo "    <key>${{ env.BUNDLE_ID }}</key>" >> exportOptions.plist
+          echo "    <string>${{ env.PROFILE_SPECIFIER }}</string>" >> exportOptions.plist
+          echo '  </dict>' >> exportOptions.plist
+          echo '</dict>' >> exportOptions.plist
+          echo '</plist>' >> exportOptions.plist
+          cat exportOptions.plist  # Print for debugging
 
       - name: Build IPA
         run: flutter build ipa --release --export-options-plist=exportOptions.plist
