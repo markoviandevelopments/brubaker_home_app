@@ -32,7 +32,7 @@ jobs:
 
       - name: Create Release Configuration
         run: |
-          ruby -e "require 'xcodeproj'; project = Xcodeproj::Project.open('ios/Runner.xcodeproj'); config_list = project.build_configuration_list; profile = config_list['Profile']; if profile; new_config = config_list.add_build_configuration('Release', profile.type); new_config.build_settings = profile.build_settings.dup; end; project.targets.each do |target| target_profile = target.build_configuration_list['Profile']; if target_profile; target_new = target.build_configuration_list.add_build_configuration('Release', target_profile.type); target_new.build_settings = target_profile.build_settings.dup; end end; project.save"  # Duplicates the 'Profile' configuration to 'Release' for the project and all targets to match Flutter's expectation for --release builds.
+          ruby -e "require 'xcodeproj'; project = Xcodeproj::Project.open('ios/Runner.xcodeproj'); profile = project.build_configuration_list['Profile']; if profile; new_config = project.add_build_configuration('Release', profile.type); new_config.build_settings = profile.build_settings.dup; end; project.targets.each do |target| target_profile = target.build_configuration_list['Profile']; if target_profile; target_new = target.add_build_configuration('Release', target_profile.type); target_new.build_settings = target_profile.build_settings.dup; end end; project.save"  # Duplicates the 'Profile' configuration to 'Release' for the project and all targets to match Flutter's expectation for --release builds, copying all settings.
 
       - name: Set up keychain
         run: |
@@ -52,7 +52,7 @@ jobs:
           openssl pkcs12 -info -in /tmp/apple_cert.p12 -passin pass:"$P12_PASSWORD" -nokeys || echo "OpenSSL verification failed"  # Verifies .p12 structure with OpenSSL.
 
       - name: Import certificate
-        run: security import /tmp/apple_cert.p12 -P "$P12_PASSWORD" -A -t priv -f pkcs12 -k $KEYCHAIN_PATH -T /usr/bin/codesign -T /usr/bin/productsign  # Imports the certificate and private key into the keychain, with -T flags to allow codesign and productsign access to the private key without prompts.
+        run: security import /tmp/apple_cert.p12 -P "$P12_PASSWORD" -A -t priv -f pkcs12 -k $KEYCHAIN_PATH -T /usr/bin/codesign -T /usr/bin/productsign -T /usr/bin/xcodebuild -T /usr/bin/productbuild  # Imports the certificate and private key into the keychain, with -T flags for multiple binaries to ensure access in CI.
 
       - name: Verify signing identities
         run: |
