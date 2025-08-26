@@ -11,7 +11,7 @@ jobs:
       KEYCHAIN_PATH: build.keychain-db  # Custom keychain file path to isolate certificates.
       KEYCHAIN_PASSWORD: Not$erp01  # Password for the custom keychain (hardcoded for simplicity; consider secrets for production).
       P12_PASSWORD: Not$erp01  # Password for the .p12 certificate file (same note as above).
-      CERT_LABEL: "iPhone Distribution: Willoh Brubaker (D296S46TFC)"  # The exact common name (label) of the certificate for targeting the partition list.
+      CERT_LABEL: "iPhone Distribution: Willoh Brubaker (D296S46TFC)"  # The exact common name (label) of the certificate for verification.
     steps:
       - name: Checkout code
         uses: actions/checkout@v4  # Checks out the repository code to the runner.
@@ -45,15 +45,12 @@ jobs:
           openssl pkcs12 -info -in /tmp/apple_cert.p12 -passin pass:"$P12_PASSWORD" -nokeys || echo "OpenSSL verification failed"  # Verifies .p12 structure with OpenSSL.
 
       - name: Import certificate
-        run: security import /tmp/apple_cert.p12 -P "$P12_PASSWORD" -A -t priv -f pkcs12 -k $KEYCHAIN_PATH  # Imports the certificate and private key into the keychain.
-        continue-on-error: false  # Fails the job if import fails.
-
-     
+        run: security import /tmp/apple_cert.p12 -P "$P12_PASSWORD" -A -t priv -f pkcs12 -k $KEYCHAIN_PATH -T /usr/bin/codesign -T /usr/bin/productsign  # Imports the certificate and private key into the keychain, with -T flags to allow codesign and productsign access to the private key without prompts.
 
       - name: Verify signing identities
         run: |
           security find-identity -v -p codesigning $KEYCHAIN_PATH  # Lists valid code signing identities.
-          security find-certificate -c "$CERT_LABEL" -p $KEYCHAIN_PATH  # Finds the certificate by its full common name and prints it (updated for exact match to avoid search failures).
+          security find-certificate -c "$CERT_LABEL" -p $KEYCHAIN_PATH  # Finds the certificate by its full common name and prints it.
 
       - name: Copy provisioning profile
         run: cp certs/app.mobileprovision /tmp/app.mobileprovision  # Copies the provisioning profile from repo to temp.
@@ -96,4 +93,38 @@ jobs:
           sed -i '' 's/DEVELOPMENT_TEAM = "";/DEVELOPMENT_TEAM = "${{ env.TEAM_ID }}";/g' $PROJECT_PATH  # Sets team ID.
           sed -i '' 's/PROVISIONING_PROFILE_SPECIFIER = "";/PROVISIONING_PROFILE_SPECIFIER = "${{ env.PROFILE_SPECIFIER }}";/g' $PROJECT_PATH  # Sets profile name.
           sed -i '' 's/CODE_SIGN_IDENTITY = "";/CODE_SIGN_IDENTITY = "iPhone Distribution";/g' $PROJECT_PATH  # Sets identity for all configs.
-          sed -i '' 's/CODE_SIGN_IDENTITY\[sdk=iphoneos\*\] = "";/CODE_SIGN_IDENTITY\[sdk=iphoneos\*\] = "iPhone Distribution";/
+          sed -i '' 's/CODE_SIGN_IDENTITY\[sdk=iphoneos\*\] = "";/CODE_SIGN_IDENTITY\[sdk=iphoneos\*\] = "iPhone Distribution";/g' $PROJECT_PATH  # Sets for iPhone SDK.
+
+      - name: Create export options plist
+        run: |
+          echo '<?xml version="1.0" encoding="UTF-8"?>' > exportOptions.plist
+          echo '<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">' >> exportOptions.plist
+          echo '<plist version="1.0">' >> exportOptions.plist
+          echo '<dict>' >> exportOptions.plist
+          echo ' <key>compileBitcode</key>' >> exportOptions.plist
+          echo ' <false/>' >> exportOptions.plist  # Disables bitcode (common for Flutter).
+          echo ' <key>method</key>' >> exportOptions.plist
+          echo ' <string>app-store</string>' >> exportOptions.plist  # Export method for App Store.
+          echo ' <key>teamID</key>' >> exportOptions.plist
+          echo " <string>${{ env.TEAM_ID }}</string>" >> exportOptions.plist  # Team ID.
+          echo ' <key>provisioningProfiles</key>' >> exportOptions.plist
+          echo ' <dict>' >> exportOptions.plist
+          echo " <key>${{ env.BUNDLE_ID }}</key>" >> exportOptions.plist
+          echo " <string>${{ env.PROFILE_SPECIFIER }}</string>" >> exportOptions.plist  # Maps bundle ID to profile.
+          echo ' </dict>' >> exportOptions.plist
+          echo '</dict>' >> exportOptions.plist
+          echo '</plist>' >> exportOptions.plist
+          cat exportOptions.plist  # Logs the plist for verification.
+
+      - name: Remove FinderInfo xattr
+        run: sudo xattr -r -d com.apple.FinderInfo . || true  # Removes macOS-specific attributes that can cause issues.
+
+      - name: Build IPA
+        run: flutter build ipa --release --export-options-plist=exportOptions.plist -v  # Builds the IPA for release (App Store), using export options; -v for verbose output.
+
+      - name: Upload IPA artifact
+        uses: actions/upload-artifact@v4  # Uploads the built IPA as an artifact.
+        with:
+          name: ios-app  # Artifact name.
+          path: build/ios/ipa/*.ipa  # Path to IPA.
+          retention-days: 5  # Keeps for 5 days.
