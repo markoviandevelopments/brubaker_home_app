@@ -32,7 +32,7 @@ jobs:
 
       - name: Create Release Configuration
         run: |
-          ruby -e "require 'xcodeproj'; project = Xcodeproj::Project.open('ios/Runner.xcodeproj'); project.add_build_configuration('Release', :release); project.save"  # Adds 'Release' build configuration by duplicating the release template.
+          ruby -e "require 'xcodeproj'; project = Xcodeproj::Project.open('ios/Runner.xcodeproj'); config_list = project.build_configuration_list; profile = config_list['Profile']; if profile; new_config = config_list.add_build_configuration('Release', profile.type); new_config.build_settings = profile.build_settings.dup; end; project.targets.each do |target| target_profile = target.build_configuration_list['Profile']; if target_profile; target_new = target.build_configuration_list.add_build_configuration('Release', target_profile.type); target_new.build_settings = target_profile.build_settings.dup; end end; project.save"  # Duplicates the 'Profile' configuration to 'Release' for the project and all targets to match Flutter's expectation for --release builds.
 
       - name: Set up keychain
         run: |
