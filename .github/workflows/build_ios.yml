@@ -27,6 +27,13 @@ jobs:
       - name: Analyze Dart code
         run: flutter analyze  # Runs static analysis on the Dart code to catch issues early.
 
+      - name: Install xcodeproj gem
+        run: gem install xcodeproj  # Installs Ruby gem to manipulate Xcode project.
+
+      - name: Create Release Configuration
+        run: |
+          ruby -e "require 'xcodeproj'; project = Xcodeproj::Project.open('ios/Runner.xcodeproj'); project.add_build_configuration('Release', :release); project.save"  # Adds 'Release' build configuration by duplicating the release template.
+
       - name: Set up keychain
         run: |
           security create-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH  # Creates a new keychain.
