@@ -6,81 +6,98 @@ on:
     branches: [ main ]
 jobs:
   build:
-    runs-on: macos-14
+    runs-on: macos-14  # Specifies the macOS runner version for iOS builds.
     env:
-      KEYCHAIN_PATH: build.keychain-db
-      KEYCHAIN_PASSWORD: Not$erp01
-      P12_PASSWORD: Not$erp01
+      KEYCHAIN_PATH: build.keychain-db  # Custom keychain file path to isolate certificates.
+      KEYCHAIN_PASSWORD: Not$erp01  # Password for the custom keychain (hardcoded for simplicity; consider secrets for production).
+      P12_PASSWORD: Not$erp01  # Password for the .p12 certificate file (same note as above).
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v4  # Checks out the repository code to the runner.
+
       - name: Set up Flutter
-        uses: subosito/flutter-action@v2
+        uses: subosito/flutter-action@v2  # Installs Flutter on the runner.
         with:
-          channel: 'stable'
+          channel: 'stable'  # Uses the stable channel for reliability.
+
       - name: Install dependencies
-        run: flutter pub get
+        run: flutter pub get  # Fetches Flutter project dependencies.
+
       - name: Analyze Dart code
-        run: flutter analyze
+        run: flutter analyze  # Runs static analysis on the Dart code to catch issues early.
+
       - name: Set up keychain
         run: |
-          security create-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
-          security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
-          security default-keychain -s $KEYCHAIN_PATH
-          security unlock-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
-          security list-keychains -d user -s $KEYCHAIN_PATH
+          security create-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH  # Creates a new keychain.
+          security set-keychain-settings -lut 21600 $KEYCHAIN_PATH  # Sets timeout to 6 hours.
+          security default-keychain -s $KEYCHAIN_PATH  # Sets this as the default keychain.
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH  # Unlocks the keychain.
+          security list-keychains -d user -s $KEYCHAIN_PATH  # Lists and sets the keychain for user domain.
+
       - name: Copy certificate
-        run: cp certs/apple_cert.p12 /tmp/apple_cert.p12  # Assumes apple_cert.p12 is uploaded/committed to the 'certs/' directory in the repo
+        run: cp certs/apple_cert.p12 /tmp/apple_cert.p12  # Copies the .p12 file from repo to temp location.
+
       - name: Check decoded certificate file
         run: |
-          ls -l /tmp/apple_cert.p12
-          file /tmp/apple_cert.p12 || echo "File type check failed - may not be a valid PKCS12 file"
-          openssl pkcs12 -info -in /tmp/apple_cert.p12 -passin pass:"$P12_PASSWORD" -nokeys || echo "OpenSSL verification failed"
+          ls -l /tmp/apple_cert.p12  # Lists file details for verification.
+          file /tmp/apple_cert.p12 || echo "File type check failed - may not be a valid PKCS12 file"  # Checks file type.
+          openssl pkcs12 -info -in /tmp/apple_cert.p12 -passin pass:"$P12_PASSWORD" -nokeys || echo "OpenSSL verification failed"  # Verifies .p12 structure with OpenSSL.
+
       - name: Import certificate
-        run: security import /tmp/apple_cert.p12 -P "$P12_PASSWORD" -A -t priv -f pkcs12 -k $KEYCHAIN_PATH
-        continue-on-error: false
+        run: security import /tmp/apple_cert.p12 -P "$P12_PASSWORD" -A -t priv -f pkcs12 -k $KEYCHAIN_PATH  # Imports the certificate and private key into the keychain.
+        continue-on-error: false  # Fails the job if import fails.
+
       - name: Allow codesign access
-        run: security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+        run: security set-key-partition-list -S apple-tool:,apple:,codesign: -k "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH  # Allows codesign and related tools to access the private key without prompts, crucial for CI environments. Removed invalid '-s' flag which caused errors based on macOS 'security' man page.
+
       - name: Verify signing identities
         run: |
-          security find-identity -v -p codesigning $KEYCHAIN_PATH
-          security find-certificate -c "iPhone Distribution" -p $KEYCHAIN_PATH
+          security find-identity -v -p codesigning $KEYCHAIN_PATH  # Lists valid code signing identities.
+          security find-certificate -c "iPhone Distribution: Willoh Brubaker (D296S46TFC)" -p $KEYCHAIN_PATH  # Finds the certificate by its full common name and prints it (updated for exact match to avoid search failures).
+
       - name: Copy provisioning profile
-        run: cp certs/app.mobileprovision /tmp/app.mobileprovision  # Assumes app.mobileprovision is uploaded/committed to the 'certs/' directory in the repo
+        run: cp certs/app.mobileprovision /tmp/app.mobileprovision  # Copies the provisioning profile from repo to temp.
+
       - name: Check decoded provisioning profile
         run: |
-          ls -l /tmp/app.mobileprovision
-          file /tmp/app.mobileprovision || echo "File type check failed - may not be a valid mobileprovision file"
+          ls -l /tmp/app.mobileprovision  # Lists file details.
+          file /tmp/app.mobileprovision || echo "File type check failed - may not be a valid mobileprovision file"  # Checks file type.
+
       - name: Extract provisioning profile details
         run: |
-          security cms -D -i /tmp/app.mobileprovision > /tmp/decoded.plist
-          PROFILE_UUID=$(/usr/libexec/PlistBuddy -c "Print :UUID" /tmp/decoded.plist)
-          PROFILE_SPECIFIER=$(/usr/libexec/PlistBuddy -c "Print :Name" /tmp/decoded.plist)
-          echo "PROFILE_UUID=$PROFILE_UUID" >> $GITHUB_ENV
-          echo "PROFILE_SPECIFIER=$PROFILE_SPECIFIER" >> $GITHUB_ENV
-          echo "Extracted PROFILE_UUID: $PROFILE_UUID"
-          echo "Extracted PROFILE_SPECIFIER: $PROFILE_SPECIFIER"
+          security cms -D -i /tmp/app.mobileprovision > /tmp/decoded.plist  # Decodes the profile to plist.
+          PROFILE_UUID=$(/usr/libexec/PlistBuddy -c "Print :UUID" /tmp/decoded.plist)  # Extracts UUID.
+          PROFILE_SPECIFIER=$(/usr/libexec/PlistBuddy -c "Print :Name" /tmp/decoded.plist)  # Extracts name.
+          echo "PROFILE_UUID=$PROFILE_UUID" >> $GITHUB_ENV  # Sets env var.
+          echo "PROFILE_SPECIFIER=$PROFILE_SPECIFIER" >> $GITHUB_ENV  # Sets env var.
+          echo "Extracted PROFILE_UUID: $PROFILE_UUID"  # Logs.
+          echo "Extracted PROFILE_SPECIFIER: $PROFILE_SPECIFIER"  # Logs.
+
       - name: Install provisioning profile
         run: |
-          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
-          cp /tmp/app.mobileprovision ~/Library/MobileDevice/Provisioning\ Profiles/${{ env.PROFILE_UUID }}.mobileprovision
+          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles  # Creates directory if needed.
+          cp /tmp/app.mobileprovision ~/Library/MobileDevice/Provisioning\ Profiles/${{ env.PROFILE_UUID }}.mobileprovision  # Installs the profile.
+
       - name: Extract bundle ID
         run: |
-          BUNDLE_ID=$(/usr/libexec/PlistBuddy -c "Print :CFBundleIdentifier" ios/Runner/Info.plist)
-          echo "BUNDLE_ID=$BUNDLE_ID" >> $GITHUB_ENV
-          echo "Extracted BUNDLE_ID: $BUNDLE_ID"
+          BUNDLE_ID=$(/usr/libexec/PlistBuddy -c "Print :CFBundleIdentifier" ios/Runner/Info.plist)  # Extracts app bundle ID from Info.plist.
+          echo "BUNDLE_ID=$BUNDLE_ID" >> $GITHUB_ENV  # Sets env var.
+          echo "Extracted BUNDLE_ID: $BUNDLE_ID"  # Logs.
+
       - name: Set hardcoded Team ID
         run: |
-          echo "TEAM_ID=D296S46TFC" >> $GITHUB_ENV
-          echo "Hardcoded TEAM_ID: $TEAM_ID"
+          echo "TEAM_ID=D296S46TFC" >> $GITHUB_ENV  # Sets team ID (from your Apple Developer account).
+          echo "Hardcoded TEAM_ID: $TEAM_ID"  # Logs.
+
       - name: Update Xcode project for manual signing
         run: |
-          PROJECT_PATH="ios/Runner.xcodeproj/project.pbxproj"
-          sed -i '' 's/CODE_SIGN_STYLE = Automatic;/CODE_SIGN_STYLE = Manual;/g' $PROJECT_PATH
-          sed -i '' 's/DEVELOPMENT_TEAM = "";/DEVELOPMENT_TEAM = "${{ env.TEAM_ID }}";/g' $PROJECT_PATH
-          sed -i '' 's/PROVISIONING_PROFILE_SPECIFIER = "";/PROVISIONING_PROFILE_SPECIFIER = "${{ env.PROFILE_SPECIFIER }}";/g' $PROJECT_PATH
-          sed -i '' 's/CODE_SIGN_IDENTITY = "";/CODE_SIGN_IDENTITY = "iPhone Distribution";/g' $PROJECT_PATH
-          sed -i '' 's/CODE_SIGN_IDENTITY\[sdk=iphoneos\*\] = "";/CODE_SIGN_IDENTITY\[sdk=iphoneos\*\] = "iPhone Distribution";/g' $PROJECT_PATH
+          PROJECT_PATH="ios/Runner.xcodeproj/project.pbxproj"  # Path to project file.
+          sed -i '' 's/CODE_SIGN_STYLE = Automatic;/CODE_SIGN_STYLE = Manual;/g' $PROJECT_PATH  # Switches to manual signing.
+          sed -i '' 's/DEVELOPMENT_TEAM = "";/DEVELOPMENT_TEAM = "${{ env.TEAM_ID }}";/g' $PROJECT_PATH  # Sets team ID.
+          sed -i '' 's/PROVISIONING_PROFILE_SPECIFIER = "";/PROVISIONING_PROFILE_SPECIFIER = "${{ env.PROFILE_SPECIFIER }}";/g' $PROJECT_PATH  # Sets profile name.
+          sed -i '' 's/CODE_SIGN_IDENTITY = "";/CODE_SIGN_IDENTITY = "iPhone Distribution";/g' $PROJECT_PATH  # Sets identity for all configs.
+          sed -i '' 's/CODE_SIGN_IDENTITY\[sdk=iphoneos\*\] = "";/CODE_SIGN_IDENTITY\[sdk=iphoneos\*\] = "iPhone Distribution";/g' $PROJECT_PATH  # Sets for iPhone SDK.
+
       - name: Create export options plist
         run: |
           echo '<?xml version="1.0" encoding="UTF-8"?>' > exportOptions.plist
@@ -88,26 +105,29 @@ jobs:
           echo '<plist version="1.0">' >> exportOptions.plist
           echo '<dict>' >> exportOptions.plist
           echo ' <key>compileBitcode</key>' >> exportOptions.plist
-          echo ' <false/>' >> exportOptions.plist
+          echo ' <false/>' >> exportOptions.plist  # Disables bitcode (common for Flutter).
           echo ' <key>method</key>' >> exportOptions.plist
-          echo ' <string>app-store</string>' >> exportOptions.plist
+          echo ' <string>app-store</string>' >> exportOptions.plist  # Export method for App Store.
           echo ' <key>teamID</key>' >> exportOptions.plist
-          echo " <string>${{ env.TEAM_ID }}</string>" >> exportOptions.plist
+          echo " <string>${{ env.TEAM_ID }}</string>" >> exportOptions.plist  # Team ID.
           echo ' <key>provisioningProfiles</key>' >> exportOptions.plist
           echo ' <dict>' >> exportOptions.plist
           echo " <key>${{ env.BUNDLE_ID }}</key>" >> exportOptions.plist
-          echo " <string>${{ env.PROFILE_SPECIFIER }}</string>" >> exportOptions.plist
+          echo " <string>${{ env.PROFILE_SPECIFIER }}</string>" >> exportOptions.plist  # Maps bundle ID to profile.
           echo ' </dict>' >> exportOptions.plist
           echo '</dict>' >> exportOptions.plist
           echo '</plist>' >> exportOptions.plist
-          cat exportOptions.plist
+          cat exportOptions.plist  # Logs the plist for verification.
+
       - name: Remove FinderInfo xattr
-        run: sudo xattr -r -d com.apple.FinderInfo . || true
+        run: sudo xattr -r -d com.apple.FinderInfo . || true  # Removes macOS-specific attributes that can cause issues.
+
       - name: Build IPA
-        run: flutter build ipa --release --export-options-plist=exportOptions.plist -v
+        run: flutter build ipa --release --export-options-plist=exportOptions.plist -v  # Builds the IPA for release (App Store), using export options; -v for verbose output.
+
       - name: Upload IPA artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v4  # Uploads the built IPA as an artifact.
         with:
-          name: ios-app
-          path: build/ios/ipa/*.ipa
-          retention-days: 5
+          name: ios-app  # Artifact name.
+          path: build/ios/ipa/*.ipa  # Path to IPA.
+          retention-days: 5  # Keeps for 5 days.
