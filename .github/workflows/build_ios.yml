@@ -89,11 +89,11 @@ jobs:
       - name: Update Xcode project for manual signing
         run: |
           PROJECT_PATH="ios/Runner.xcodeproj/project.pbxproj"  # Path to project file.
-          sed -i '' 's/CODE_SIGN_STYLE = Automatic;/CODE_SIGN_STYLE = Manual;/g' $PROJECT_PATH  # Switches to manual signing.
-          sed -i '' 's/DEVELOPMENT_TEAM = "";/DEVELOPMENT_TEAM = "${{ env.TEAM_ID }}";/g' $PROJECT_PATH  # Sets team ID.
-          sed -i '' 's/PROVISIONING_PROFILE_SPECIFIER = "";/PROVISIONING_PROFILE_SPECIFIER = "${{ env.PROFILE_SPECIFIER }}";/g' $PROJECT_PATH  # Sets profile name.
-          sed -i '' 's/CODE_SIGN_IDENTITY = "";/CODE_SIGN_IDENTITY = "iPhone Distribution";/g' $PROJECT_PATH  # Sets identity for all configs.
-          sed -i '' 's/CODE_SIGN_IDENTITY\[sdk=iphoneos\*\] = "";/CODE_SIGN_IDENTITY\[sdk=iphoneos\*\] = "iPhone Distribution";/g' $PROJECT_PATH  # Sets for iPhone SDK.
+          sed -i '' "s/CODE_SIGN_STYLE = Automatic;/CODE_SIGN_STYLE = Manual;/g" $PROJECT_PATH  # Switches to manual signing.
+          sed -i '' "s/DEVELOPMENT_TEAM = \\\"\\\";/DEVELOPMENT_TEAM = \\\"${{ env.TEAM_ID }}\\\";/g" $PROJECT_PATH  # Sets team ID, escaping quotes in pattern and replacement.
+          sed -i '' "s/PROVISIONING_PROFILE_SPECIFIER = \\\"\\\";/PROVISIONING_PROFILE_SPECIFIER = \\\"${{ env.PROFILE_SPECIFIER }}\\\";/g" $PROJECT_PATH  # Sets profile name, escaping quotes.
+          sed -i '' "s/CODE_SIGN_IDENTITY = \\\"\\\";/CODE_SIGN_IDENTITY = \\\"iPhone Distribution\\\";/g" $PROJECT_PATH  # Sets identity for all configs, escaping quotes.
+          sed -i '' "s/CODE_SIGN_IDENTITY\\[sdk=iphoneos\\*\\] = \\\"\\\";/CODE_SIGN_IDENTITY\\[sdk=iphoneos\\*\\] = \\\"iPhone Distribution\\\";/g" $PROJECT_PATH  # Sets for iPhone SDK, escaping quotes and special chars.
 
       - name: Create export options plist
         run: |
