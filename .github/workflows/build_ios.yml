@@ -42,7 +42,7 @@ jobs:
       - name: Verify signing identities
         run: |
           security find-identity -v -p codesigning $KEYCHAIN_PATH
-          security find-certificate -c "Apple Distribution" -p $KEYCHAIN_PATH
+          security find-certificate -c "iPhone Distribution" -p $KEYCHAIN_PATH
       - name: Copy provisioning profile
         run: cp certs/app.mobileprovision /tmp/app.mobileprovision  # Assumes app.mobileprovision is uploaded/committed to the 'certs/' directory in the repo
       - name: Check decoded provisioning profile
@@ -77,8 +77,8 @@ jobs:
           sed -i '' 's/CODE_SIGN_STYLE = Automatic;/CODE_SIGN_STYLE = Manual;/g' $PROJECT_PATH
           sed -i '' 's/DEVELOPMENT_TEAM = "";/DEVELOPMENT_TEAM = "${{ env.TEAM_ID }}";/g' $PROJECT_PATH
           sed -i '' 's/PROVISIONING_PROFILE_SPECIFIER = "";/PROVISIONING_PROFILE_SPECIFIER = "${{ env.PROFILE_SPECIFIER }}";/g' $PROJECT_PATH
-          sed -i '' 's/CODE_SIGN_IDENTITY = "";/CODE_SIGN_IDENTITY = "Apple Distribution";/g' $PROJECT_PATH
-          sed -i '' 's/CODE_SIGN_IDENTITY\[sdk=iphoneos\*\] = "";/CODE_SIGN_IDENTITY\[sdk=iphoneos\*\] = "Apple Distribution";/g' $PROJECT_PATH
+          sed -i '' 's/CODE_SIGN_IDENTITY = "";/CODE_SIGN_IDENTITY = "iPhone Distribution";/g' $PROJECT_PATH
+          sed -i '' 's/CODE_SIGN_IDENTITY\[sdk=iphoneos\*\] = "";/CODE_SIGN_IDENTITY\[sdk=iphoneos\*\] = "iPhone Distribution";/g' $PROJECT_PATH
       - name: Create export options plist
         run: |
           echo '<?xml version="1.0" encoding="UTF-8"?>' > exportOptions.plist
