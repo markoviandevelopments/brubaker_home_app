@@ -39,6 +39,8 @@ jobs:
       - name: Import certificate
         run: security import /tmp/apple_cert.p12 -P "$P12_PASSWORD" -A -t priv -f pkcs12 -k $KEYCHAIN_PATH
         continue-on-error: false
+      - name: Allow codesign access
+        run: security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
       - name: Verify signing identities
         run: |
           security find-identity -v -p codesigning $KEYCHAIN_PATH
@@ -102,7 +104,7 @@ jobs:
       - name: Remove FinderInfo xattr
         run: sudo xattr -r -d com.apple.FinderInfo . || true
       - name: Build IPA
-        run: flutter build ipa --profile --export-options-plist=exportOptions.plist -v
+        run: flutter build ipa --release --export-options-plist=exportOptions.plist -v
       - name: Upload IPA artifact
         uses: actions/upload-artifact@v4
         with:
