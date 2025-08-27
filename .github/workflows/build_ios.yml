@@ -31,6 +31,9 @@ jobs:
       - name: Install xcodeproj gem
         run: gem install xcodeproj  # Installs Ruby gem to manipulate Xcode project.
 
+      - name: Install fastlane
+        run: gem install fastlane -NV  # Installs fastlane for iOS build and signing.
+
       - name: Copy certificate
         run: cp certs/apple_cert.p12 /tmp/apple_cert.p12  # Copies the .p12 file from repo to temp location.
 
@@ -122,20 +125,13 @@ jobs:
         run: |
           security default-keychain
           security list-keychains
-          security find-identity -v -p codesign  # Verifies the keychain is default and identity is available before build.
+          security find-identity -v -p codesigning  # Verifies the keychain is default and identity is available before build.
 
       - name: Build App
         run: flutter build ios --release -v  # Builds the app for release without archiving, to separate the steps and avoid Flutter's added flags that may cause hangs.
 
-      - name: Archive App
-        run: xcodebuild archive -workspace ios/Runner.xcworkspace -scheme Runner -configuration Release -destination 'generic/platform=iOS' -archivePath build/ios/archive/Runner.xcarchive VERBOSE_SCRIPT_LOGGING=YES COMPILER_INDEX_STORE_ENABLE=NO CODE_SIGN_STYLE=Manual CODE_SIGN_IDENTITY="iPhone Distribution" DEVELOPMENT_TEAM="${{ env.TEAM_ID }}" PROVISIONING_PROFILE_SPECIFIER="${{ env.PROFILE_SPECIFIER }}"  # Archives the built app with explicit manual signing parameters to avoid hangs.
-
-      - name: Export IPA
-        run: xcodebuild -exportArchive -archivePath build/ios/archive/Runner.xcarchive -exportOptionsPlist exportOptions.plist -exportPath build/ios/ipa  # Exports the archive to IPA using the plist.
+      - name: Archive and Export with fastlane
+        run: fastlane gym --workspace ios/Runner.xcworkspace --scheme Runner --configuration Release --clean --export_method app-store --export_options_plist exportOptions.plist --output_directory build/ios/ipa --output_name Runner.ipa --verbose  # Uses fastlane gym to archive and export the IPA with manual signing, providing more robust CI handling and verbose output.
 
       - name: Upload IPA artifact
-        uses: actions/upload-artifact@v4  # Uploads the built IPA as an artifact.
-        with:
-          name: ios-app  # Artifact name.
-          path: build/ios/ipa/*.ipa  # Path to IPA.
-          retention-days: 5  # Keeps for 5 days.
+        uses: actions/upload-artifact@v4  # Uploads the built IPA as
