@@ -77,13 +77,13 @@ jobs:
           echo "TEAM_ID=D296S46TFC" >> $GITHUB_ENV  # Sets team ID (from your Apple Developer account).
           echo "Hardcoded TEAM_ID: $TEAM_ID"  # Logs.
 
-      - name: Configure Release and Signing for Runner
+      - name: Configure Runner Project Signing
         run: |
-          ruby -e "require 'xcodeproj'; project = Xcodeproj::Project.open('ios/Runner.xcodeproj'); profile = project.build_configuration_list['Profile']; unless project.build_configuration_list['Release']; new_config = project.add_build_configuration('Release', profile&.type || :release); new_config.build_settings = profile&.build_settings&.dup || {}; new_config.build_settings['CODE_SIGN_STYLE'] = 'Manual'; new_config.build_settings['DEVELOPMENT_TEAM'] = '${{ env.TEAM_ID }}'; new_config.build_settings['PROVISIONING_PROFILE_SPECIFIER'] = '${{ env.PROFILE_SPECIFIER }}'; new_config.build_settings['CODE_SIGN_IDENTITY'] = 'iPhone Distribution'; new_config.build_settings['CODE_SIGN_IDENTITY[sdk=iphoneos*]'] = 'iPhone Distribution'; end; project.targets.each do |target| if target.name == 'Runner'; unless target.build_configuration_list['Release']; target_profile = target.build_configuration_list['Profile']; target_new = target.add_build_configuration('Release', target_profile&.type || :release); target_new.build_settings = target_profile&.build_settings&.dup || {}; end; target.build_configuration_list['Release'].build_settings['CODE_SIGN_STYLE'] = 'Manual'; target.build_configuration_list['Release'].build_settings['DEVELOPMENT_TEAM'] = '${{ env.TEAM_ID }}'; target.build_configuration_list['Release'].build_settings['PROVISIONING_PROFILE_SPECIFIER'] = '${{ env.PROFILE_SPECIFIER }}'; target.build_configuration_list['Release'].build_settings['CODE_SIGN_IDENTITY'] = 'iPhone Distribution'; target.build_configuration_list['Release'].build_settings['CODE_SIGN_IDENTITY[sdk=iphoneos*]'] = 'iPhone Distribution'; end end; project.save"  # Sets manual signing only for Runner target in Release config, avoiding pod targets.
+          ruby -e "require 'xcodeproj'; project = Xcodeproj::Project.open('ios/Runner.xcodeproj'); project.build_configuration_list.build_configurations.each do |config| if config.name == 'Release'; config.build_settings['CODE_SIGN_STYLE'] = 'Manual'; config.build_settings['DEVELOPMENT_TEAM'] = '${{ env.TEAM_ID }}'; config.build_settings['PROVISIONING_PROFILE_SPECIFIER'] = '${{ env.PROFILE_SPECIFIER }}'; config.build_settings['CODE_SIGN_IDENTITY'] = 'iPhone Distribution'; config.build_settings['CODE_SIGN_IDENTITY[sdk=iphoneos*]'] = 'iPhone Distribution'; end end; project.targets.each do |target| if target.name == 'Runner'; target.build_configuration_list.build_configurations.each do |config| if config.name == 'Release'; config.build_settings['CODE_SIGN_STYLE'] = 'Manual'; config.build_settings['DEVELOPMENT_TEAM'] = '${{ env.TEAM_ID }}'; config.build_settings['PROVISIONING_PROFILE_SPECIFIER'] = '${{ env.PROFILE_SPECIFIER }}'; config.build_settings['CODE_SIGN_IDENTITY'] = 'iPhone Distribution'; config.build_settings['CODE_SIGN_IDENTITY[sdk=iphoneos*]'] = 'iPhone Distribution'; end end; end end; project.save"  # Sets manual signing only for Runner target in Release config.
 
       - name: Configure Pods Project
         run: |
-          ruby -e "require 'xcodeproj'; project = Xcodeproj::Project.open('ios/Pods/Pods.xcodeproj'); project.targets.each do |target| if target.build_configuration_list['Release']; target.build_configuration_list['Release'].build_settings['PROVISIONING_PROFILE_SPECIFIER'] = ''; target.build_configuration_list['Release'].build_settings['CODE_SIGN_STYLE'] = 'Automatic'; end end; project.save"  # Sets no provisioning specifier and automatic signing for pod targets in Release to avoid errors.
+          ruby -e "require 'xcodeproj'; project = Xcodeproj::Project.open('ios/Pods/Pods.xcodeproj'); project.targets.each do |target| target.build_configuration_list.build_configurations.each do |config| config.build_settings['CODE_SIGN_STYLE'] = 'Automatic'; config.build_settings['DEVELOPMENT_TEAM'] = ''; config.build_settings['PROVISIONING_PROFILE_SPECIFIER'] = ''; config.build_settings['CODE_SIGN_IDENTITY'] = ''; end end; project.save"  # Sets automatic signing, no team, no profile specifier, no identity for all pod targets to avoid errors.
 
       - name: Set up keychain
         run: |
@@ -134,8 +134,11 @@ jobs:
       - name: Build App
         run: flutter build ios --release -v  # Builds the app for release without archiving, to separate the steps and avoid Flutter's added flags that may cause hangs.
 
-      - name: Archive and Export with fastlane
-        run: fastlane gym --workspace ios/Runner.xcworkspace --scheme Runner --configuration Release --clean --export_method app-store --export_options_plist exportOptions.plist --output_directory build/ios/ipa --output_name Runner.ipa --verbose  # Uses fastlane gym to archive and export the IPA with manual signing, providing more robust CI handling and verbose output.
+      - name: Archive App
+        run: xcodebuild archive -workspace ios/Runner.xcworkspace -scheme Runner -configuration Release -destination 'generic/platform=iOS' -archivePath build/ios/archive/Runner.xcarchive VERBOSE_SCRIPT_LOGGING=YES COMPILER_INDEX_STORE_ENABLE=NO CODE_SIGN_STYLE=Manual CODE_SIGN_IDENTITY="iPhone Distribution" DEVELOPMENT_TEAM="${{ env.TEAM_ID }}" PROVISIONING_PROFILE_SPECIFIER="${{ env.PROFILE_SPECIFIER }}"  # Archives the built app with explicit manual signing parameters to avoid hangs.
+
+      - name: Export IPA
+        run: xcodebuild -exportArchive -archivePath build/ios/archive/Runner.xcarchive -exportOptionsPlist exportOptions.plist -exportPath build/ios/ipa  # Exports the archive to IPA using the plist.
 
       - name: Upload IPA artifact
         uses: actions/upload-artifact@v4  # Uploads the built IPA as an artifact.
