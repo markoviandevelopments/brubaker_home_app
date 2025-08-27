@@ -6,190 +6,136 @@ on:
     branches: [ main ]
 jobs:
   build:
-    runs-on: macos-14
-    timeout-minutes: 45
+    runs-on: macos-14  # Specifies the macOS runner version for iOS builds.
+    timeout-minutes: 45  # Prevents infinite hangs, fails job after 45 minutes.
     env:
-      KEYCHAIN_PATH: build.keychain-db
-      KEYCHAIN_PASSWORD: Not$erp01
-      P12_PASSWORD: Not$erp01
-      CERT_LABEL: iPhone Distribution: Willoh Brubaker (D296S46TFC)
+      KEYCHAIN_PATH: build.keychain-db  # Custom keychain file path to isolate certificates.
+      KEYCHAIN_PASSWORD: Not$erp01  # Password for the custom keychain (hardcoded for simplicity; consider secrets for production).
+      P12_PASSWORD: Not$erp01  # Password for the .p12 certificate file (same note as above).
+      CERT_LABEL: "iPhone Distribution: Willoh Brubaker (D296S46TFC)"  # The exact common name (label) of the certificate for verification.
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Xcode version
-        uses: maxim-lobanov/setup-xcode@v1
-        with:
-          xcode-version: '16.1'
-
-      - name: Show Available SDKs (Debug)
-        run: xcodebuild -showsdks
+        uses: actions/checkout@v4  # Checks out the repository code to the runner.
 
       - name: Set up Flutter
-        uses: subosito/flutter-action@v2
+        uses: subosito/flutter-action@v2  # Installs Flutter on the runner.
         with:
-          channel: stable
+          channel: 'stable'  # Uses the stable channel for reliability.
 
       - name: Install dependencies
-        run: flutter pub get
-
-      - name: Check outdated dependencies
-        run: flutter pub outdated
-
-      - name: Check asset sizes
-        run: find assets -type f -exec ls -lh {} \; | awk '$5 ~ /[0-9]+[MG]/ {print}'
-
-      - name: Clean and Install CocoaPods
-        working-directory: ios
-        run: |
-          rm -rf Pods Podfile.lock ~/Library/Caches/CocoaPods
-          pod deintegrate || true
-          pod cache clean --all
-          pod install --repo-update --verbose
-
-      - name: Include Pods Configuration
-        working-directory: ios
-        run: |
-          echo '#include "Pods/Target Support Files/Pods-Runner/Pods-Runner.release.xcconfig"' >> Flutter/Release.xcconfig
-          cat Flutter/Release.xcconfig
-
-      - name: Clean Xcode DerivedData
-        run: rm -rf ~/Library/Developer/Xcode/DerivedData || true
+        run: flutter pub get  # Fetches Flutter project dependencies.
 
       - name: Analyze Dart code
-        run: flutter analyze
-
-      - name: Clean Flutter build
-        run: flutter clean
+        run: flutter analyze  # Runs static analysis on the Dart code to catch issues early.
 
       - name: Install xcodeproj gem
-        run: gem install xcodeproj
+        run: gem install xcodeproj  # Installs Ruby gem to manipulate Xcode project.
 
       - name: Copy certificate
-        run: cp certs/apple_cert.p12 /tmp/apple_cert.p12
+        run: cp certs/apple_cert.p12 /tmp/apple_cert.p12  # Copies the .p12 file from repo to temp location.
 
       - name: Check decoded certificate file
         run: |
-          ls -l /tmp/apple_cert.p12
-          file /tmp/apple_cert.p12 || echo File type check failed - may not be a valid PKCS12 file
-          openssl pkcs12 -info -in /tmp/apple_cert.p12 -passin pass:"$P12_PASSWORD" -nokeys || echo OpenSSL verification failed
+          ls -l /tmp/apple_cert.p12  # Lists file details for verification.
+          file /tmp/apple_cert.p12 || echo "File type check failed - may not be a valid PKCS12 file"  # Checks file type.
+          openssl pkcs12 -info -in /tmp/apple_cert.p12 -passin pass:"$P12_PASSWORD" -nokeys || echo "OpenSSL verification failed"  # Verifies .p12 structure with OpenSSL.
 
       - name: Copy provisioning profile
-        run: cp certs/app.mobileprovision /tmp/app.mobileprovision
+        run: cp certs/app.mobileprovision /tmp/app.mobileprovision  # Copies the provisioning profile from repo to temp.
 
       - name: Check decoded provisioning profile
         run: |
-          ls -l /tmp/app.mobileprovision
-          file /tmp/app.mobileprovision || echo File type check failed - may not be a valid mobileprovision file
-
-      - name: Check certificate expiration
-        run: |
-          openssl pkcs12 -in /tmp/apple_cert.p12 -passin pass:"$P12_PASSWORD" -out /tmp/cert.pem -nodes
-          openssl x509 -noout -dates -in /tmp/cert.pem
-          EXPIRATION_DATE=$(openssl x509 -enddate -noout -in /tmp/cert.pem | cut -d= -f2)
-          echo Certificate expires on: $EXPIRATION_DATE
+          ls -l /tmp/app.mobileprovision  # Lists file details.
+          file /tmp/app.mobileprovision || echo "File type check failed - may not be a valid mobileprovision file"  # Checks file type.
 
       - name: Extract provisioning profile details
         run: |
-          security cms -D -i /tmp/app.mobileprovision > /tmp/decoded.plist
-          PROFILE_UUID=$(/usr/libexec/PlistBuddy -c "Print :UUID" /tmp/decoded.plist)
-          PROFILE_SPECIFIER=$(/usr/libexec/PlistBuddy -c "Print :Name" /tmp/decoded.plist)
-          EXPIRATION_DATE=$(/usr/libexec/PlistBuddy -c "Print :ExpirationDate" /tmp/decoded.plist)
-          echo "PROFILE_UUID=$PROFILE_UUID" >> $GITHUB_ENV
-          echo "PROFILE_SPECIFIER=$PROFILE_SPECIFIER" >> $GITHUB_ENV
-          echo Extracted PROFILE_UUID: $PROFILE_UUID
-          echo Extracted PROFILE_SPECIFIER: $PROFILE_SPECIFIER
-          echo Profile expires on: $EXPIRATION_DATE
+          security cms -D -i /tmp/app.mobileprovision > /tmp/decoded.plist  # Decodes the profile to plist.
+          PROFILE_UUID=$(/usr/libexec/PlistBuddy -c "Print :UUID" /tmp/decoded.plist)  # Extracts UUID.
+          PROFILE_SPECIFIER=$(/usr/libexec/PlistBuddy -c "Print :Name" /tmp/decoded.plist)  # Extracts name.
+          echo "PROFILE_UUID=$PROFILE_UUID" >> $GITHUB_ENV  # Sets env var.
+          echo "PROFILE_SPECIFIER=$PROFILE_SPECIFIER" >> $GITHUB_ENV  # Sets env var.
+          echo "Extracted PROFILE_UUID: $PROFILE_UUID"  # Logs.
+          echo "Extracted PROFILE_SPECIFIER: $PROFILE_SPECIFIER"  # Logs.
 
       - name: Install provisioning profile
         run: |
-          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
-          cp /tmp/app.mobileprovision ~/Library/MobileDevice/Provisioning\ Profiles/${{ env.PROFILE_UUID }}.mobileprovision
+          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles  # Creates directory if needed.
+          cp /tmp/app.mobileprovision ~/Library/MobileDevice/Provisioning\ Profiles/${{ env.PROFILE_UUID }}.mobileprovision  # Installs the profile.
 
       - name: Extract bundle ID
         run: |
-          BUNDLE_ID=$(/usr/libexec/PlistBuddy -c "Print :CFBundleIdentifier" ios/Runner/Info.plist)
-          echo "BUNDLE_ID=$BUNDLE_ID" >> $GITHUB_ENV
-          echo Extracted BUNDLE_ID: $BUNDLE_ID
+          BUNDLE_ID=$(/usr/libexec/PlistBuddy -c "Print :CFBundleIdentifier" ios/Runner/Info.plist)  # Extracts app bundle ID from Info.plist.
+          echo "BUNDLE_ID=$BUNDLE_ID" >> $GITHUB_ENV  # Sets env var.
+          echo "Extracted BUNDLE_ID: $BUNDLE_ID"  # Logs.
 
       - name: Set hardcoded Team ID
         run: |
-          echo "TEAM_ID=D296S46TFC" >> $GITHUB_ENV
-          echo Hardcoded TEAM_ID: $TEAM_ID
+          echo "TEAM_ID=D296S46TFC" >> $GITHUB_ENV  # Sets team ID (from your Apple Developer account).
+          echo "Hardcoded TEAM_ID: $TEAM_ID"  # Logs.
 
       - name: Configure Release and Signing
         run: |
-          ruby -e "require 'xcodeproj'; project = Xcodeproj::Project.open('ios/Runner.xcodeproj'); release_config = project.build_configuration_list.build_configurations.find { |c| c.name == 'Release' }; if !release_config; profile_config = project.build_configuration_list.build_configurations.find { |c| c.name == 'Profile' }; if profile_config; release_config = project.add_build_configuration('Release', profile_config.type); release_config.build_settings = profile_config.build_settings.dup; end; end; if release_config; release_config.build_settings['CODE_SIGN_STYLE'] = 'Manual'; release_config.build_settings['DEVELOPMENT_TEAM'] = '${{ env.TEAM_ID }}'; release_config.build_settings['PROVISIONING_PROFILE_SPECIFIER'] = '${{ env.PROFILE_SPECIFIER }}'; release_config.build_settings['CODE_SIGN_IDENTITY'] = 'iPhone Distribution'; release_config.build_settings['CODE_SIGN_IDENTITY[sdk=iphoneos*]'] = 'iPhone Distribution'; end; project.targets.each do |target| target_release = target.build_configuration_list.build_configurations.find { |c| c.name == 'Release' }; if !target_release; target_profile = target.build_configuration_list.build_configurations.find { |c| c.name == 'Profile' }; if target_profile; target_release = target.add_build_configuration('Release', target_profile.type); target_release.build_settings = target_profile.build_settings.dup; end; end; if target_release; target_release.build_settings['CODE_SIGN_STYLE'] = 'Manual'; target_release.build_settings['DEVELOPMENT_TEAM'] = '${{ env.TEAM_ID }}'; target_release.build_settings['PROVISIONING_PROFILE_SPECIFIER'] = '${{ env.PROFILE_SPECIFIER }}'; target_release.build_settings['CODE_SIGN_IDENTITY'] = 'iPhone Distribution'; target_release.build_settings['CODE_SIGN_IDENTITY[sdk=iphoneos*]'] = 'iPhone Distribution'; end end; project.save"
+          ruby -e "require 'xcodeproj'; project = Xcodeproj::Project.open('ios/Runner.xcodeproj'); profile = project.build_configuration_list['Profile']; unless project.build_configuration_list['Release']; new_config = project.add_build_configuration('Release', profile&.type || :release); new_config.build_settings = profile&.build_settings&.dup || {}; new_config.build_settings['CODE_SIGN_STYLE'] = 'Manual'; new_config.build_settings['DEVELOPMENT_TEAM'] = '${{ env.TEAM_ID }}'; new_config.build_settings['PROVISIONING_PROFILE_SPECIFIER'] = '${{ env.PROFILE_SPECIFIER }}'; new_config.build_settings['CODE_SIGN_IDENTITY'] = 'iPhone Distribution'; new_config.build_settings['CODE_SIGN_IDENTITY[sdk=iphoneos*]'] = 'iPhone Distribution'; end; project.targets.each do |target| unless target.build_configuration_list['Release']; target_profile = target.build_configuration_list['Profile']; target_new = target.add_build_configuration('Release', target_profile&.type || :release); target_new.build_settings = target_profile&.build_settings&.dup || {}; target_new.build_settings['CODE_SIGN_STYLE'] = 'Manual'; target_new.build_settings['DEVELOPMENT_TEAM'] = '${{ env.TEAM_ID }}'; target_new.build_settings['PROVISIONING_PROFILE_SPECIFIER'] = '${{ env.PROFILE_SPECIFIER }}'; target_new.build_settings['CODE_SIGN_IDENTITY'] = 'iPhone Distribution'; target_new.build_settings['CODE_SIGN_IDENTITY[sdk=iphoneos*]'] = 'iPhone Distribution'; end end; project.save"  # Adds 'Release' config if missing, using 'Profile' or default :release, and sets manual signing for project and targets.
 
       - name: Set up keychain
         run: |
-          security create-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
-          security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
-          security default-keychain -s $KEYCHAIN_PATH
-          security unlock-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
-          security list-keychains -d user -s $KEYCHAIN_PATH
+          security create-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH  # Creates a new keychain.
+          security set-keychain-settings -lut 21600 $KEYCHAIN_PATH  # Sets timeout to 6 hours.
+          security default-keychain -s $KEYCHAIN_PATH  # Sets this as the default keychain.
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH  # Unlocks the keychain.
+          security list-keychains -d user -s $KEYCHAIN_PATH  # Lists and sets the keychain for user domain.
 
       - name: Import certificate
-        run: security import /tmp/apple_cert.p12 -P "$P12_PASSWORD" -A -t priv -f pkcs12 -k $KEYCHAIN_PATH -T /usr/bin/codesign -T /usr/bin/productsign -T /usr/bin/xcodebuild -T /usr/bin/productbuild
+        run: security import /tmp/apple_cert.p12 -P "$P12_PASSWORD" -A -t priv -f pkcs12 -k $KEYCHAIN_PATH -T /usr/bin/codesign -T /usr/bin/productsign -T /usr/bin/xcodebuild -T /usr/bin/productbuild  # Imports the certificate and private key into the keychain, with -T flags for multiple binaries to ensure access in CI.
 
       - name: Verify signing identities
         run: |
-          security find-identity -v -p codesigning $KEYCHAIN_PATH
-          security find-certificate -c "$CERT_LABEL" -p $KEYCHAIN_PATH
+          security find-identity -v -p codesigning $KEYCHAIN_PATH  # Lists valid code signing identities.
+          security find-certificate -c "$CERT_LABEL" -p $KEYCHAIN_PATH  # Finds the certificate by its full common name and prints it.
 
       - name: Create export options plist
         run: |
-          echo '<?xml version="1.0" encoding="UTF-8"?>'
-          echo '<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">'
-          echo '<plist version="1.0">'
-          echo '<dict>'
-          echo ' <key>compileBitcode</key>'
-          echo ' <false/>'
-          echo ' <key>method</key>'
-          echo ' <string>app-store</string>'
-          echo ' <key>teamID</key>'
-          echo " <string>${{ env.TEAM_ID }}</string>"
-          echo ' <key>provisioningProfiles</key>'
-          echo ' <dict>'
-          echo " <key>${{ env.BUNDLE_ID }}</key>"
-          echo " <string>${{ env.PROFILE_SPECIFIER }}</string>"
-          echo ' </dict>'
-          echo '</dict>'
-          echo '</plist>' > exportOptions.plist
-          cat exportOptions.plist
+          echo '<?xml version="1.0" encoding="UTF-8"?>' > exportOptions.plist
+          echo '<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">' >> exportOptions.plist
+          echo '<plist version="1.0">' >> exportOptions.plist
+          echo '<dict>' >> exportOptions.plist
+          echo ' <key>compileBitcode</key>' >> exportOptions.plist
+          echo ' <false/>' >> exportOptions.plist  # Disables bitcode (common for Flutter).
+          echo ' <key>method</key>' >> exportOptions.plist
+          echo ' <string>app-store</string>' >> exportOptions.plist  # Export method for App Store.
+          echo ' <key>teamID</key>' >> exportOptions.plist
+          echo " <string>${{ env.TEAM_ID }}</string>" >> exportOptions.plist  # Team ID.
+          echo ' <key>provisioningProfiles</key>' >> exportOptions.plist
+          echo ' <dict>' >> exportOptions.plist
+          echo " <key>${{ env.BUNDLE_ID }}</key>" >> exportOptions.plist
+          echo " <string>${{ env.PROFILE_SPECIFIER }}</string>" >> exportOptions.plist  # Maps bundle ID to profile.
+          echo ' </dict>' >> exportOptions.plist
+          echo '</dict>' >> exportOptions.plist
+          echo '</plist>' >> exportOptions.plist
+          cat exportOptions.plist  # Logs the plist for verification.
 
       - name: Remove FinderInfo xattr
-        run: sudo xattr -r -d com.apple.FinderInfo . || true
+        run: sudo xattr -r -d com.apple.FinderInfo . || true  # Removes macOS-specific attributes that can cause issues.
 
       - name: Debug Keychain Before Build
         run: |
           security default-keychain
           security list-keychains
-          security find-identity -v -p codesigning
+          security find-identity -v -p codesigning  # Verifies the keychain is default and identity is available before build.
 
-      - name: Create Xcode Build Config
-        run: |
-          echo "DESTINATION=generic/platform=iOS" > ios/flutter_build.xcconfig
-          echo "OTHER_XCODEFLAGS=-verbose" >> ios/flutter_build.xcconfig
-          cat ios/flutter_build.xcconfig
+      - name: Build App
+        run: flutter build ios --release -v  # Builds the app for release without archiving, to separate the steps and avoid Flutter's added flags that may cause hangs.
 
-      - name: Flutter Build iOS (Pre-Archive)
-        timeout-minutes: 30
-        run: flutter build ios --release -v --config ios/flutter_build.xcconfig
+      - name: Archive App
+        run: xcodebuild archive -workspace ios/Runner.xcworkspace -scheme Runner -configuration Release -destination 'generic/platform=iOS' -archivePath build/ios/archive/Runner.xcarchive VERBOSE_SCRIPT_LOGGING=YES COMPILER_INDEX_STORE_ENABLE=NO CODE_SIGN_STYLE=Manual  # Archives the built app with manual signing and no provisioning flags to avoid hangs.
 
-      - name: Xcode Archive
-        timeout-minutes: 20
-        working-directory: ios
-        run: xcodebuild -workspace Runner.xcworkspace -scheme Runner -configuration Release archive -archivePath ../build/ios/Runner.xcarchive -verbose
-
-      - name: Xcode Export IPA
-        timeout-minutes: 20
-        working-directory: ios
-        run: xcodebuild -exportArchive -archivePath ../build/ios/Runner.xcarchive -exportOptionsPlist ../exportOptions.plist -exportPath ../build/ios/ipa -verbose
+      - name: Export IPA
+        run: xcodebuild -exportArchive -archivePath build/ios/archive/Runner.xcarchive -exportOptionsPlist exportOptions.plist -exportPath build/ios/ipa  # Exports the archive to IPA using the plist.
 
       - name: Upload IPA artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v4  # Uploads the built IPA as an artifact.
         with:
-          name: ios-app
-          path: build/ios/ipa/*.ipa
-          retention-days: 5
+          name: ios-app  # Artifact name.
+          path: build/ios/ipa/*.ipa  # Path to IPA.
+          retention-days: 5  # Keeps for 5 days.
