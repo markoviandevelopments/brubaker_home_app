@@ -148,7 +148,7 @@ jobs:
           security find-identity -v -p codesigning  # Verifies the keychain is default and identity is available before build.
 
       - name: Flutter Build iOS (Pre-Archive)
-        timeout-minutes: 20  # Fails if hangs; adjust if your build is slow.
+        timeout-minutes: 90
         run: flutter build ios --release -v  # Builds app without archive/export; verbose for logs.
 
       - name: Xcode Archive
