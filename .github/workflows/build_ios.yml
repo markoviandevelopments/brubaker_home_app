@@ -36,6 +36,18 @@ jobs:
       - name: Install dependencies
         run: flutter pub get  # Fetches Flutter project dependencies.
 
+      - name: Clean and Install CocoaPods
+        working-directory: ios
+        run: |
+            rm -rf Pods Podfile.lock ~/Library/Caches/CocoaPods
+            pod deintegrate || true
+            pod cache clean --all
+            pod install --repo-update --verbose  # Ensures fresh pod setup.
+
+      - name: Clean Xcode DerivedData
+        run: rm -rf ~/Library/Developer/Xcode/DerivedData || true  # Clears potential cache issues.
+
+
       - name: Analyze Dart code
         run: flutter analyze  # Runs static analysis on the Dart code to catch issues early.
 
@@ -149,7 +161,7 @@ jobs:
 
       - name: Flutter Build iOS (Pre-Archive)
         timeout-minutes: 90
-        run: flutter build ios --release -v  # Builds app without archive/export; verbose for logs.
+        run: flutter build ios --release -v --destination 'generic/platform=iOS' --verbose
 
       - name: Xcode Archive
         timeout-minutes: 20
