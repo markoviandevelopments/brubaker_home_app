@@ -7,6 +7,7 @@ on:
 jobs:
   build:
     runs-on: macos-14  # Specifies the macOS runner version for iOS builds.
+    timeout-minutes: 45  # Prevents infinite hangs, fails job after 45 minutes.
     env:
       KEYCHAIN_PATH: build.keychain-db  # Custom keychain file path to isolate certificates.
       KEYCHAIN_PASSWORD: Not$erp01  # Password for the custom keychain (hardcoded for simplicity; consider secrets for production).
@@ -75,7 +76,7 @@ jobs:
 
       - name: Configure Release and Signing
         run: |
-          ruby -e "require 'xcodeproj'; project = Xcodeproj::Project.open('ios/Runner.xcodeproj'); profile = project.build_configuration_list['Profile']; if profile; new_config = project.add_build_configuration('Release', profile.type); new_config.build_settings = profile.build_settings.dup; new_config.build_settings['CODE_SIGN_STYLE'] = 'Manual'; new_config.build_settings['DEVELOPMENT_TEAM'] = '${{ env.TEAM_ID }}'; new_config.build_settings['PROVISIONING_PROFILE_SPECIFIER'] = '${{ env.PROFILE_SPECIFIER }}'; new_config.build_settings['CODE_SIGN_IDENTITY'] = 'iPhone Distribution'; new_config.build_settings['CODE_SIGN_IDENTITY[sdk=iphoneos*]'] = 'iPhone Distribution'; end; project.targets.each do |target| target_profile = target.build_configuration_list['Profile']; if target_profile; target_new = target.add_build_configuration('Release', target_profile.type); target_new.build_settings = target_profile.build_settings.dup; target_new.build_settings['CODE_SIGN_STYLE'] = 'Manual'; target_new.build_settings['DEVELOPMENT_TEAM'] = '${{ env.TEAM_ID }}'; target_new.build_settings['PROVISIONING_PROFILE_SPECIFIER'] = '${{ env.PROFILE_SPECIFIER }}'; target_new.build_settings['CODE_SIGN_IDENTITY'] = 'iPhone Distribution'; target_new.build_settings['CODE_SIGN_IDENTITY[sdk=iphoneos*]'] = 'iPhone Distribution'; end end; project.save"  # Duplicates the 'Profile' configuration to 'Release' for the project and all targets to match Flutter's expectation for --release builds, copying all settings and setting manual signing.
+          ruby -e "require 'xcodeproj'; project = Xcodeproj::Project.open('ios/Runner.xcodeproj'); profile = project.build_configuration_list['Profile']; unless project.build_configuration_list['Release']; new_config = project.add_build_configuration('Release', profile&.type || :release); new_config.build_settings = profile&.build_settings&.dup || {}; new_config.build_settings['CODE_SIGN_STYLE'] = 'Manual'; new_config.build_settings['DEVELOPMENT_TEAM'] = '${{ env.TEAM_ID }}'; new_config.build_settings['PROVISIONING_PROFILE_SPECIFIER'] = '${{ env.PROFILE_SPECIFIER }}'; new_config.build_settings['CODE_SIGN_IDENTITY'] = 'iPhone Distribution'; new_config.build_settings['CODE_SIGN_IDENTITY[sdk=iphoneos*]'] = 'iPhone Distribution'; end; project.targets.each do |target| unless target.build_configuration_list['Release']; target_profile = target.build_configuration_list['Profile']; target_new = target.add_build_configuration('Release', target_profile&.type || :release); target_new.build_settings = target_profile&.build_settings&.dup || {}; target_new.build_settings['CODE_SIGN_STYLE'] = 'Manual'; target_new.build_settings['DEVELOPMENT_TEAM'] = '${{ env.TEAM_ID }}'; target_new.build_settings['PROVISIONING_PROFILE_SPECIFIER'] = '${{ env.PROFILE_SPECIFIER }}'; target_new.build_settings['CODE_SIGN_IDENTITY'] = 'iPhone Distribution'; target_new.build_settings['CODE_SIGN_IDENTITY[sdk=iphoneos*]'] = 'iPhone Distribution'; end end; project.save"  # Adds 'Release' config if missing, using 'Profile' or default :release, and sets manual signing for project and targets.
 
       - name: Set up keychain
         run: |
@@ -123,8 +124,14 @@ jobs:
           security list-keychains
           security find-identity -v -p codesigning  # Verifies the keychain is default and identity is available before build.
 
-      - name: Build IPA
-        run: flutter build ipa --release --export-options-plist=exportOptions.plist -v  # Builds the IPA for release (App Store), using export options; -v for verbose output.
+      - name: Build App
+        run: flutter build ios --release -v  # Builds the app for release without archiving, to separate the steps and avoid Flutter's added flags that may cause hangs.
+
+      - name: Archive App
+        run: xcodebuild archive -workspace ios/Runner.xcworkspace -scheme Runner -configuration Release -destination 'generic/platform=iOS' -archivePath build/ios/archive/Runner.xcarchive VERBOSE_SCRIPT_LOGGING=YES COMPILER_INDEX_STORE_ENABLE=NO  # Archives the built app without provisioning flags to avoid hangs.
+
+      - name: Export IPA
+        run: xcodebuild -exportArchive -archivePath build/ios/archive/Runner.xcarchive -exportOptionsPlist exportOptions.plist -exportPath build/ios/ipa  # Exports the archive to IPA using the plist.
 
       - name: Upload IPA artifact
         uses: actions/upload-artifact@v4  # Uploads the built IPA as an artifact.
