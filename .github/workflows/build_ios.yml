@@ -7,7 +7,7 @@ on:
 jobs:
   build:
     runs-on: macos-14
-    timeout-minutes: 45  # Prevents infinite hangs, fails job after 45 minutes.
+    timeout-minutes: 90  # Prevents infinite hangs, fails job after 45 minutes.
     env:
       KEYCHAIN_PATH: build.keychain-db  # Custom keychain file path to isolate certificates.
       KEYCHAIN_PASSWORD: Not$erp01  # Password for the custom keychain (hardcoded for simplicity; consider secrets for production).
@@ -25,9 +25,6 @@ jobs:
       - name: Show Available SDKs (Debug)
         run: xcodebuild -showsdks
 
-      - name: Download iOS Platform
-        run: xcodebuild -downloadPlatform iOS
-
       - name: Set up Flutter
         uses: subosito/flutter-action@v2  # Installs Flutter on the runner.
         with:
@@ -43,6 +40,13 @@ jobs:
             pod deintegrate || true
             pod cache clean --all
             pod install --repo-update --verbose  # Ensures fresh pod setup.
+
+      - name: Include Pods Configuration
+        working-directory: ios
+        run: |
+            echo '#include "Pods/Target Support Files/Pods-Runner/Pods-Runner.release.xcconfig"' >> Flutter/Release.xcconfig
+            cat Flutter/Release.xcconfig  # Log for verification.
+
 
       - name: Clean Xcode DerivedData
         run: rm -rf ~/Library/Developer/Xcode/DerivedData || true  # Clears potential cache issues.
@@ -160,9 +164,9 @@ jobs:
           security find-identity -v -p codesigning  # Verifies the keychain is default and identity is available before build.
 
       - name: Flutter Build iOS (Pre-Archive)
-        timeout-minutes: 90
-        run: flutter build ios --release -v --destination 'generic/platform=iOS' --verbose
-
+        timeout-minutes: 60
+        run: flutter build ios --release -v --build-xcconfig "DESTINATION=generic/platform=iOS OTHER_XCODEFLAGS=-verbose"
+      
       - name: Xcode Archive
         timeout-minutes: 20
         working-directory: ios
