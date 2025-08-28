@@ -1,3 +1,23 @@
+Skip to content
+Navigation Menu
+markoviandevelopments
+brubaker_home_app
+
+Type / to search
+Code
+Issues
+Pull requests
+Actions
+Projects
+Security
+Insights
+Settings
+Build iOS IPA
+Update Podfile #161
+Jobs
+Run details
+Workflow file for this run
+.github/workflows/build_ios.yml at 122c37e
 name: Build iOS IPA
 on:
   push:
@@ -17,7 +37,7 @@ jobs:
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.x'
+          flutter-version: '3.35.2'
           channel: 'stable'
           cache: true
       # Install dependencies
@@ -39,3 +59,4 @@ jobs:
         with:
           name: app-ipa
           path: build/ios/iphoneos/Runner.ipa
+Update Podfile · markoviandevelopments/brubaker_home_app@122c37e 
