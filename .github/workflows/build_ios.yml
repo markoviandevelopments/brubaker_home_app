@@ -1,5 +1,4 @@
 name: Build iOS IPA
-
 on:
   push:
     branches:
@@ -7,35 +6,27 @@ on:
   pull_request:
     branches:
       - main
-
 jobs:
   build-ios:
     runs-on: macos-13
-
     steps:
       # Checkout the repository
       - name: Checkout code
         uses: actions/checkout@v4
-
       # Set up Flutter
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.x'
+          flutter-version: '3.32.7'
           channel: 'stable'
           cache: true
-
       # Install dependencies
       - name: Install dependencies
         run: flutter pub get
-
-      - name: Install CocoaPods dependencies
-        run: |
-          cd ios
-          pod install
-
       # Build unsigned iOS app and package into unsigned IPA
       - name: Build unsigned IPA
+        env:
+          FLUTTER_BUILD_MODE: release
         run: |
           flutter build ios --release --no-codesign
           cd build/ios/iphoneos
