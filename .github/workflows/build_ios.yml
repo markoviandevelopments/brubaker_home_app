@@ -3,65 +3,61 @@ name: Build Unsigned iOS IPA
 on:
   push:
     branches:
-      - main  # Adjust the branch as needed
+      - main
+  pull_request:
+    branches:
+      - main
 
 jobs:
   build:
     runs-on: macos-latest
 
     steps:
+      # Checkout the repository
       - name: Checkout code
         uses: actions/checkout@v4
 
+      # Set up Flutter
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.x'  # Use the latest stable version or specify an exact version if needed
+          flutter-version: '3.x' # Latest stable version
           channel: 'stable'
+          cache: true
 
+      # Check for outdated packages
+      - name: Check for outdated packages
+        run: flutter pub outdated
+
+      # Install dependencies
       - name: Install dependencies
-        run: flutter pub get
-
-      - name: Install xcodeproj gem
-        run: gem install xcodeproj
-
-      - name: Add Release build configuration if missing
         run: |
+          flutter pub get
           cd ios
-          ruby -e "
-          require 'xcodeproj'
-          project = Xcodeproj::Project.open('Runner.xcodeproj')
-          if project.build_configuration_list['Release'].nil?
-            profile = project.build_configuration_list['Profile']
-            if profile
-              release = project.add_build_configuration('Release', :release)
-              release.build_settings = profile.build_settings.dup
-              project.targets.each do |target|
-                target_profile = target.build_configuration_list['Profile']
-                if target_profile
-                  target_release = target.add_build_configuration('Release', :release)
-                  target_release.build_settings = target_profile.build_settings.dup
-                  target_release.base_configuration_reference = target_profile.base_configuration_reference
-                end
-              end
-            end
-          end
-          project.save
-          "
+          pod install
 
-      - name: Build iOS app (unsigned)
-        run: flutter build ios --release --no-codesign
-
-      - name: Create unsigned IPA
+      # Fix Xcode project configurations
+      - name: Fix Xcode project configurations
         run: |
-          cd build/ios/iphoneos
-          mkdir Payload
-          cp -r Runner.app Payload/
-          zip -r unsigned.ipa Payload/
+          gem install xcodeproj
+          cd ios
+          ruby fix_xcodeproj.rb
 
+      # Build unsigned iOS app and package into unsigned IPA
+      - name: Build unsigned IPA
+        run: |
+          flutter build ios --release --no-codesign
+          cd ios
+          xcodebuild -workspace Runner.xcworkspace -scheme Runner -sdk iphoneos17.5 -configuration Release archive -archivePath ../build/Runner.xcarchive CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO
+          xcrun xcodebuild -exportArchive -archivePath ../build/Runner.xcarchive -exportOptionsPlist exportOptions.plist -exportPath ../build
+          ls -l ../build/unsigned.ipa
+        env:
+          DEVELOPER_DIR: /Applications/Xcode_16.0.app/Contents/Developer # Specify Xcode version if needed
+
+      # Upload the IPA as an artifact
       - name: Upload unsigned IPA artifact
         uses: actions/upload-artifact@v4
         with:
           name: unsigned-ipa
-          path: build/ios/iphoneos/unsigned.ipa
-          retention-days: 7  # Adjust retention as needed
+          path: build/unsigned.ipa
+          retention-days: 7
