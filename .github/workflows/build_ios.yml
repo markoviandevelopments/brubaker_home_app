@@ -1,48 +1,65 @@
-name: Build iOS IPA
+name: Build Unsigned iOS IPA
 
 on:
   push:
     branches:
-      - main
-  pull_request:
-    branches:
-      - main
+      - main  # Adjust the branch as needed
 
 jobs:
-  build-ios:
-    runs-on: macos-13
+  build:
+    runs-on: macos-latest
 
     steps:
-      # Checkout the repository
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # Set up Flutter
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.32.7'
+          flutter-version: '3.32.7'  # Use the latest stable version or specify an exact version if needed
           channel: 'stable'
-          cache: true
 
-      # Install dependencies
       - name: Install dependencies
         run: flutter pub get
 
-      # Build unsigned iOS app and package into unsigned IPA
-      - name: Build unsigned IPA
+      - name: Install xcodeproj gem
+        run: gem install xcodeproj
+
+      - name: Add Release build configuration if missing
         run: |
-          flutter build ios --release --no-codesign
+          cd ios
+          ruby -e "
+          require 'xcodeproj'
+          project = Xcodeproj::Project.open('Runner.xcodeproj')
+          if project.build_configuration_list['Release'].nil?
+            profile = project.build_configuration_list['Profile']
+            if profile
+              release = profile.duplicate
+              release.name = 'Release'
+              project.build_configuration_list.build_configurations << release
+              project.targets.each do |target|
+                if target.build_configuration_list['Release'].nil?
+                  target.build_configuration_list.build_configurations << release
+                end
+              end
+            end
+          end
+          project.save
+          "
+
+      - name: Build iOS app (unsigned)
+        run: flutter build ios --release --no-codesign
+
+      - name: Create unsigned IPA
+        run: |
           cd build/ios/iphoneos
           mkdir Payload
-          cp -r Runner.app Payload
-          zip -r Runner.ipa Payload
-          rm -rf Payload
-          ls -l Runner.ipa # Verify IPA creation
+          cp -r Runner.app Payload/
+          zip -r unsigned.ipa Payload/
 
-      # Upload the IPA as an artifact
-      - name: Upload IPA
+      - name: Upload unsigned IPA artifact
         uses: actions/upload-artifact@v4
         with:
-          name: app-ipa
-          path: build/ios/iphoneos/Runner.ipa
+          name: unsigned-ipa
+          path: build/ios/iphoneos/unsigned.ipa
+          retention-days: 7  # Adjust retention as needed
