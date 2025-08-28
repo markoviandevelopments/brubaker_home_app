@@ -12,7 +12,5 @@
     <string></string>
     <key>provisioningProfiles</key>
     <dict/>
-    <key>codeSignIdentity</key>
-    <string></string>
 </dict>
 </plist>
