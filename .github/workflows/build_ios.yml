@@ -25,16 +25,15 @@ jobs:
         run: flutter pub get
       # Build unsigned iOS app and package into unsigned IPA
       - name: Build unsigned IPA
-        env:
-          FLUTTER_BUILD_MODE: release
         run: |
           flutter build ios --release --no-codesign
-          cd build/ios/iphoneos
-          mkdir Payload
-          cp -r Runner.app Payload
-          zip -r Runner.ipa Payload
-          rm -rf Payload
-          ls -l Runner.ipa # Verify IPA creation
+          cd ios
+          xcodebuild -workspace Runner.xcworkspace -scheme Runner -sdk iphoneos -configuration Release archive -archivePath ../build/Runner.xcarchive CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO
+          xcrun xcodebuild -exportArchive -archivePath ../build/Runner.xcarchive -exportOptionsPlist exportOptions.plist -exportPath ../build
+          ls -l ../build/Runner.ipa
+
+
+          
       # Upload the IPA as an artifact
       - name: Upload IPA
         uses: actions/upload-artifact@v4
