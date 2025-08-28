@@ -21,13 +21,18 @@ jobs:
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.32.7'
+          flutter-version: '3.x'
           channel: 'stable'
           cache: true
 
       # Install dependencies
       - name: Install dependencies
         run: flutter pub get
+
+      - name: Install CocoaPods dependencies
+        run: |
+          cd ios
+          pod install
 
       # Build unsigned iOS app and package into unsigned IPA
       - name: Build unsigned IPA
