@@ -23,14 +23,35 @@ jobs:
       # Install dependencies
       - name: Install dependencies
         run: flutter pub get
+      # Add Release configuration to Xcode project
+      - name: Add Release Configuration
+        run: |
+          xcodeproj="ios/Runner.xcodeproj/project.pbxproj"
+          # Add Release configuration
+          sed -i '' '/XCBuildConfiguration section/a\
+          \t\t/* Release */ = {\
+          \t\t\tisa = XCBuildConfiguration;\
+          \t\t\tbuildSettings = {\
+          \t\t\t\tALWAYS_SEARCH_USER_PATHS = NO;\
+          \t\t\t\tCLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";\
+          \t\t\t\tCLANG_ENABLE_MODULES = YES;\
+          \t\t\t\tCODE_SIGN_STYLE = Manual;\
+          \t\t\t\tCOPY_PHASE_STRIP = NO;\
+          \t\t\t\tDEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";\
+          \t\t\t\tENABLE_NS_ASSERTIONS = NO;\
+          \t\t\t\tIPHONEOS_DEPLOYMENT_TARGET = 12.0;\
+          \t\t\t\tPRODUCT_BUNDLE_IDENTIFIER = com.brubaker.brubakerHomeapp;\
+          \t\t\t\tSWIFT_OPTIMIZATION_LEVEL = "-O";\
+          \t\t\t\tSWIFT_VERSION = 5.0;\
+          \t\t\t};\
+          \t\t\tname = Release;\
+          \t\t};' $xcodeproj
+          # Update project to reference Release configuration
+          sed -i '' 's/buildConfiguration = Profile/buildConfiguration = Release/' $xcodeproj
       # Build unsigned iOS app and package into unsigned IPA
       - name: Build unsigned IPA
         run: |
-          # Generate build configuration
-          flutter build ios --config-only --no-codesign
-          # Build using xcodebuild with Profile configuration
-          xcodebuild -workspace ios/Runner.xcworkspace -scheme Runner -configuration Profile -sdk iphoneos CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" EXPANDED_CODE_SIGN_IDENTITY=""
-          # Package into IPA
+          flutter build ios --release --no-codesign
           cd build/ios/iphoneos
           mkdir Payload
           cp -r Runner.app Payload
