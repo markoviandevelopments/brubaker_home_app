@@ -1,40 +1,48 @@
-name: Build Unsigned iOS IPA
+name: Build iOS IPA
 
 on:
   push:
     branches:
-      - main  # Adjust the branch as needed
+      - main
+  pull_request:
+    branches:
+      - main
 
 jobs:
-  build:
-    runs-on: macos-latest
+  build-ios:
+    runs-on: macos-13
 
     steps:
+      # Checkout the repository
       - name: Checkout code
         uses: actions/checkout@v4
 
+      # Set up Flutter
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.32.7'  # Use the latest stable version or specify a exact version if needed
+          flutter-version: '3.32.7'
           channel: 'stable'
+          cache: true
 
+      # Install dependencies
       - name: Install dependencies
         run: flutter pub get
 
-      - name: Build iOS app (unsigned)
-        run: flutter build ios --release --no-codesign
-
-      - name: Create unsigned IPA
+      # Build unsigned iOS app and package into unsigned IPA
+      - name: Build unsigned IPA
         run: |
+          flutter build ios --release --no-codesign
           cd build/ios/iphoneos
           mkdir Payload
-          cp -r Runner.app Payload/
-          zip -r unsigned.ipa Payload/
+          cp -r Runner.app Payload
+          zip -r Runner.ipa Payload
+          rm -rf Payload
+          ls -l Runner.ipa # Verify IPA creation
 
-      - name: Upload unsigned IPA artifact
+      # Upload the IPA as an artifact
+      - name: Upload IPA
         uses: actions/upload-artifact@v4
         with:
-          name: unsigned-ipa
-          path: build/ios/iphoneos/unsigned.ipa
-          retention-days: 7  # Adjust retention as needed
+          name: app-ipa
+          path: build/ios/iphoneos/Runner.ipa
