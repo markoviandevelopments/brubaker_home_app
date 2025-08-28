@@ -25,6 +25,11 @@ jobs:
       - name: Install dependencies
         run: flutter pub get  # Fetches Flutter dependencies.
 
+      - name: Clean Flutter build
+        run: flutter clean
+      - name: Install CocoaPods
+        run: cd ios && pod install --repo-update && cd ..
+
       - name: Analyze Dart code
         run: flutter analyze  # Runs static analysis on the Dart code to catch issues early.
 
@@ -70,7 +75,31 @@ jobs:
           echo "Hardcoded TEAM_ID: $TEAM_ID"  # Logs.
       - name: Configure Release and Signing
         run: |
-          ruby -e "require 'xcodeproj'; project = Xcodeproj::Project.open('ios/Runner.xcodeproj'); profile = project.build_configuration_list['Profile']; unless project.build_configuration_list['Release']; new_config = project.add_build_configuration('Release', profile&.type || :release); new_config.build_settings = profile&.build_settings&.dup || {}; new_config.build_settings['CODE_SIGN_STYLE'] = 'Manual'; new_config.build_settings['DEVELOPMENT_TEAM'] = '${{ env.TEAM_ID }}'; new_config.build_settings['PROVISIONING_PROFILE_SPECIFIER'] = '${{ env.PROFILE_SPECIFIER }}'; new_config.build_settings['CODE_SIGN_IDENTITY'] = 'iPhone Distribution'; new_config.build_settings['CODE_SIGN_IDENTITY[sdk=iphoneos*]'] = 'iPhone Distribution'; end; project.targets.each do |target| unless target.build_configuration_list['Release']; target_profile = target.build_configuration_list['Profile']; target_new = target.add_build_configuration('Release', target_profile&.type || :release); target_new.build_settings = target_profile&.build_settings&.dup || {}; target_new.build_settings['CODE_SIGN_STYLE'] = 'Manual'; target_new.build_settings['DEVELOPMENT_TEAM'] = '${{ env.TEAM_ID }}'; target_new.build_settings['PROVISIONING_PROFILE_SPECIFIER'] = '${{ env.PROFILE_SPECIFIER }}'; target_new.build_settings['CODE_SIGN_IDENTITY'] = 'iPhone Distribution'; target_new.build_settings['CODE_SIGN_IDENTITY[sdk=iphoneos*]'] = 'iPhone Distribution'; end end; project.save"  # Adds 'Release' config if missing, using 'Profile' or default :release, and sets manual signing for project and targets.
+          ruby -e "require 'xcodeproj'; project = Xcodeproj::Project.open('ios/Runner.xcodeproj');
+          profile = project.build_configuration_list['Profile'];
+          release = project.build_configuration_list['Release'];
+          if release.nil?
+            release = project.add_build_configuration('Release', profile&.type || :release);
+            release.build_settings = profile&.build_settings&.dup || {};
+          end
+          release.build_settings['CODE_SIGN_STYLE'] = 'Manual';
+          release.build_settings['DEVELOPMENT_TEAM'] = '${{ env.TEAM_ID }}';
+          release.build_settings['PROVISIONING_PROFILE_SPECIFIER'] = '${{ env.PROFILE_SPECIFIER }}';
+          release.build_settings['CODE_SIGN_IDENTITY'] = 'Apple Distribution';  # Change to 'Apple Distribution' (see step 2)
+          release.build_settings['CODE_SIGN_IDENTITY[sdk=iphoneos*]'] = 'Apple Distribution';
+          project.targets.each do |target|
+            target_release = target.build_configuration_list['Release'];
+            target_profile = target.build_configuration_list['Profile'];
+            if target_release.nil?
+              target_release = target.add_build_configuration('Release', target_profile&.type || :release);
+              target_release.build_settings = target_profile&.build_settings&.dup || {};
+            end
+            target_release.build_settings['CODE_SIGN_STYLE'] = 'Manual';
+            target_release.build_settings['DEVELOPMENT_TEAM'] = '${{ env.TEAM_ID }}';
+            target_release.build_settings['PROVISIONING_PROFILE_SPECIFIER'] = '${{ env.PROFILE_SPECIFIER }}';
+            target_release.build_settings['CODE_SIGN_IDENTITY'] = 'Apple Distribution';
+            target_release.build_settings['CODE_SIGN_IDENTITY[sdk=iphoneos*]'] = 'Apple Distribution';
+          end; project.save"
       - name: Set up keychain
         run: |
           security create-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH  # Creates a new keychain.
@@ -117,8 +146,8 @@ jobs:
         run: flutter build ios --release --no-codesign -v  # Builds the app for release without codesigning, to avoid signing-related hangs during build.
 
       - name: Archive App
-        run: xcodebuild archive -workspace ios/Runner.xcworkspace -scheme Runner -configuration Release -destination 'generic/platform=iOS' -archivePath build/ios/archive/Runner.xcarchive VERBOSE_SCRIPT_LOGGING=YES COMPILER_INDEX_STORE_ENABLE=NO CODE_SIGN_STYLE=Manual CODE_SIGN_IDENTITY="iPhone Distribution" DEVELOPMENT_TEAM="${{ env.TEAM_ID }}" PROVISIONING_PROFILE_SPECIFIER="${{ env.PROFILE_SPECIFIER }}"  # Archives the built app with explicit manual signing parameters to avoid hangs.
-
+        run: xcodebuild archive -workspace ios/Runner.xcworkspace -scheme Runner -configuration Release -destination 'generic/platform=iOS' -archivePath build/ios/archive/Runner.xcarchive VERBOSE_SCRIPT_LOGGING=YES COMPILER_INDEX_STORE_ENABLE=NO CODE_SIGN_STYLE=Manual CODE_SIGN_IDENTITY="Apple Distribution" DEVELOPMENT_TEAM="${{ env.TEAM_ID }}" PROVISIONING_PROFILE_SPECIFIER="${{ env.PROFILE_SPECIFIER }}"
+        
       - name: Export IPA
         run: xcodebuild -exportArchive -archivePath build/ios/archive/Runner.xcarchive -exportOptionsPlist exportOptions.plist -exportPath build/ios/ipa  # Exports the archive to IPA using the plist.
 
