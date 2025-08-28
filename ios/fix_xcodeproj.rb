@@ -10,13 +10,15 @@ unless project.build_configurations.any? { |config| config.name == 'Release' }
     release_config = project.new(Xcodeproj::Project::Object::XCBuildConfiguration)
     release_config.name = 'Release'
     release_config.build_settings = profile_config.build_settings.dup
+    # Set the base configuration to Pods-Runner.release.xcconfig
+    release_config.base_configuration_reference = project.files.find { |f| f.path == 'Pods/Target Support Files/Pods-Runner/Pods-Runner.release.xcconfig' }
     project.build_configurations << release_config
   else
     raise 'Profile configuration not found'
   end
 end
 
-# Ensure code signing is disabled for all configurations
+# Ensure code signing is disabled and deployment target is set for all configurations
 project.targets.each do |target|
   target.build_configurations.each do |config|
     config.build_settings['CODE_SIGNING_REQUIRED'] = 'NO'
@@ -24,6 +26,10 @@ project.targets.each do |target|
     config.build_settings['CODE_SIGN_IDENTITY'] = ''
     config.build_settings['EXPANDED_CODE_SIGN_IDENTITY'] = ''
     config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '13.0'
+    # Set base configuration for Release if not already set
+    if config.name == 'Release' && config.base_configuration_reference.nil?
+      config.base_configuration_reference = project.files.find { |f| f.path == 'Pods/Target Support Files/Pods-Runner/Pods-Runner.release.xcconfig' }
+    end
   end
 end
 
