@@ -21,7 +21,6 @@ jobs:
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.35.2' # Adjust to your project's Flutter version
           channel: 'stable'
           cache: true
 
@@ -29,12 +28,16 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
+      # Install CocoaPods dependencies (for iOS plugins)
+      - name: Install CocoaPods
+        run: |
+          cd ios
+          pod install --repo-update
+          cd ..
+
       # Build unsigned IPA
       - name: Build unsigned IPA
-        run: |
-          flutter build ipa --release --no-codesign --export-options-plist=ios/exportOptions.plist
-        env:
-          EXPORT_PATH: "./build/unsigned"
+        run: flutter build ipa --release --no-codesign --export-options-plist=ios/exportOptions.plist
 
       # Upload the IPA as an artifact
       - name: Upload IPA artifact
