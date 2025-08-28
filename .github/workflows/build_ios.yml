@@ -34,6 +34,9 @@ jobs:
       - name: Install fastlane
         run: gem install fastlane -NV  # Installs fastlane for iOS build and signing.
 
+      - name: Run pod install
+        run: cd ios; pod install --repo-update; cd ..  # Ensures pods are installed and up-to-date before configuring.
+
       - name: Copy certificate
         run: cp certs/apple_cert.p12 /tmp/apple_cert.p12  # Copies the .p12 file from repo to temp location.
 
@@ -83,7 +86,7 @@ jobs:
 
       - name: Configure Pods Project
         run: |
-          ruby -e "require 'xcodeproj'; project = Xcodeproj::Project.open('ios/Pods/Pods.xcodeproj'); project.targets.each do |target| target.build_configuration_list.build_configurations.each do |config| config.build_settings['CODE_SIGN_STYLE'] = 'Automatic'; config.build_settings['DEVELOPMENT_TEAM'] = ''; config.build_settings['PROVISIONING_PROFILE_SPECIFIER'] = ''; config.build_settings['CODE_SIGN_IDENTITY'] = ''; end end; project.save"  # Sets automatic signing, no team, no profile specifier, no identity for all pod targets to avoid errors.
+          ruby -e "require 'xcodeproj'; project = Xcodeproj::Project.open('ios/Pods/Pods.xcodeproj'); project.targets.each do |target| target.build_configuration_list.build_configurations.each do |config| config.build_settings['CODE_SIGN_STYLE'] = 'Automatic'; config.build_settings['DEVELOPMENT_TEAM'] = ''; config.build_settings['PROVISIONING_PROFILE_SPECIFIER'] = ''; config.build_settings['PROVISIONING_PROFILE'] = ''; config.build_settings['PROVISIONING_PROFILE[sdk=iphoneos*]'] = ''; config.build_settings['CODE_SIGN_IDENTITY'] = ''; config.build_settings['CODE_SIGN_IDENTITY[sdk=iphoneos*]'] = ''; end end; project.save"  # Sets automatic signing, no team, no profile specifier, no identity for all pod targets in all configs to avoid errors.
 
       - name: Set up keychain
         run: |
