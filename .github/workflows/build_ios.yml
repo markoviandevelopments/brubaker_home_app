@@ -17,26 +17,23 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # Set up Xcode version (use a stable version compatible with your project)
-      - name: Select Xcode version
-        run: sudo xcode-select -s /Applications/Xcode_16.0.app
+      # Set up Flutter environment
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.0' # Adjust to your project's Flutter version
+          channel: 'stable'
+          cache: true
 
-      # Install dependencies (if using CocoaPods or similar)
+      # Install dependencies
       - name: Install dependencies
-        run: |
-          if [ -f "Podfile" ]; then
-            pod install
-          fi
+        run: flutter pub get
 
-      # Build the app and export unsigned IPA
-      - name: Build and export unsigned IPA
+      # Build unsigned IPA
+      - name: Build unsigned IPA
         run: |
-          chmod +x ./scripts/export-unsigned-ipa.sh
-          ./scripts/export-unsigned-ipa.sh
+          flutter build ipa --release --no-codesign --export-options-plist=ios/exportOptions.plist
         env:
-          SCHEME_NAME: "BrubakerHomeApp"  # Replace with your Xcode scheme name
-          PROJECT_NAME: "BrubakerHomeApp"  # Replace with your .xcodeproj name
-          ARCHIVE_PATH: "./build/BrubakerHomeApp.xcarchive"
           EXPORT_PATH: "./build/unsigned"
 
       # Upload the IPA as an artifact
@@ -44,4 +41,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: unsigned-ipa
-          path: ./build/unsigned/BrubakerHomeApp.ipa
+          path: build/ios/ipa/*.ipa
