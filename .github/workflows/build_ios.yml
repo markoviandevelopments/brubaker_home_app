@@ -1,47 +1,45 @@
-name: Build iOS IPA
+name: Build iOS
 
 on:
   push:
-    branches:
-      - main
+    branches: [ main ]
   pull_request:
-    branches:
-      - main
+    branches: [ main ]
 
 jobs:
-  build-ios:
-    runs-on: macos-13
+  build:
+    runs-on: macos-14  # Specifies the macOS runner version for iOS builds.
+    timeout-minutes: 45  # Prevents infinite hangs, fails job after 45 minutes.
 
     steps:
-      # Checkout the repository
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v4  # Checks out the repository code to the runner.
 
-      # Set up Flutter
       - name: Set up Flutter
-        uses: subosito/flutter-action@v2
+        uses: subosito/flutter-action@v2  # Installs Flutter on the runner.
         with:
-          flutter-version: '3.32.7'
-          channel: 'stable'
-          cache: true
+          channel: 'stable'  # Uses the stable channel for reliability.
 
-      # Install dependencies
       - name: Install dependencies
-        run: flutter pub get
+        run: flutter pub get  # Fetches Flutter dependencies.
 
-      # Build unsigned iOS app and package into unsigned IPA
-      - name: Build unsigned IPA
+      - name: Clean Flutter build
         run: |
-          flutter build ios --release --no-codesign
-          cd build/ios/iphoneos
-          mkdir Payload
-          cp -r Runner.app Payload
-          zip -r Runner.ipa Payload
-          rm -rf Payload
-          ls -l Runner.ipa # Verify IPA creation
-      # Upload the IPA as an artifact
-      - name: Upload IPA
-        uses: actions/upload-artifact@v4
+          flutter clean
+          flutter pub get
+
+      - name: Install CocoaPods
+        run: cd ios && pod install --repo-update && cd ..
+
+      - name: Analyze Dart code
+        run: flutter analyze  # Runs static analysis on the Dart code to catch issues early.
+
+      - name: Build Unsigned IPA
+        run: flutter build ipa --release --no-codesign -v  # Builds unsigned IPA.
+
+      - name: Upload IPA artifact
+        uses: actions/upload-artifact@v4  # Uploads the built IPA as an artifact.
         with:
-          name: app-ipa
-          path: build/ios/iphoneos/Runner.ipa
+          name: ios-app  # Artifact name.
+          path: build/ios/ipa/*.ipa  # Path to IPA.
+          retention-days: 5  # Keeps for 5 days.
