@@ -1,4 +1,5 @@
-name: Build iOS IPA
+name: Build Unsigned iOS IPA
+
 on:
   push:
     branches:
@@ -6,61 +7,41 @@ on:
   pull_request:
     branches:
       - main
+
 jobs:
-  build-ios:
-    runs-on: macos-13
+  build:
+    runs-on: macos-latest
+
     steps:
-      # Checkout the repository
-      - name: Checkout code
+      # Check out the repository
+      - name: Checkout repository
         uses: actions/checkout@v4
-      # Set up Flutter
-      - name: Set up Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          flutter-version: '3.32.7'
-          channel: 'stable'
-          cache: true
-      # Install dependencies
+
+      # Set up Xcode version (use a stable version compatible with your project)
+      - name: Select Xcode version
+        run: sudo xcode-select -s /Applications/Xcode_16.0.app
+
+      # Install dependencies (if using CocoaPods or similar)
       - name: Install dependencies
-        run: flutter pub get
-      # Add Release configuration to Xcode project
-      - name: Add Release Configuration
         run: |
-          xcodeproj="ios/Runner.xcodeproj/project.pbxproj"
-          # Add Release configuration
-          sed -i '' '/XCBuildConfiguration section/a\
-          \t\t/* Release */ = {\
-          \t\t\tisa = XCBuildConfiguration;\
-          \t\t\tbuildSettings = {\
-          \t\t\t\tALWAYS_SEARCH_USER_PATHS = NO;\
-          \t\t\t\tCLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";\
-          \t\t\t\tCLANG_ENABLE_MODULES = YES;\
-          \t\t\t\tCODE_SIGN_STYLE = Manual;\
-          \t\t\t\tCOPY_PHASE_STRIP = NO;\
-          \t\t\t\tDEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";\
-          \t\t\t\tENABLE_NS_ASSERTIONS = NO;\
-          \t\t\t\tIPHONEOS_DEPLOYMENT_TARGET = 12.0;\
-          \t\t\t\tPRODUCT_BUNDLE_IDENTIFIER = com.brubaker.brubakerHomeapp;\
-          \t\t\t\tSWIFT_OPTIMIZATION_LEVEL = "-O";\
-          \t\t\t\tSWIFT_VERSION = 5.0;\
-          \t\t\t};\
-          \t\t\tname = Release;\
-          \t\t};' $xcodeproj
-          # Update project to reference Release configuration
-          sed -i '' 's/buildConfiguration = Profile/buildConfiguration = Release/' $xcodeproj
-      # Build unsigned iOS app and package into unsigned IPA
-      - name: Build unsigned IPA
+          if [ -f "Podfile" ]; then
+            pod install
+          fi
+
+      # Build the app and export unsigned IPA
+      - name: Build and export unsigned IPA
         run: |
-          flutter build ios --release --no-codesign
-          cd build/ios/iphoneos
-          mkdir Payload
-          cp -r Runner.app Payload
-          zip -r Runner.ipa Payload
-          rm -rf Payload
-          ls -l Runner.ipa # Verify IPA creation
+          chmod +x ./scripts/export-unsigned-ipa.sh
+          ./scripts/export-unsigned-ipa.sh
+        env:
+          SCHEME_NAME: "BrubakerHomeApp"  # Replace with your Xcode scheme name
+          PROJECT_NAME: "BrubakerHomeApp"  # Replace with your .xcodeproj name
+          ARCHIVE_PATH: "./build/BrubakerHomeApp.xcarchive"
+          EXPORT_PATH: "./build/unsigned"
+
       # Upload the IPA as an artifact
-      - name: Upload IPA
+      - name: Upload IPA artifact
         uses: actions/upload-artifact@v4
         with:
-          name: app-ipa
-          path: build/ios/iphoneos/Runner.ipa
+          name: unsigned-ipa
+          path: ./build/unsigned/BrubakerHomeApp.ipa
