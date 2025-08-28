@@ -1,4 +1,5 @@
-name: Build iOS IPA
+name: Build Unsigned iOS IPA
+
 on:
   push:
     branches:
@@ -6,36 +7,41 @@ on:
   pull_request:
     branches:
       - main
+
 jobs:
-  build-ios:
-    runs-on: macos-13
+  build:
+    runs-on: macos-14  # Use macOS 14, which includes newer Xcode versions
     steps:
-      # Checkout the repository
-      - name: Checkout code
+      # Check out the repository
+      - name: Checkout repository
         uses: actions/checkout@v4
-      # Set up Flutter
+
+      # Select Xcode version
+      - name: Select Xcode version
+        run: sudo xcode-select -s /Applications/Xcode_16.app  # Adjust to the correct Xcode version
+
+      # Set up Flutter environment
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.35.2'
+          flutter-version: '3.x'  # Adjust to your project's Flutter version
           channel: 'stable'
           cache: true
+
       # Install dependencies
       - name: Install dependencies
         run: flutter pub get
-      # Build unsigned iOS app and package into unsigned IPA
+
+      # Build unsigned IPA
       - name: Build unsigned IPA
         run: |
-          flutter build ios --release --no-codesign
-          cd build/ios/iphoneos
-          mkdir Payload
-          cp -r Runner.app Payload
-          zip -r Runner.ipa Payload
-          rm -rf Payload
-          ls -l Runner.ipa # Verify IPA creation
+          flutter build ipa --release --no-codesign --export-options-plist=ios/exportOptions.plist
+        env:
+          EXPORT_PATH: "./build/unsigned"
+
       # Upload the IPA as an artifact
-      - name: Upload IPA
+      - name: Upload IPA artifact
         uses: actions/upload-artifact@v4
         with:
-          name: app-ipa
-          path: build/ios/iphoneos/Runner.ipa
+          name: unsigned-ipa
+          path: build/ios/ipa/*.ipa
