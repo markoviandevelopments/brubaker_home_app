@@ -1,65 +1,54 @@
-name: Build Unsigned iOS IPA
-
+name: Build iOS IPA
 on:
   push:
     branches:
-      - main  # Adjust the branch as needed
-
+      - main
+  pull_request:
+    branches:
+      - main
 jobs:
-  build:
+  build-ios:
     runs-on: macos-latest
-
     steps:
+      # Checkout the repository
       - name: Checkout code
         uses: actions/checkout@v4
-
-      - name: Set up Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          flutter-version: '3.32.7'  # Use the latest stable version or specify an exact version if needed
-          channel: 'stable'
-
-      - name: Install dependencies
-        run: flutter pub get
-
-      - name: Install xcodeproj gem
-        run: gem install xcodeproj
-
-      - name: Add Release build configuration if missing
+      # Add Release configuration if missing
+      - name: Add Release configuration
         run: |
-          cd ios
+          gem install xcodeproj
           ruby -e "
           require 'xcodeproj'
-          project = Xcodeproj::Project.open('Runner.xcodeproj')
-          if project.build_configuration_list['Release'].nil?
-            profile = project.build_configuration_list['Profile']
-            if profile
-              release = profile.duplicate
-              release.name = 'Release'
-              project.build_configuration_list.build_configurations << release
-              project.targets.each do |target|
-                if target.build_configuration_list['Release'].nil?
-                  target.build_configuration_list.build_configurations << release
-                end
-              end
-            end
+          project = Xcodeproj::Project.open('ios/Runner.xcodeproj')
+          project.add_build_configuration('Release', :release)
+          project.targets.each do |target|
+            target.add_build_configuration('Release', :release)
           end
           project.save
           "
-
-      - name: Build iOS app (unsigned)
-        run: flutter build ios --release --no-codesign
-
-      - name: Create unsigned IPA
+      # Set up Flutter
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.32.7'
+          channel: 'stable'
+          cache: true
+      # Install dependencies
+      - name: Install dependencies
+        run: flutter pub get
+      # Build unsigned iOS app and package into unsigned IPA
+      - name: Build unsigned IPA
         run: |
+          flutter build ios --release --no-codesign
           cd build/ios/iphoneos
           mkdir Payload
-          cp -r Runner.app Payload/
-          zip -r unsigned.ipa Payload/
-
-      - name: Upload unsigned IPA artifact
+          cp -r Runner.app Payload
+          zip -r brubaker_homeapp.ipa Payload
+          rm -rf Payload
+          ls -l brubaker_homeapp.ipa
+      # Upload the IPA as an artifact
+      - name: Upload IPA
         uses: actions/upload-artifact@v4
         with:
-          name: unsigned-ipa
-          path: build/ios/iphoneos/unsigned.ipa
-          retention-days: 7  # Adjust retention as needed
+          name: app-ipa
+          path: build/ios/iphoneos/brubaker_homeapp.ipa
