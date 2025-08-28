@@ -37,10 +37,11 @@ end
 
 post_install do |installer|
   installer.pods_project.targets.each do |target|
-    flutter_additional_ios_build_settings(target)  # Keep this if it already exists for Flutter settings
+    flutter_additional_ios_build_settings(target) # Keep this
     target.build_configurations.each do |config|
-      config.build_settings['CODE_SIGNING_REQUIRED'] = "NO"
-      config.build_settings['CODE_SIGNING_ALLOWED'] = "NO"
+      # Remove these lines:
+      # config.build_settings['CODE_SIGNING_REQUIRED'] = "NO"
+      # config.build_settings['CODE_SIGNING_ALLOWED'] = "NO"
     end
   end
 end
