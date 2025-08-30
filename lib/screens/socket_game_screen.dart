@@ -7,6 +7,14 @@ import 'dart:ui';
 
 enum Direction { none, up, down, left, right }
 
+class Ghost {
+  int row;
+  int col;
+  Color color;
+
+  Ghost(this.row, this.col, this.color);
+}
+
 class SocketGameScreen extends StatefulWidget {
   final Function(int)? onGameSelected;
 
@@ -29,19 +37,28 @@ class SocketGameScreenState extends State<SocketGameScreen>
   late List<List<bool>> hasCollectible;
   late List<List<bool>> hasObstacle;
   late List<List<Color>> gridColors;
-  int? targetRow, targetCol;
   Timer? _moveTimer;
-  Timer? _hazardTimer;
+  Timer? _ghostTimer;
   Timer? _countdownTimer;
+  Timer? _scaleTimer;
   bool isGameOver = false;
   Offset _joystickDelta = Offset.zero;
   final double _joystickRadius = 60.0;
   final double _moveThreshold = 40.0;
   Direction _currentMoveDirection = Direction.none;
+  List<Ghost> ghosts = [];
+  double _playerScale = 1.0;
+  final List<Color> ghostColors = [
+    Colors.red,
+    Colors.pink,
+    Colors.orange,
+    Colors.cyan,
+  ];
 
   @override
   void initState() {
     super.initState();
+    _playerScale = 1.0;
     _initializeLevel();
   }
 
@@ -62,16 +79,18 @@ class SocketGameScreenState extends State<SocketGameScreen>
       movesLeft = level == 2 ? (30 - cycle * 2).clamp(15, 30) : -1;
       timeLeft = level == 3 ? (35 - cycle * 2).clamp(20, 35) : -1;
       isGameOver = false;
+      ghosts.clear();
 
       if (level == 1) {
-        _spawnCollectibles(3 + cycle);
+        _spawnCollectibles(10 + cycle * 2);
       } else if (level == 2) {
-        _spawnCollectibles(3 + cycle);
-        _spawnObstacles(3 + cycle);
+        _spawnObstacles(15 + cycle * 3);
+        _spawnCollectibles(12 + cycle * 2);
       } else if (level == 3) {
-        _spawnTarget();
-        _spawnObstacles(3 + cycle);
-        _startHazardTimer();
+        _spawnObstacles(20 + cycle * 3);
+        _spawnCollectibles(8 + cycle * 2);
+        _spawnGhosts(2 + (cycle ~/ 2));
+        _startGhostTimer();
         _startCountdownTimer();
       }
     });
@@ -94,80 +113,153 @@ class SocketGameScreenState extends State<SocketGameScreen>
   }
 
   void _spawnCollectibles(int count) {
-    for (int i = 0; i < count; i++) {
+    int placed = 0;
+    while (placed < count) {
       int x = random.nextInt(10);
       int y = random.nextInt(10);
       if (!hasCollectible[x][y] &&
           !hasObstacle[x][y] &&
           !(x == currentRow && y == currentCol)) {
         hasCollectible[x][y] = true;
+        placed++;
       }
     }
   }
 
   void _spawnObstacles(int count) {
-    for (int i = 0; i < count.clamp(0, 20); i++) {
+    int placed = 0;
+    while (placed < count) {
       int x = random.nextInt(10);
       int y = random.nextInt(10);
       if (!hasCollectible[x][y] &&
           !hasObstacle[x][y] &&
           !(x == currentRow && y == currentCol)) {
         hasObstacle[x][y] = true;
+        placed++;
       }
     }
   }
 
-  void _spawnTarget() {
-    targetRow = random.nextInt(10);
-    targetCol = random.nextInt(10);
-    while (targetRow == currentRow && targetCol == currentCol) {
-      targetRow = random.nextInt(10);
-      targetCol = random.nextInt(10);
+  void _spawnGhosts(int count) {
+    int placed = 0;
+    while (placed < count) {
+      int x = random.nextInt(10);
+      int y = random.nextInt(10);
+      if (!hasObstacle[x][y] &&
+          !(x == currentRow && y == currentCol) &&
+          !ghosts.any((g) => g.row == x && g.col == y)) {
+        ghosts.add(Ghost(x, y, ghostColors[placed % ghostColors.length]));
+        placed++;
+      }
     }
   }
 
-  void _startHazardTimer() {
-    _hazardTimer?.cancel();
-    _hazardTimer = Timer.periodic(const Duration(milliseconds: 2500), (timer) {
-      if (!mounted) {
-        timer.cancel();
-        return;
-      }
-      setState(() {
-        List<List<bool>> newObstacles = List.generate(
-          10,
-          (_) => List.generate(10, (_) => false),
-        );
-        for (int i = 0; i < 10; i++) {
-          for (int j = 0; j < 10; j++) {
-            if (hasObstacle[i][j]) {
-              List<Offset> directions = [
-                const Offset(-1, 0),
-                const Offset(1, 0),
-                const Offset(0, -1),
-                const Offset(0, 1),
+  void _startGhostTimer() {
+    _ghostTimer?.cancel();
+    _ghostTimer = Timer.periodic(
+      Duration(milliseconds: (500 - cycle * 50).clamp(200, 500)),
+      (timer) {
+        if (!mounted || isGameOver) {
+          timer.cancel();
+          return;
+        }
+        setState(() {
+          for (var ghost in ghosts) {
+            List<Direction> prefs = [];
+            if (currentRow < ghost.row) prefs.add(Direction.up);
+            if (currentRow > ghost.row) prefs.add(Direction.down);
+            if (currentCol < ghost.col) prefs.add(Direction.left);
+            if (currentCol > ghost.col) prefs.add(Direction.right);
+            if (prefs.isEmpty) {
+              prefs = [
+                Direction.up,
+                Direction.down,
+                Direction.left,
+                Direction.right,
               ];
-              directions.shuffle();
-              for (var dir in directions) {
-                int newRow = i + dir.dx.toInt();
-                int newCol = j + dir.dy.toInt();
-                if (newRow >= 0 &&
-                    newRow < 10 &&
-                    newCol >= 0 &&
-                    newCol < 10 &&
-                    !(newRow == currentRow && newCol == currentCol) &&
-                    !hasCollectible[newRow][newCol] &&
-                    !(newRow == targetRow && newCol == targetCol)) {
-                  newObstacles[newRow][newCol] = true;
+            }
+            prefs.shuffle();
+
+            bool moved = false;
+            for (var dir in prefs) {
+              int nr = ghost.row;
+              int nc = ghost.col;
+              switch (dir) {
+                case Direction.up:
+                  if (nr > 0) nr--;
+                  break;
+                case Direction.down:
+                  if (nr < 9) nr++;
+                  break;
+                case Direction.left:
+                  if (nc > 0) nc--;
+                  break;
+                case Direction.right:
+                  if (nc < 9) nc++;
+                  break;
+                default:
+              }
+              if (nr != ghost.row || nc != ghost.col) {
+                if (!hasObstacle[nr][nc] &&
+                    !ghosts.any(
+                      (g) => g != ghost && g.row == nr && g.col == nc,
+                    )) {
+                  ghost.row = nr;
+                  ghost.col = nc;
+                  moved = true;
+                  if (nr == currentRow && nc == currentCol) {
+                    isGameOver = true;
+                    _showGameOverDialog();
+                  }
                   break;
                 }
               }
             }
+            if (!moved) {
+              var allDirs = [
+                Direction.up,
+                Direction.down,
+                Direction.left,
+                Direction.right,
+              ]..shuffle();
+              for (var dir in allDirs) {
+                int nr = ghost.row;
+                int nc = ghost.col;
+                switch (dir) {
+                  case Direction.up:
+                    if (nr > 0) nr--;
+                    break;
+                  case Direction.down:
+                    if (nr < 9) nr++;
+                    break;
+                  case Direction.left:
+                    if (nc > 0) nc--;
+                    break;
+                  case Direction.right:
+                    if (nc < 9) nc++;
+                    break;
+                  default:
+                }
+                if (nr != ghost.row || nc != ghost.col) {
+                  if (!hasObstacle[nr][nc] &&
+                      !ghosts.any(
+                        (g) => g != ghost && g.row == nr && g.col == nc,
+                      )) {
+                    ghost.row = nr;
+                    ghost.col = nc;
+                    if (nr == currentRow && nc == currentCol) {
+                      isGameOver = true;
+                      _showGameOverDialog();
+                    }
+                    break;
+                  }
+                }
+              }
+            }
           }
-        }
-        hasObstacle = newObstacles;
-      });
-    });
+        });
+      },
+    );
   }
 
   void _startCountdownTimer() {
@@ -320,6 +412,12 @@ class SocketGameScreenState extends State<SocketGameScreen>
       currentRow = newRow;
       currentCol = newCol;
 
+      if (ghosts.any((g) => g.row == currentRow && g.col == currentCol)) {
+        isGameOver = true;
+        _showGameOverDialog();
+        return;
+      }
+
       if (level == 2) {
         movesLeft--;
         if (movesLeft <= 0) {
@@ -329,29 +427,18 @@ class SocketGameScreenState extends State<SocketGameScreen>
         }
       }
 
-      if (level == 1 || level == 2) {
-        if (hasCollectible[currentRow][currentCol]) {
-          score++;
-          hasCollectible[currentRow][currentCol] = false;
-          _spawnCollectibles(level == 1 ? 1 : 3 + cycle); // Scale gems
-        }
-      } else if (level == 3 &&
-          currentRow == targetRow &&
-          currentCol == targetCol) {
-        score += 10;
-        _initializeLevel();
+      if (hasCollectible[currentRow][currentCol]) {
+        score++;
+        hasCollectible[currentRow][currentCol] = false;
       }
 
-      if (score >=
-          (level == 1
-              ? 5 + cycle * 2
-              : level == 2
-              ? 10 + cycle * 3
-              : 30 + cycle * 5)) {
+      bool allCollected = !hasCollectible.expand((row) => row).any((b) => b);
+      if (allCollected) {
+        score += level * 5;
         level++;
         if (level > 3) {
-          level = 1; // Loop back to Level 1
-          cycle++; // Increment cycle
+          level = 1;
+          cycle++;
         }
         _initializeLevel();
       }
@@ -361,8 +448,9 @@ class SocketGameScreenState extends State<SocketGameScreen>
   @override
   void dispose() {
     _moveTimer?.cancel();
-    _hazardTimer?.cancel();
+    _ghostTimer?.cancel();
     _countdownTimer?.cancel();
+    _scaleTimer?.cancel();
     super.dispose();
   }
 
@@ -384,7 +472,7 @@ class SocketGameScreenState extends State<SocketGameScreen>
         extendBodyBehindAppBar: true,
         appBar: AppBar(
           title: Text(
-            'Galactic Cat Collector',
+            'Galactic Cat Pacventure',
             style: GoogleFonts.orbitron(
               fontSize: 22,
               fontWeight: FontWeight.bold,
@@ -446,7 +534,7 @@ class SocketGameScreenState extends State<SocketGameScreen>
                                 ? 'Level $level (Cycle $cycle): Collect Stars\nScore: $score'
                                 : level == 2
                                 ? 'Level $level (Cycle $cycle): Collect Gems\nScore: $score\nMoves: $movesLeft'
-                                : 'Level $level (Cycle $cycle): Reach Target\nScore: $score\nTime: $timeLeft s',
+                                : 'Level $level (Cycle $cycle): Collect Crystals\nScore: $score\nTime: $timeLeft s',
                             style: GoogleFonts.orbitron(
                               fontSize: 20,
                               fontWeight: FontWeight.bold,
@@ -507,10 +595,14 @@ class SocketGameScreenState extends State<SocketGameScreen>
                                     bool isCollectible =
                                         hasCollectible[row][col];
                                     bool isObstacle = hasObstacle[row][col];
-                                    bool isTarget =
-                                        (level == 3 &&
-                                        row == targetRow &&
-                                        col == targetCol);
+                                    Ghost? ghostHere;
+                                    try {
+                                      ghostHere = ghosts.firstWhere(
+                                        (g) => g.row == row && g.col == col,
+                                      );
+                                    } catch (e) {
+                                      ghostHere = null;
+                                    }
 
                                     return Container(
                                       decoration: BoxDecoration(
@@ -532,16 +624,51 @@ class SocketGameScreenState extends State<SocketGameScreen>
                                         ],
                                       ),
                                       child: Center(
-                                        child: isPlayer
-                                            ? animate_do.Pulse(
+                                        child: ghostHere != null
+                                            ? animate_do.ShakeX(
                                                 duration: const Duration(
                                                   milliseconds: 1000,
                                                 ),
-                                                child: Transform.scale(
-                                                  scale: 1.0,
-                                                  child: Image.asset(
-                                                    'assets/cat.png',
-                                                    fit: BoxFit.contain,
+                                                child: Icon(
+                                                  Icons.adb,
+                                                  size: 15,
+                                                  color: ghostHere.color,
+                                                ),
+                                              )
+                                            : isPlayer
+                                            ? GestureDetector(
+                                                onTap: () {
+                                                  if (_scaleTimer?.isActive ??
+                                                      false) {
+                                                    return;
+                                                  }
+                                                  setState(
+                                                    () => _playerScale = 1.2,
+                                                  );
+                                                  _scaleTimer = Timer(
+                                                    const Duration(
+                                                      milliseconds: 300,
+                                                    ),
+                                                    () {
+                                                      if (mounted) {
+                                                        setState(
+                                                          () => _playerScale =
+                                                              1.0,
+                                                        );
+                                                      }
+                                                    },
+                                                  );
+                                                },
+                                                child: animate_do.Pulse(
+                                                  duration: const Duration(
+                                                    milliseconds: 1000,
+                                                  ),
+                                                  child: Transform.scale(
+                                                    scale: _playerScale,
+                                                    child: Image.asset(
+                                                      'assets/cat.png',
+                                                      fit: BoxFit.contain,
+                                                    ),
                                                   ),
                                                 ),
                                               )
@@ -553,11 +680,15 @@ class SocketGameScreenState extends State<SocketGameScreen>
                                                 child: Icon(
                                                   level == 1
                                                       ? Icons.star
-                                                      : Icons.diamond,
+                                                      : level == 2
+                                                      ? Icons.diamond
+                                                      : Icons.favorite,
                                                   size: 15,
                                                   color: level == 1
                                                       ? Colors.yellowAccent
-                                                      : Colors.blueAccent,
+                                                      : level == 2
+                                                      ? Colors.blueAccent
+                                                      : Colors.purpleAccent,
                                                 ),
                                               )
                                             : isObstacle
@@ -571,17 +702,6 @@ class SocketGameScreenState extends State<SocketGameScreen>
                                                   color: Colors.red.withValues(
                                                     alpha: 0.8,
                                                   ),
-                                                ),
-                                              )
-                                            : isTarget
-                                            ? animate_do.Pulse(
-                                                duration: const Duration(
-                                                  milliseconds: 800,
-                                                ),
-                                                child: const Icon(
-                                                  Icons.flag,
-                                                  size: 15,
-                                                  color: Colors.greenAccent,
                                                 ),
                                               )
                                             : null,
@@ -599,10 +719,10 @@ class SocketGameScreenState extends State<SocketGameScreen>
                       padding: const EdgeInsets.all(16.0),
                       child: Text(
                         level == 1
-                            ? 'Move to collect stars!'
+                            ? 'Collect all stars!'
                             : level == 2
-                            ? 'Collect gems, avoid walls!'
-                            : 'Reach the target, dodge hazards!',
+                            ? 'Collect all gems, avoid walls!'
+                            : 'Collect all crystals, dodge ghosts!',
                         style: GoogleFonts.orbitron(
                           fontSize: 16,
                           color: Colors.white70,

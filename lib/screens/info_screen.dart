@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:animate_do/animate_do.dart' as animate_do;
-import '../screens/star_field.dart';
 import 'dart:async';
 import 'dart:ui';
+import 'dart:math' show pi, cos, sin;
+import 'package:brubaker_homeapp/screens/star_field.dart'; // Import StarField from star_field.dart
 
 class InfoScreen extends StatefulWidget {
   const InfoScreen({super.key});
@@ -12,11 +13,13 @@ class InfoScreen extends StatefulWidget {
   InfoScreenState createState() => InfoScreenState();
 }
 
-class InfoScreenState extends State<InfoScreen> {
+class InfoScreenState extends State<InfoScreen> with TickerProviderStateMixin {
   late Timer _timer;
   String _countdownMode = 'days';
   String _countdownText = '';
   final DateTime anniversaryDate = DateTime(2026, 5, 3);
+  late AnimationController _orbitController;
+  late AnimationController _glowController;
 
   @override
   void initState() {
@@ -26,11 +29,25 @@ class InfoScreenState extends State<InfoScreen> {
       const Duration(seconds: 1),
       (_) => _updateCountdown(),
     );
+
+    // Orbit animation for buttons
+    _orbitController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 10),
+    )..repeat();
+
+    // Glow effect for floating action button
+    _glowController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 2),
+    )..repeat(reverse: true);
   }
 
   @override
   void dispose() {
     _timer.cancel();
+    _orbitController.dispose();
+    _glowController.dispose();
     super.dispose();
   }
 
@@ -40,13 +57,13 @@ class InfoScreenState extends State<InfoScreen> {
 
     setState(() {
       if (_countdownMode == 'days') {
-        _countdownText = '${difference.inDays} galactic days';
+        _countdownText = '${difference.inDays} Galactic Cycles';
       } else if (_countdownMode == 'coffee_thursdays') {
         final thursdays = _calculateCoffeeThursdays(now);
-        _countdownText = '$thursdays Coffee Thursdays ☕';
+        _countdownText = '$thursdays Nebula Brews ☕';
       } else if (_countdownMode == 'paychecks') {
         final paychecks = _calculatePaychecks(now);
-        _countdownText = '$paychecks paydays 💸';
+        _countdownText = '$paychecks Stardust Credits 💸';
       } else if (_countdownMode == 'time') {
         final hours = difference.inHours;
         final minutes = difference.inMinutes % 60;
@@ -78,161 +95,208 @@ class InfoScreenState extends State<InfoScreen> {
   void _showHouseInfoDialog(BuildContext context) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: Colors.transparent,
-        content: ClipRect(
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
-            child: Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.2),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    'House Info',
-                    style: GoogleFonts.orbitron(
-                      color: Colors.white70,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 18,
-                    ),
+      builder: (context) => animate_do.FadeIn(
+        duration: const Duration(milliseconds: 600),
+        child: AlertDialog(
+          backgroundColor: Colors.transparent,
+          content: ClipRect(
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+              child: Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  gradient: RadialGradient(
+                    colors: [
+                      Colors.blueAccent.withValues(alpha: 0.3),
+                      Colors.black.withValues(alpha: 0.7),
+                    ],
+                    radius: 1.5,
                   ),
-                  const SizedBox(height: 12),
-                  ListTile(
-                    leading: const Icon(
-                      Icons.coffee_maker,
-                      color: Colors.white70,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: Colors.cyanAccent.withValues(alpha: 0.5),
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.cyanAccent.withValues(alpha: 0.3),
+                      blurRadius: 20,
+                      spreadRadius: 5,
                     ),
-                    title: Text(
-                      'How to Use Coffee Machine',
+                  ],
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'Starbase Protocols',
                       style: GoogleFonts.orbitron(
-                        color: Colors.white70,
-                        fontSize: 14,
+                        color: Colors.cyanAccent,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 20,
+                        shadows: [
+                          Shadow(
+                            color: Colors.cyanAccent.withValues(alpha: 0.5),
+                            blurRadius: 10,
+                          ),
+                        ],
                       ),
                     ),
-                    onTap: () {
-                      Navigator.pop(context);
-                      _showPlaceholderDialog(context, 'Coffee Machine');
-                    },
-                  ),
-                  ListTile(
-                    leading: const Icon(Icons.wifi, color: Colors.white70),
-                    title: Text(
-                      'WiFi Setup',
-                      style: GoogleFonts.orbitron(
-                        color: Colors.white70,
-                        fontSize: 14,
+                    const SizedBox(height: 16),
+                    _buildDialogOption(
+                      context,
+                      icon: Icons.coffee_maker,
+                      title: 'Nebula Brew Station',
+                      onTap: () => _showPlaceholderDialog(
+                        context,
+                        'Nebula Brew Station',
                       ),
                     ),
-                    onTap: () {
-                      Navigator.pop(context);
-                      _showPlaceholderDialog(context, 'WiFi Setup');
-                    },
-                  ),
-                  ListTile(
-                    leading: const Icon(Icons.home, color: Colors.white70),
-                    title: Text(
-                      'House Rules',
-                      style: GoogleFonts.orbitron(
-                        color: Colors.white70,
-                        fontSize: 14,
-                      ),
+                    _buildDialogOption(
+                      context,
+                      icon: Icons.wifi,
+                      title: 'Quantum Network',
+                      onTap: () =>
+                          _showPlaceholderDialog(context, 'Quantum Network'),
                     ),
-                    onTap: () {
-                      Navigator.pop(context);
-                      _showPlaceholderDialog(context, 'House Rules');
-                    },
-                  ),
-                ],
+                    _buildDialogOption(
+                      context,
+                      icon: Icons.shield,
+                      title: 'Starbase Rules',
+                      onTap: () =>
+                          _showPlaceholderDialog(context, 'Starbase Rules'),
+                    ),
+                  ],
+                ),
               ),
             ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text(
+                'Disengage',
+                style: GoogleFonts.orbitron(color: Colors.cyanAccent),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDialogOption(
+    BuildContext context, {
+    required IconData icon,
+    required String title,
+    required VoidCallback onTap,
+  }) {
+    return animate_do.BounceIn(
+      duration: const Duration(milliseconds: 800),
+      child: ListTile(
+        leading: Icon(icon, color: Colors.cyanAccent),
+        title: Text(
+          title,
+          style: GoogleFonts.orbitron(
+            color: Colors.white,
+            fontSize: 16,
+            shadows: [
+              Shadow(
+                color: Colors.cyanAccent.withValues(alpha: 0.3),
+                blurRadius: 5,
+              ),
+            ],
           ),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(
-              'Close',
-              style: GoogleFonts.orbitron(color: Colors.white70),
-            ),
-          ),
-        ],
+        onTap: onTap,
       ),
     );
   }
 
   void _showPlaceholderDialog(BuildContext context, String title) {
     Widget content;
-    if (title == 'House Rules') {
+    if (title == 'Starbase Rules') {
       content = Text(
-        '1. No audible tooth-brushing around Willoh.\n'
-        '2. Chew with your mouth shut.\n'
+        '1. No sonic tooth-brushing near Willoh’s orbit.\n'
+        '2. Maintain stealth chewing protocols.\n'
         '3. See rule 1.\n'
-        '4. Lorax talk must include its political economy vibes.',
-        style: GoogleFonts.orbitron(color: Colors.white70, fontSize: 14),
+        '4. Lorax discussions must explore its interstellar political economy.',
+        style: GoogleFonts.orbitron(color: Colors.white, fontSize: 14),
       );
-    } else if (title == 'Coffee Machine') {
+    } else if (title == 'Nebula Brew Station') {
       content = Text(
-        'Grind beans to a slightly coarse texture, press into a pod, and run the machine.',
-        style: GoogleFonts.orbitron(color: Colors.white70, fontSize: 14),
+        'Grind cosmic beans to a pulsar texture, compress into a pod, and activate the brew core.',
+        style: GoogleFonts.orbitron(color: Colors.white, fontSize: 14),
       );
-    } else if (title == 'WiFi Setup') {
+    } else if (title == 'Quantum Network') {
       content = Text(
-        'WiFi Name: BrubakerWifi\nPassword: Pre\$ton01',
-        style: GoogleFonts.orbitron(color: Colors.white70, fontSize: 14),
+        'Network: BrubakerNebula\nPasscode: Star\$ton01',
+        style: GoogleFonts.orbitron(color: Colors.white, fontSize: 14),
       );
     } else {
       content = Text(
-        'No information available',
-        style: GoogleFonts.orbitron(color: Colors.white70, fontSize: 14),
+        'No data in this sector.',
+        style: GoogleFonts.orbitron(color: Colors.white, fontSize: 14),
       );
     }
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: Colors.transparent,
-        content: ClipRect(
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
-            child: Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.2),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    title,
-                    style: GoogleFonts.orbitron(
-                      color: Colors.white70,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 18,
-                    ),
+      builder: (context) => animate_do.ZoomIn(
+        duration: const Duration(milliseconds: 600),
+        child: AlertDialog(
+          backgroundColor: Colors.transparent,
+          content: ClipRect(
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+              child: Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  gradient: RadialGradient(
+                    colors: [
+                      Colors.purpleAccent.withValues(alpha: 0.3),
+                      Colors.black.withValues(alpha: 0.7),
+                    ],
+                    radius: 1.5,
                   ),
-                  const SizedBox(height: 12),
-                  content,
-                ],
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: Colors.purpleAccent.withValues(alpha: 0.5),
+                  ),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      title,
+                      style: GoogleFonts.orbitron(
+                        color: Colors.purpleAccent,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 18,
+                        shadows: [
+                          Shadow(
+                            color: Colors.purpleAccent.withValues(alpha: 0.5),
+                            blurRadius: 10,
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    content,
+                  ],
+                ),
               ),
             ),
           ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(
-              'OK',
-              style: GoogleFonts.orbitron(color: Colors.white70),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text(
+                'Return to Orbit',
+                style: GoogleFonts.orbitron(color: Colors.purpleAccent),
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -245,130 +309,81 @@ class InfoScreenState extends State<InfoScreen> {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [
-              Color(0xFF0A0A1E).withValues(alpha: 0.9),
-              Color(0xFF1A1A3A).withValues(alpha: 0.7),
-            ],
+            colors: [Colors.black, Colors.indigo.shade900],
           ),
         ),
         child: Stack(
           children: [
-            Positioned.fill(child: StarField(opacity: 0.3)),
+            Positioned.fill(
+              child: StarField(
+                opacity: 0.7,
+              ), // Use StarField from star_field.dart, increased opacity for better visibility
+            ),
+            Positioned.fill(child: _buildOrbitingPlanets()),
             SafeArea(
               child: Center(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    animate_do.FadeIn(
-                      duration: const Duration(milliseconds: 800),
+                    animate_do.Spin(
+                      duration: const Duration(seconds: 20),
                       child: Text(
-                        '2 Years!! 🎉',
+                        'Countdown to 2nd Anniversary! 🌌',
                         style: GoogleFonts.orbitron(
-                          color: Colors.white70,
+                          color: Colors.white,
                           fontWeight: FontWeight.bold,
-                          fontSize: 24,
+                          fontSize: 28,
                           shadows: [
                             Shadow(
-                              color: Colors.purpleAccent.withValues(alpha: 0.5),
-                              blurRadius: 8,
-                              offset: const Offset(0, 2),
+                              color: Colors.blueAccent.withValues(alpha: 0.7),
+                              blurRadius: 15,
+                              offset: const Offset(0, 3),
                             ),
                           ],
                         ),
                         textAlign: TextAlign.center,
                       ),
                     ),
-                    const SizedBox(height: 20),
-                    if (_countdownMode == 'days')
-                      animate_do.BounceIn(
-                        duration: const Duration(milliseconds: 600),
-                        child: Text(
-                          _countdownText,
-                          style: GoogleFonts.orbitron(
-                            color: Colors.white,
-                            fontSize: 20,
-                            shadows: [
-                              Shadow(
-                                color: Colors.cyanAccent.withValues(alpha: 0.4),
-                                blurRadius: 6,
-                                offset: const Offset(0, 1),
-                              ),
-                            ],
-                          ),
-                        ),
-                      )
-                    else if (_countdownMode == 'coffee_thursdays')
-                      animate_do.JelloIn(
-                        duration: const Duration(milliseconds: 800),
-                        child: Text(
-                          _countdownText,
-                          style: GoogleFonts.orbitron(
-                            color: Colors.white,
-                            fontSize: 20,
-                            shadows: [
-                              Shadow(
-                                color: Colors.greenAccent.withValues(
-                                  alpha: 0.4,
-                                ),
-                                blurRadius: 6,
-                                offset: const Offset(0, 1),
-                              ),
-                            ],
-                          ),
-                        ),
-                      )
-                    else if (_countdownMode == 'paychecks')
-                      animate_do.Swing(
-                        duration: const Duration(milliseconds: 1000),
-                        child: Text(
-                          _countdownText,
-                          style: GoogleFonts.orbitron(
-                            color: Colors.white,
-                            fontSize: 20,
-                            shadows: [
-                              Shadow(
-                                color: Colors.yellowAccent.withValues(
-                                  alpha: 0.4,
-                                ),
-                                blurRadius: 6,
-                                offset: const Offset(0, 1),
-                              ),
-                            ],
-                          ),
-                        ),
-                      )
-                    else
-                      animate_do.Pulse(
-                        duration: const Duration(milliseconds: 600),
-                        child: Text(
-                          _countdownText,
-                          style: GoogleFonts.orbitron(
-                            color: Colors.white,
-                            fontSize: 20,
-                            shadows: [
-                              Shadow(
-                                color: Colors.redAccent.withValues(alpha: 0.4),
-                                blurRadius: 6,
-                                offset: const Offset(0, 1),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 30),
+                    _buildCountdownDisplay(),
+                    const SizedBox(height: 30),
                     Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
+                      spacing: 12,
+                      runSpacing: 12,
                       alignment: WrapAlignment.center,
                       children: [
-                        _buildModeButton('Days', 'days', 'BounceIn'),
                         _buildModeButton(
-                          'Coffee Thursdays',
-                          'coffee_thursdays',
-                          'JelloIn',
+                          'Galactic Cycles',
+                          'days',
+                          Colors.cyanAccent,
+                          'Spin',
+                          1.0,
+                          0.0,
                         ),
-                        _buildModeButton('Paychecks', 'paychecks', 'Swing'),
-                        _buildModeButton('Time', 'time', 'Pulse'),
+                        _buildModeButton(
+                          'Nebula Brews',
+                          'coffee_thursdays',
+                          Colors.greenAccent,
+                          'Bounce',
+                          1.0,
+                          pi / 2,
+                        ),
+                        _buildModeButton(
+                          'Stardust Credits',
+                          'paychecks',
+                          Colors.yellowAccent,
+                          'Pulse',
+                          1.0,
+                          pi,
+                        ),
+                        _buildModeButton(
+                          'Quantum Time',
+                          'time',
+                          Colors.redAccent,
+                          'ZoomIn',
+                          1.0,
+                          3 * pi / 2,
+                        ),
                       ],
                     ),
                   ],
@@ -378,80 +393,219 @@ class InfoScreenState extends State<InfoScreen> {
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        backgroundColor: Colors.white.withValues(alpha: 0.2),
-        elevation: 8,
-        child: Container(
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            border: Border.all(color: Colors.white.withValues(alpha: 0.4)),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.purpleAccent.withValues(alpha: 0.5),
-                blurRadius: 10,
-                spreadRadius: 2,
-              ),
-            ],
-          ),
-          child: const Icon(Icons.info_outline, color: Colors.white70),
+      floatingActionButton: ScaleTransition(
+        scale: Tween<double>(begin: 1.0, end: 1.2).animate(
+          CurvedAnimation(parent: _glowController, curve: Curves.easeInOut),
         ),
-        onPressed: () => _showHouseInfoDialog(context),
+        child: FloatingActionButton(
+          backgroundColor: Colors.black.withValues(
+            alpha: 0.7,
+          ), // Increased opacity for better visibility
+          elevation: 10,
+          child: Container(
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: Colors.cyanAccent.withValues(alpha: 0.8),
+                width: 2,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.cyanAccent.withValues(alpha: 0.6),
+                  blurRadius: 15,
+                  spreadRadius: 3,
+                ),
+              ],
+            ),
+            child: const Icon(
+              Icons.info_outline,
+              color: Colors.cyanAccent,
+              size: 30,
+            ),
+          ),
+          onPressed: () => _showHouseInfoDialog(context),
+        ),
       ),
     );
   }
 
-  Widget _buildModeButton(String label, String mode, String animationType) {
-    Widget button = ElevatedButton(
-      style: ElevatedButton.styleFrom(
-        backgroundColor: _countdownMode == mode
-            ? Colors.white.withValues(alpha: 0.3)
-            : Colors.white.withValues(alpha: 0.2),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8),
-          side: BorderSide(
-            color: _countdownMode == mode
-                ? Colors.white.withValues(alpha: 0.8)
-                : Colors.white.withValues(alpha: 0.3),
-            width: 2,
+  Widget _buildCountdownDisplay() {
+    Color glowColor;
+    String animationType;
+
+    switch (_countdownMode) {
+      case 'days':
+        glowColor = Colors.cyanAccent;
+        animationType = 'Spin';
+        break;
+      case 'coffee_thursdays':
+        glowColor = Colors.greenAccent;
+        animationType = 'Bounce';
+        break;
+      case 'paychecks':
+        glowColor = Colors.yellowAccent;
+        animationType = 'Pulse';
+        break;
+      case 'time':
+        glowColor = Colors.redAccent;
+        animationType = 'ZoomIn';
+        break;
+      default:
+        glowColor = Colors.white;
+        animationType = 'FadeIn';
+    }
+
+    Widget text = Text(
+      _countdownText,
+      style: GoogleFonts.orbitron(
+        color: Colors.white,
+        fontSize: 24,
+        shadows: [
+          Shadow(
+            color: glowColor.withValues(alpha: 0.7), // Increased glow opacity
+            blurRadius: 15, // Slightly increased blur for better effect
+            offset: const Offset(0, 2),
           ),
-        ),
-        elevation: 6,
-      ),
-      onPressed: () {
-        setState(() {
-          _countdownMode = mode;
-          _updateCountdown();
-        });
-      },
-      child: Text(
-        label,
-        style: GoogleFonts.orbitron(color: Colors.white70, fontSize: 14),
+        ],
       ),
     );
 
     switch (animationType) {
-      case 'BounceIn':
-        return animate_do.BounceIn(
-          duration: const Duration(milliseconds: 600),
-          child: button,
+      case 'Spin':
+        return animate_do.Spin(
+          duration: const Duration(seconds: 15),
+          child: text,
         );
-      case 'JelloIn':
-        return animate_do.JelloIn(
-          duration: const Duration(milliseconds: 800),
-          child: button,
-        );
-      case 'Swing':
-        return animate_do.Swing(
+      case 'Bounce':
+        return animate_do.Bounce(
           duration: const Duration(milliseconds: 1000),
-          child: button,
+          child: text,
         );
       case 'Pulse':
         return animate_do.Pulse(
+          duration: const Duration(milliseconds: 800),
+          child: text,
+        );
+      case 'ZoomIn':
+        return animate_do.ZoomIn(
           duration: const Duration(milliseconds: 600),
-          child: button,
+          child: text,
         );
       default:
-        return button;
+        return animate_do.FadeIn(
+          duration: const Duration(milliseconds: 600),
+          child: text,
+        );
     }
+  }
+
+  Widget _buildModeButton(
+    String label,
+    String mode,
+    Color planetColor,
+    String animationType,
+    double orbitSpeed,
+    double phase,
+  ) {
+    return AnimatedBuilder(
+      animation: _orbitController,
+      builder: (context, child) {
+        final angle = (_orbitController.value * 2 * pi * orbitSpeed) + phase;
+        final offset = Offset(cos(angle) * 20, sin(angle) * 20);
+        return Transform.translate(
+          offset: offset,
+          child: animate_do.BounceIn(
+            duration: const Duration(milliseconds: 800),
+            child: ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: planetColor.withValues(
+                  alpha: 0.3,
+                ), // Tinted with planet color for better visibility
+                shape: const CircleBorder(),
+                padding: const EdgeInsets.all(20),
+                elevation: 15,
+                side: BorderSide(
+                  color: _countdownMode == mode
+                      ? planetColor.withValues(alpha: 1.0)
+                      : Colors.white.withValues(alpha: 0.8),
+                  width: 3,
+                ),
+                shadowColor: planetColor.withValues(alpha: 0.8),
+              ),
+              onPressed: () {
+                setState(() {
+                  _countdownMode = mode;
+                  _updateCountdown();
+                });
+              },
+              child: Text(
+                label,
+                textAlign: TextAlign.center,
+                style: GoogleFonts.orbitron(
+                  color: Colors.white,
+                  fontSize: 16, // Increased font size for better readability
+                  shadows: [
+                    Shadow(
+                      color: planetColor.withValues(alpha: 0.8),
+                      blurRadius: 12,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildOrbitingPlanets() {
+    return AnimatedBuilder(
+      animation: _orbitController,
+      builder: (context, _) {
+        return Stack(
+          children: [
+            _buildPlanet(60, 1.0, Colors.blueAccent, 120),
+            _buildPlanet(40, 2.0, Colors.redAccent, 180),
+            _buildPlanet(80, -1.0, Colors.purpleAccent, 240),
+            _buildPlanet(50, 3.0, Colors.greenAccent, 100),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildPlanet(
+    double radius,
+    double speed,
+    Color color,
+    double orbitRadius,
+  ) {
+    final angle = _orbitController.value * 2 * pi * speed;
+    return Positioned(
+      left:
+          (MediaQuery.of(context).size.width / 2) +
+          cos(angle) * orbitRadius -
+          radius / 2,
+      top:
+          (MediaQuery.of(context).size.height / 2) +
+          sin(angle) * orbitRadius -
+          radius / 2,
+      child: Container(
+        width: radius,
+        height: radius,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: color.withValues(alpha: 0.5),
+          boxShadow: [
+            BoxShadow(
+              color: color.withValues(alpha: 0.7),
+              blurRadius: 30,
+              spreadRadius: 8,
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }

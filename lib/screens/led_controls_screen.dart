@@ -81,7 +81,7 @@ class LedControlsScreenState extends State<LedControlsScreen>
       'name': 'electric-sheep-dream',
       'image': 'assets/modes/electric-sheep-dream.png',
     },
-    {'name': 'qrng', 'image': 'assets/modes/qrng.png'},
+    {'name': 'QRNG', 'image': 'assets/modes/qrng.png'},
   ];
   String currentMode = 'off';
   bool isLoading = true;
@@ -112,7 +112,6 @@ class LedControlsScreenState extends State<LedControlsScreen>
     if (!mounted) return;
     setState(() => isLoading = true);
     try {
-      // Try local server first
       final response = await http
           .get(Uri.parse('$localServerUrl/mode'))
           .timeout(const Duration(seconds: 2));

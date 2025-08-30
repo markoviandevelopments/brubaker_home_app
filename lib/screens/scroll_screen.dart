@@ -85,11 +85,7 @@ class ScrollScreenState extends State<ScrollScreen> {
       if (response.statusCode != 200 && response.statusCode != 201) {
         throw Exception('Failed to save post: ${response.statusCode}');
       }
-      if (mounted) {
-        setState(() {
-          _posts.add(post);
-        });
-      }
+      // Remove the local add here; we'll reload from server instead
     } catch (e) {
       if (mounted && scaffoldMessenger != null) {
         scaffoldMessenger.showSnackBar(
@@ -215,11 +211,12 @@ class ScrollScreenState extends State<ScrollScreen> {
       mediaHeight: mediaHeight,
     );
     await _savePostToServer(newPost);
+    await _loadPostsFromServer();
     if (videoController != null) {
-      videoController.dispose(); // Removed await
+      videoController.dispose();
     }
     if (chewieController != null) {
-      chewieController.dispose(); // Removed await
+      chewieController.dispose();
     }
   }
 

@@ -100,6 +100,21 @@ class ToadJumperScreenState extends State<ToadJumperScreen>
   }
 }
 
+class Pickup {
+  double offsetX;
+  double offsetY;
+
+  Pickup(this.offsetX, this.offsetY);
+}
+
+class PlatformRect {
+  Rect rect;
+  double vx;
+  Pickup? pickup;
+
+  PlatformRect(this.rect, this.vx, {this.pickup});
+}
+
 class ToadJumperGame extends StatefulWidget {
   final AnimationController controller;
   final Function(int) onGameSelected;
@@ -122,7 +137,7 @@ class ToadJumperGameState extends State<ToadJumperGame>
   final double gravity = 1000;
   final double jumpSpeed = -600;
   final double horizontalSpeed = 200;
-  List<Rect> platforms = [];
+  List<PlatformRect> platforms = [];
   int score = 0;
   double worldHeight = 0;
   final math.Random random = math.Random();
@@ -148,20 +163,15 @@ class ToadJumperGameState extends State<ToadJumperGame>
   double starOpacity = 0.5;
   late AnimationController _colorController;
   late Animation<Color> _colorAnimation; // Explicitly typed as Animation<Color>
+  int lives = 3;
+  int spawnLifeAfter = -1;
+  int lastLevel = 0;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (screenSize == null) {
-      screenSize = MediaQuery.of(context).size;
-      bottomPadding =
-          MediaQuery.of(context).padding.bottom +
-          80.0; // Adjusted for BottomNavigationBar
-    }
+    bottomPadding = 0.0;
     if (toadImage == null && isImageLoading) {
-      toadX = screenSize!.width / 2 - 30;
-      toadY = screenSize!.height - 60 - bottomPadding!; // Toad on ground
-      spawnInitialPlatforms();
       _loadImage('assets/images/toad.png')
           .then((image) {
             if (mounted) {
@@ -229,27 +239,38 @@ class ToadJumperGameState extends State<ToadJumperGame>
   void spawnInitialPlatforms() {
     if (screenSize == null || bottomPadding == null) return;
     platforms.clear();
-    // Initial platform (toad's starting platform)
+    // Initial platform (toad's starting platform, full screen width)
+    double initialWidth = screenSize!.width;
     platforms.add(
-      Rect.fromLTWH(toadX, screenSize!.height - bottomPadding!, 100, 20),
-    );
-    // One platform below
-    platforms.add(
-      Rect.fromLTWH(
-        random.nextDouble() * (screenSize!.width - 100),
-        screenSize!.height - bottomPadding! + 120,
-        100,
-        20,
+      PlatformRect(
+        Rect.fromLTWH(
+          0,
+          screenSize!.height - 20 - bottomPadding!,
+          initialWidth,
+          20,
+        ),
+        0,
       ),
     );
     // Platforms above
     for (int i = 1; i < 10; i++) {
+      double pWidth = 100 - (worldHeight / 2000).clamp(0, 40);
+      double left = random.nextDouble() * (screenSize!.width - pWidth);
+      double vx = 0;
+      if (random.nextDouble() > 0.8 - worldHeight / 10000) {
+        vx =
+            (random.nextDouble() * 2 - 1) *
+            (50 + worldHeight / 5000).clamp(0, 200);
+      }
       platforms.add(
-        Rect.fromLTWH(
-          random.nextDouble() * (screenSize!.width - 100),
-          screenSize!.height - bottomPadding! - i * 120,
-          100,
-          20,
+        PlatformRect(
+          Rect.fromLTWH(
+            left,
+            screenSize!.height - 20 - bottomPadding! - i * 120,
+            pWidth,
+            20,
+          ),
+          vx,
         ),
       );
     }
@@ -267,6 +288,9 @@ class ToadJumperGameState extends State<ToadJumperGame>
       animationPhase = 0;
       particles.clear();
       particleAges.clear();
+      lives = 3;
+      spawnLifeAfter = -1;
+      lastLevel = 0;
       if (screenSize != null) {
         toadX = screenSize!.width / 2 - 30;
         toadY = screenSize!.height - 60 - (bottomPadding ?? 0);
@@ -294,8 +318,8 @@ class ToadJumperGameState extends State<ToadJumperGame>
   bool isOnPlatform() {
     final toadRect = Rect.fromLTWH(toadX, toadY, 60, 60);
     for (var platform in platforms) {
-      if (toadRect.overlaps(platform)) {
-        final overlap = platform.top - (toadY + 60);
+      if (toadRect.overlaps(platform.rect)) {
+        final overlap = platform.rect.top - (toadY + 60);
         if (overlap >= -30 && overlap <= 5) {
           return true;
         }
@@ -307,6 +331,14 @@ class ToadJumperGameState extends State<ToadJumperGame>
   void updateGame(double dt) {
     if (!mounted || screenSize == null || bottomPadding == null) return;
     setState(() {
+      // Update moving platforms
+      for (var platform in platforms) {
+        platform.rect = platform.rect.translate(platform.vx * dt, 0);
+        if (platform.rect.left < 0 || platform.rect.right > screenSize!.width) {
+          platform.vx = -platform.vx;
+        }
+      }
+
       if (isJumping || !isOnPlatform()) {
         velocityY += gravity * dt;
         toadY += velocityY * dt;
@@ -319,27 +351,61 @@ class ToadJumperGameState extends State<ToadJumperGame>
         justLanded = false;
       }
 
-      // Prevent toad from falling below the initial platform height
+      // Check for falling too far
       if (toadY > screenSize!.height - bottomPadding! + 120) {
-        isGameOver = true; // Game over if toad falls too far
+        lives--;
+        if (lives <= 0) {
+          isGameOver = true;
+        } else {
+          spawnLifeAfter = 5 + random.nextInt(6);
+          // Respawn on bottommost platform
+          double maxTop = double.negativeInfinity;
+          PlatformRect? bottomPlatform;
+          for (var p in platforms) {
+            if (p.rect.top > maxTop) {
+              maxTop = p.rect.top;
+              bottomPlatform = p;
+            }
+          }
+          if (bottomPlatform != null) {
+            toadX =
+                bottomPlatform.rect.left + (bottomPlatform.rect.width - 60) / 2;
+            toadY = bottomPlatform.rect.top - 60;
+          } else {
+            toadY = screenSize!.height - 60 - bottomPadding!;
+            toadX = screenSize!.width / 2 - 30;
+          }
+          velocityY = 0;
+          isJumping = false;
+        }
       }
 
-      // Check for landing on platforms
+      // Check for landing on platforms and picking up lives
       final toadRect = Rect.fromLTWH(toadX, toadY, 60, 60);
       for (var platform in platforms) {
-        if (toadRect.overlaps(platform) && velocityY >= 0) {
-          final overlap = platform.top - (toadY + 60);
+        if (toadRect.overlaps(platform.rect) && velocityY >= 0) {
+          final overlap = platform.rect.top - (toadY + 60);
           if (overlap >= -30 && overlap <= 5) {
             velocityY = 0;
             if (isJumping) {
               justLanded = true;
             }
             isJumping = false;
-            toadY = platform.top - 60;
-            if (justLanded && score < 1000) {
+            toadY = platform.rect.top - 60;
+            if (justLanded) {
               score++;
               justLanded = false;
             }
+          }
+        }
+        // Check for life pickup
+        if (platform.pickup != null) {
+          double px = platform.rect.left + platform.pickup!.offsetX;
+          double py = platform.rect.top + platform.pickup!.offsetY;
+          var lifeRect = Rect.fromLTWH(px, py, 20, 20);
+          if (toadRect.overlaps(lifeRect)) {
+            lives = math.min(3, lives + 1);
+            platform.pickup = null;
           }
         }
       }
@@ -349,29 +415,42 @@ class ToadJumperGameState extends State<ToadJumperGame>
         final dy = screenSize!.height / 3 - toadY;
         toadY = screenSize!.height / 3;
         for (int i = 0; i < platforms.length; i++) {
-          platforms[i] = platforms[i].translate(0, dy);
+          platforms[i].rect = platforms[i].rect.translate(0, dy);
         }
         worldHeight += dy;
 
-        while (platforms.isNotEmpty && platforms.last.top > -200) {
-          final newY = platforms.last.top - (120 + random.nextDouble() * 80);
-          platforms.add(
-            Rect.fromLTWH(
-              random.nextDouble() * (screenSize!.width - 100),
-              newY,
-              100,
-              20,
-            ),
+        bgOffset1 += bgSpeed1 * dt;
+        bgOffset2 += bgSpeed2 * dt;
+
+        while (platforms.isNotEmpty && platforms.last.rect.top > -200) {
+          final newY =
+              platforms.last.rect.top - (120 + random.nextDouble() * 80);
+          double pWidth = 100 - (worldHeight / 2000).clamp(0, 40);
+          double left = random.nextDouble() * (screenSize!.width - pWidth);
+          double vx = 0;
+          if (random.nextDouble() > 0.8 - worldHeight / 10000) {
+            vx =
+                (random.nextDouble() * 2 - 1) *
+                (50 + worldHeight / 5000).clamp(0, 200);
+          }
+          var newPlatform = PlatformRect(
+            Rect.fromLTWH(left, newY, pWidth, 20),
+            vx,
           );
+          if (spawnLifeAfter > 0) {
+            spawnLifeAfter--;
+            if (spawnLifeAfter == 0) {
+              newPlatform.pickup = Pickup(pWidth / 2 - 10, -20);
+            }
+          }
+          platforms.add(newPlatform);
         }
 
         platforms.removeWhere(
-          (p) => p.top > screenSize!.height - bottomPadding! + 120,
+          (p) => p.rect.top > screenSize!.height - bottomPadding! + 120,
         );
       }
 
-      bgOffset1 += bgSpeed1 * dt;
-      bgOffset2 += bgSpeed2 * dt;
       if (bgOffset1 >= screenSize!.height) bgOffset1 -= screenSize!.height * 2;
       if (bgOffset2 >= screenSize!.height) bgOffset2 -= screenSize!.height * 2;
 
@@ -384,7 +463,9 @@ class ToadJumperGameState extends State<ToadJumperGame>
         }
       }
 
-      if (score % 20 == 0 && score > 0) {
+      int currentLevel = (score / 20).floor();
+      if (currentLevel > lastLevel) {
+        lastLevel = currentLevel;
         updateBackgroundProgress();
       }
 
@@ -399,7 +480,7 @@ class ToadJumperGameState extends State<ToadJumperGame>
   }
 
   void updateBackgroundProgress() {
-    final level = (score / 20).floor() + 1;
+    final level = lastLevel + 1;
     bgSpeed1 += 2;
     bgSpeed2 += 3;
 
@@ -439,225 +520,244 @@ class ToadJumperGameState extends State<ToadJumperGame>
 
   @override
   Widget build(BuildContext context) {
-    screenSize ??= MediaQuery.of(context).size;
-    return KeyboardListener(
-      focusNode: _focusNode,
-      autofocus: true,
-      onKeyEvent: (KeyEvent event) {
-        if (event is KeyDownEvent && !isGameOver) {
-          if (event.logicalKey == LogicalKeyboardKey.space && !isJumping) {
-            setState(() {
-              velocityY = jumpSpeed;
-              isJumping = true;
-            });
-          } else if (event.logicalKey == LogicalKeyboardKey.arrowLeft) {
-            setState(() {
-              toadX -= horizontalSpeed * (1 / 60);
-              if (toadX < 0) toadX = 0;
-            });
-          } else if (event.logicalKey == LogicalKeyboardKey.arrowRight) {
-            setState(() {
-              toadX += horizontalSpeed * (1 / 60);
-              if (toadX > screenSize!.width - 60) {
-                toadX = screenSize!.width - 60;
-              }
-            });
-          }
+    return LayoutBuilder(
+      builder: (BuildContext context, BoxConstraints constraints) {
+        if (screenSize == null) {
+          screenSize = Size(constraints.maxWidth, constraints.maxHeight);
+          toadX = screenSize!.width / 2 - 30;
+          toadY = screenSize!.height - 60 - bottomPadding!;
+          spawnInitialPlatforms();
         }
-      },
-      child: GestureDetector(
-        onTap: () {
-          if (!isJumping && !isGameOver) {
-            setState(() {
-              velocityY = jumpSpeed;
-              isJumping = true;
-            });
-          }
-        },
-        child: Stack(
-          children: [
-            Positioned(
-              top: bgOffset1,
-              child: SizedBox(
-                width: screenSize!.width,
-                height: screenSize!.height * 2,
-                child: StarField(opacity: starOpacity, offset: bgOffset1),
-              ),
-            ),
-            if (!isImageLoading && toadImage != null)
-              CustomPaint(
-                size: screenSize!,
-                painter: ToadJumperPainter(
-                  toadX: toadX,
-                  toadY: toadY,
-                  platforms: platforms,
-                  bgOffset1: bgOffset1,
-                  bgOffset2: bgOffset2,
-                  score: score,
-                  toadImage: toadImage!,
-                  animationPhase: animationPhase,
-                  particles: particles,
-                  particleAges: particleAges,
-                  bgColorTop: bgColorTop,
-                  bgColorBottom: bgColorBottom,
-                  platformColor: platformColor,
+        return KeyboardListener(
+          focusNode: _focusNode,
+          autofocus: true,
+          onKeyEvent: (KeyEvent event) {
+            if (event is KeyDownEvent && !isGameOver) {
+              if (event.logicalKey == LogicalKeyboardKey.space && !isJumping) {
+                setState(() {
+                  velocityY = jumpSpeed;
+                  isJumping = true;
+                });
+              } else if (event.logicalKey == LogicalKeyboardKey.arrowLeft) {
+                setState(() {
+                  toadX -= horizontalSpeed * (1 / 60);
+                  if (toadX < 0) toadX = 0;
+                });
+              } else if (event.logicalKey == LogicalKeyboardKey.arrowRight) {
+                setState(() {
+                  toadX += horizontalSpeed * (1 / 60);
+                  if (toadX > screenSize!.width - 60) {
+                    toadX = screenSize!.width - 60;
+                  }
+                });
+              }
+            }
+          },
+          child: GestureDetector(
+            onTap: () {
+              if (!isJumping && !isGameOver) {
+                setState(() {
+                  velocityY = jumpSpeed;
+                  isJumping = true;
+                });
+              }
+            },
+            child: Stack(
+              children: [
+                Positioned(
+                  top: bgOffset1,
+                  left: 0,
+                  child: SizedBox(
+                    width: screenSize!.width,
+                    height: screenSize!.height * 2,
+                    child: StarField(opacity: starOpacity, offset: bgOffset1),
+                  ),
                 ),
-              )
-            else
-              Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const CircularProgressIndicator(color: Color(0xFF00FFD1)),
-                    const SizedBox(height: 16),
-                    Text(
-                      'Loading Toad Jumper...',
-                      style: GoogleFonts.orbitron(
-                        color: Colors.white70,
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600,
+                if (!isImageLoading && toadImage != null)
+                  Positioned.fill(
+                    child: CustomPaint(
+                      painter: ToadJumperPainter(
+                        toadX: toadX,
+                        toadY: toadY,
+                        platforms: platforms,
+                        bgOffset1: bgOffset1,
+                        bgOffset2: bgOffset2,
+                        score: score,
+                        toadImage: toadImage!,
+                        animationPhase: animationPhase,
+                        particles: particles,
+                        particleAges: particleAges,
+                        bgColorTop: bgColorTop,
+                        bgColorBottom: bgColorBottom,
+                        platformColor: platformColor,
+                        lives: lives,
                       ),
                     ),
-                  ],
-                ),
-              ),
-            if (isGameOver)
-              animate_do.BounceInDown(
-                duration: const Duration(milliseconds: 600),
-                child: Center(
-                  child: ClipRect(
-                    child: BackdropFilter(
-                      filter: ui.ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                      child: Container(
-                        constraints: const BoxConstraints(maxWidth: 400),
-                        padding: const EdgeInsets.all(16),
-                        margin: const EdgeInsets.symmetric(horizontal: 24),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF0A0A1E).withValues(alpha: 0.4),
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(
-                            color: const Color(
-                              0xFFFF4500,
-                            ).withValues(alpha: 0.5),
-                            width: 2,
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: const Color(
-                                0xFFFF4500,
-                              ).withValues(alpha: 0.2),
-                              blurRadius: 8,
-                              spreadRadius: 2,
-                            ),
-                          ],
+                  )
+                else
+                  Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const CircularProgressIndicator(
+                          color: Color(0xFF00FFD1),
                         ),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            animate_do.ShakeX(
-                              duration: const Duration(milliseconds: 800),
-                              child: Text(
-                                'Game Over',
-                                style: GoogleFonts.orbitron(
-                                  fontSize: 28,
-                                  color: const Color(0xFFFF4500),
-                                  fontWeight: FontWeight.bold,
-                                  shadows: [
-                                    Shadow(
-                                      color: Colors.black.withValues(
-                                        alpha: 0.5,
-                                      ),
-                                      blurRadius: 6,
-                                      offset: const Offset(0, 4),
-                                    ),
-                                  ],
-                                ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'Loading Toad Jumper...',
+                          style: GoogleFonts.orbitron(
+                            color: Colors.white70,
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                if (isGameOver)
+                  animate_do.BounceInDown(
+                    duration: const Duration(milliseconds: 600),
+                    child: Center(
+                      child: ClipRect(
+                        child: BackdropFilter(
+                          filter: ui.ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                          child: Container(
+                            constraints: const BoxConstraints(maxWidth: 400),
+                            padding: const EdgeInsets.all(16),
+                            margin: const EdgeInsets.symmetric(horizontal: 24),
+                            decoration: BoxDecoration(
+                              color: const Color(
+                                0xFF0A0A1E,
+                              ).withValues(alpha: 0.4),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: const Color(
+                                  0xFFFF4500,
+                                ).withValues(alpha: 0.5),
+                                width: 2,
                               ),
-                            ),
-                            const SizedBox(height: 16),
-                            Text(
-                              'Score: $score',
-                              style: GoogleFonts.orbitron(
-                                fontSize: 20,
-                                color: const Color(0xFF00FFD1),
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-                            Wrap(
-                              alignment: WrapAlignment.center,
-                              spacing: 10,
-                              runSpacing: 10,
-                              children: [
-                                ElevatedButton(
-                                  onPressed: resetGame,
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: const Color(
-                                      0xFF00FFD1,
-                                    ).withValues(alpha: 0.3),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(10),
-                                      side: BorderSide(
-                                        color: const Color(
-                                          0xFF00FFD1,
-                                        ).withValues(alpha: 0.5),
-                                      ),
-                                    ),
-                                    padding: const EdgeInsets.symmetric(
-                                      vertical: 8,
-                                      horizontal: 16,
-                                    ),
-                                    elevation: 6,
-                                  ),
-                                  child: Text(
-                                    'Restart',
-                                    style: GoogleFonts.orbitron(
-                                      fontSize: 14,
-                                      color: Colors.white70,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ),
-                                ElevatedButton(
-                                  onPressed: () => widget.onGameSelected(0),
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.white.withValues(
-                                      alpha: 0.2,
-                                    ),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(10),
-                                      side: BorderSide(
-                                        color: Colors.white.withValues(
-                                          alpha: 0.3,
-                                        ),
-                                      ),
-                                    ),
-                                    padding: const EdgeInsets.symmetric(
-                                      vertical: 8,
-                                      horizontal: 16,
-                                    ),
-                                    elevation: 6,
-                                  ),
-                                  child: Text(
-                                    'Back to Games',
-                                    style: GoogleFonts.orbitron(
-                                      fontSize: 14,
-                                      color: Colors.white70,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: const Color(
+                                    0xFFFF4500,
+                                  ).withValues(alpha: 0.2),
+                                  blurRadius: 8,
+                                  spreadRadius: 2,
                                 ),
                               ],
                             ),
-                          ],
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                animate_do.ShakeX(
+                                  duration: const Duration(milliseconds: 800),
+                                  child: Text(
+                                    'Game Over',
+                                    style: GoogleFonts.orbitron(
+                                      fontSize: 28,
+                                      color: const Color(0xFFFF4500),
+                                      fontWeight: FontWeight.bold,
+                                      shadows: [
+                                        Shadow(
+                                          color: Colors.black.withValues(
+                                            alpha: 0.5,
+                                          ),
+                                          blurRadius: 6,
+                                          offset: const Offset(0, 4),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 16),
+                                Text(
+                                  'Score: $score',
+                                  style: GoogleFonts.orbitron(
+                                    fontSize: 20,
+                                    color: const Color(0xFF00FFD1),
+                                  ),
+                                ),
+                                const SizedBox(height: 16),
+                                Wrap(
+                                  alignment: WrapAlignment.center,
+                                  spacing: 10,
+                                  runSpacing: 10,
+                                  children: [
+                                    ElevatedButton(
+                                      onPressed: resetGame,
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: const Color(
+                                          0xFF00FFD1,
+                                        ).withValues(alpha: 0.3),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            10,
+                                          ),
+                                          side: BorderSide(
+                                            color: const Color(
+                                              0xFF00FFD1,
+                                            ).withValues(alpha: 0.5),
+                                          ),
+                                        ),
+                                        padding: const EdgeInsets.symmetric(
+                                          vertical: 8,
+                                          horizontal: 16,
+                                        ),
+                                        elevation: 6,
+                                      ),
+                                      child: Text(
+                                        'Restart',
+                                        style: GoogleFonts.orbitron(
+                                          fontSize: 14,
+                                          color: Colors.white70,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                    ElevatedButton(
+                                      onPressed: () => widget.onGameSelected(0),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: Colors.white
+                                            .withValues(alpha: 0.2),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            10,
+                                          ),
+                                          side: BorderSide(
+                                            color: Colors.white.withValues(
+                                              alpha: 0.3,
+                                            ),
+                                          ),
+                                        ),
+                                        padding: const EdgeInsets.symmetric(
+                                          vertical: 8,
+                                          horizontal: 16,
+                                        ),
+                                        elevation: 6,
+                                      ),
+                                      child: Text(
+                                        'Back to Games',
+                                        style: GoogleFonts.orbitron(
+                                          fontSize: 14,
+                                          color: Colors.white70,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
                         ),
                       ),
                     ),
                   ),
-                ),
-              ),
-          ],
-        ),
-      ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -684,7 +784,7 @@ class ToadJumperGameState extends State<ToadJumperGame>
 class ToadJumperPainter extends CustomPainter {
   final double toadX;
   final double toadY;
-  final List<Rect> platforms;
+  final List<PlatformRect> platforms;
   final double bgOffset1;
   final double bgOffset2;
   final int score;
@@ -695,6 +795,7 @@ class ToadJumperPainter extends CustomPainter {
   final Color bgColorTop;
   final Color bgColorBottom;
   final Color platformColor;
+  final int lives;
 
   ToadJumperPainter({
     required this.toadX,
@@ -710,7 +811,31 @@ class ToadJumperPainter extends CustomPainter {
     required this.bgColorTop,
     required this.bgColorBottom,
     required this.platformColor,
+    required this.lives,
   });
+
+  Path getHeartPath(double x, double y, double size) {
+    Path path = Path()
+      ..moveTo(x + size / 2, y + size / 5)
+      ..cubicTo(
+        x + 5 * size / 6,
+        y,
+        x + size,
+        y + 2 * size / 5,
+        x + size / 2,
+        y + 3 * size / 5,
+      )
+      ..cubicTo(
+        x,
+        y + 2 * size / 5,
+        x + size / 6,
+        y,
+        x + size / 2,
+        y + size / 5,
+      )
+      ..close();
+    return path;
+  }
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -771,13 +896,18 @@ class ToadJumperPainter extends CustomPainter {
       ..strokeWidth = 3;
     for (var platform in platforms) {
       canvas.drawRRect(
-        RRect.fromRectAndRadius(platform, const Radius.circular(5)),
+        RRect.fromRectAndRadius(platform.rect, const Radius.circular(5)),
         platformPaint,
       );
       canvas.drawRRect(
-        RRect.fromRectAndRadius(platform, const Radius.circular(5)),
+        RRect.fromRectAndRadius(platform.rect, const Radius.circular(5)),
         platformBorderPaint,
       );
+      if (platform.pickup != null) {
+        double px = platform.rect.left + platform.pickup!.offsetX;
+        double py = platform.rect.top + platform.pickup!.offsetY;
+        canvas.drawPath(getHeartPath(px, py, 20), Paint()..color = Colors.red);
+      }
     }
 
     for (int i = 0; i < particles.length; i++) {
@@ -824,6 +954,17 @@ class ToadJumperPainter extends CustomPainter {
     );
     textPainter.layout();
     textPainter.paint(canvas, const Offset(10, 10));
+
+    // Draw lives as hearts
+    double heartSize = 20;
+    double startX = size.width - 10 - 3 * (heartSize + 5);
+    for (int i = 0; i < 3; i++) {
+      double hx = startX + i * (heartSize + 5);
+      double hy = 10;
+      Color hc = (i < lives) ? Colors.red : Colors.grey.withValues(alpha: 0.5);
+      var hpaint = Paint()..color = hc;
+      canvas.drawPath(getHeartPath(hx, hy, heartSize), hpaint);
+    }
   }
 
   @override
