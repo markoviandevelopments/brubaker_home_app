@@ -30,7 +30,14 @@ class GalacticCodebreakerScreenState extends State<GalacticCodebreakerScreen> {
   bool isMyTurn = false;
   Timer? pollTimer;
 
-  final List<String> possibleIcons = ['🔴', '🔵', '🟢', '🟡', '🟣', '🟠'];
+  final List<String> possibleIcons = [
+    '🌑',
+    '⭐',
+    '🪐',
+    '☄️',
+    '🌌',
+    '🚀',
+  ]; // Galactic-themed: moon, star, planet, comet, galaxy, rocket
 
   @override
   void initState() {
@@ -323,24 +330,50 @@ class GalacticCodebreakerScreenState extends State<GalacticCodebreakerScreen> {
               child: Column(
                 children: [
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       IconButton(
                         icon: Icon(Icons.arrow_back),
                         color: Colors.white,
                         onPressed: () => widget.onGameSelected(0),
                       ),
+                      if (gamePin != null)
+                        Text(
+                          'PIN: $gamePin',
+                          style: GoogleFonts.orbitron(
+                            fontSize: 16,
+                            color: Colors.white70,
+                          ),
+                        ),
                     ],
                   ),
-                  Text(
-                    isCreator
-                        ? 'Waiting for Guesses (Code: ${secretCode.join(' ')})'
-                        : 'Make Your Guess',
-                    style: GoogleFonts.orbitron(
-                      fontSize: 20,
-                      color: Colors.white,
+                  if (isCreator)
+                    Column(
+                      children: [
+                        Text(
+                          'Waiting for Guesses',
+                          style: GoogleFonts.orbitron(
+                            fontSize: 20,
+                            color: Colors.white,
+                          ),
+                        ),
+                        Text(
+                          '(Code: ${secretCode.join(' ')})',
+                          style: GoogleFonts.orbitron(
+                            fontSize: 16,
+                            color: Colors.white70,
+                          ),
+                        ),
+                      ],
+                    )
+                  else
+                    Text(
+                      'Make Your Guess',
+                      style: GoogleFonts.orbitron(
+                        fontSize: 20,
+                        color: Colors.white,
+                      ),
                     ),
-                  ),
                   Expanded(
                     child: ListView.builder(
                       itemCount: guessHistory.length,
