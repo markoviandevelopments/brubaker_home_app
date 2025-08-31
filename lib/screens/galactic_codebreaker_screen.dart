@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -20,24 +21,20 @@ class GalacticCodebreakerScreen extends StatefulWidget {
 class GalacticCodebreakerScreenState extends State<GalacticCodebreakerScreen> {
   final String serverUrl = 'http://192.168.1.126:6097';
   final Uuid uuid = Uuid();
+  final Random random = Random();
   String? playerId;
   String? gamePin;
   bool isCreator = false;
+  bool isSinglePlayer = false;
   List<String> secretCode = [];
   List<Map<String, dynamic>> guessHistory = [];
   List<String> currentGuess = ['', '', '', ''];
   bool isGameOver = false;
   bool isMyTurn = false;
   Timer? pollTimer;
+  bool? _wasFeedbackHonest;
 
-  final List<String> possibleIcons = [
-    '🌑',
-    '⭐',
-    '🪐',
-    '☄️',
-    '🌌',
-    '🚀',
-  ]; // Galactic-themed: moon, star, planet, comet, galaxy, rocket
+  final List<String> possibleIcons = ['🌑', '⭐', '🪐', '☄️', '🌌', '🚀'];
 
   @override
   void initState() {
@@ -69,6 +66,14 @@ class GalacticCodebreakerScreenState extends State<GalacticCodebreakerScreen> {
             ElevatedButton(
               onPressed: () {
                 Navigator.pop(context);
+                _startSinglePlayer();
+              },
+              child: Text('Play Single Player (Guess)'),
+            ),
+            const SizedBox(height: 10),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(context);
                 _showSetCodeDialog();
               },
               child: Text('Create Game (Set Code)'),
@@ -89,6 +94,19 @@ class GalacticCodebreakerScreenState extends State<GalacticCodebreakerScreen> {
         ),
       ),
     );
+  }
+
+  void _startSinglePlayer() {
+    setState(() {
+      isSinglePlayer = true;
+      isCreator = false;
+      isMyTurn = true;
+      secretCode = List.generate(
+        4,
+        (_) => possibleIcons[random.nextInt(possibleIcons.length)],
+      );
+      gamePin = null; // No PIN for single-player
+    });
   }
 
   Future<void> _showSetCodeDialog() async {
@@ -254,11 +272,18 @@ class GalacticCodebreakerScreenState extends State<GalacticCodebreakerScreen> {
               guessHistory = List<Map<String, dynamic>>.from(
                 data['guessHistory'],
               );
+              bool previousGameOver = isGameOver;
               isGameOver = data['gameOver'];
               if (data.containsKey('code')) {
                 secretCode = List<String>.from(data['code']);
               }
-              isMyTurn = !isCreator && !isGameOver;
+              isMyTurn =
+                  !isGameOver &&
+                  ((isCreator && data['pendingFeedback']) ||
+                      (!isCreator && !data['pendingFeedback']));
+              if (isGameOver && !previousGameOver && !isSinglePlayer) {
+                _checkFeedbackHonesty();
+              }
             });
           }
         } catch (e) {
@@ -270,27 +295,106 @@ class GalacticCodebreakerScreenState extends State<GalacticCodebreakerScreen> {
 
   Future<void> _submitGuess() async {
     if (currentGuess.contains('') || isGameOver || !isMyTurn) return;
-    try {
-      final response = await http.post(
-        Uri.parse('$serverUrl/submit-guess'),
-        body: jsonEncode({
-          'pin': gamePin,
-          'playerId': playerId,
-          'guess': currentGuess,
-        }),
-        headers: {'Content-Type': 'application/json'},
-      );
-      if (!mounted) return;
-      if (response.statusCode == 200) {
-        setState(() {
-          currentGuess = ['', '', '', ''];
-        });
-      } else {
+    if (isSinglePlayer) {
+      _provideLocalFeedback();
+    } else {
+      try {
+        final response = await http.post(
+          Uri.parse('$serverUrl/submit-guess'),
+          body: jsonEncode({
+            'pin': gamePin,
+            'playerId': playerId,
+            'guess': currentGuess,
+          }),
+          headers: {'Content-Type': 'application/json'},
+        );
+        if (!mounted) return;
+        if (response.statusCode == 200) {
+          setState(() {
+            currentGuess = ['', '', '', ''];
+            isMyTurn = false; // Wait for feedback
+          });
+        } else {
+          showDialog(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: Text(
+                'Error submitting guess: ${response.statusCode} ${response.body}',
+                style: TextStyle(color: Colors.white),
+              ),
+              backgroundColor: Color(0xFF1A1A3A),
+            ),
+          );
+        }
+      } catch (e) {
+        if (!mounted) return;
         showDialog(
           context: context,
           builder: (context) => AlertDialog(
             title: Text(
-              'Error submitting guess: ${response.statusCode} ${response.body}',
+              'Network error: $e',
+              style: TextStyle(color: Colors.white),
+            ),
+            backgroundColor: Color(0xFF1A1A3A),
+          ),
+        );
+      }
+    }
+  }
+
+  void _provideLocalFeedback() {
+    List<String> codeCopy = secretCode.toList();
+    List<String> guessCopy = currentGuess.toList();
+    int exact = 0;
+    for (int i = 0; i < 4; i++) {
+      if (guessCopy[i] == codeCopy[i]) {
+        exact++;
+        guessCopy[i] = '';
+        codeCopy[i] = '';
+      }
+    }
+    int partial = 0;
+    for (int i = 0; i < 4; i++) {
+      if (guessCopy[i].isNotEmpty && codeCopy.contains(guessCopy[i])) {
+        partial++;
+        codeCopy[codeCopy.indexOf(guessCopy[i])] = '';
+      }
+    }
+    bool previousGameOver = isGameOver;
+    setState(() {
+      guessHistory.add({
+        'guess': currentGuess.toList(),
+        'feedback': {'exact': exact, 'partial': partial},
+      });
+      currentGuess = ['', '', '', ''];
+      if (exact == 4 || guessHistory.length >= 10) {
+        isGameOver = true;
+      }
+    });
+    if (isGameOver && !previousGameOver && !isSinglePlayer) {
+      _checkFeedbackHonesty();
+    }
+  }
+
+  Future<void> _submitFeedback(int exact, int partial) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$serverUrl/submit-feedback'),
+        body: jsonEncode({
+          'pin': gamePin,
+          'playerId': playerId,
+          'exact': exact,
+          'partial': partial,
+        }),
+        headers: {'Content-Type': 'application/json'},
+      );
+      if (!mounted) return;
+      if (response.statusCode != 200) {
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: Text(
+              'Error submitting feedback: ${response.statusCode} ${response.body}',
               style: TextStyle(color: Colors.white),
             ),
             backgroundColor: Color(0xFF1A1A3A),
@@ -312,8 +416,40 @@ class GalacticCodebreakerScreenState extends State<GalacticCodebreakerScreen> {
     }
   }
 
+  void _checkFeedbackHonesty() {
+    bool honest = true;
+    for (var hist in guessHistory) {
+      List<String> codeCopy = secretCode.toList();
+      List<String> guessCopy = List<String>.from(hist['guess']);
+      int calculatedExact = 0;
+      for (int i = 0; i < 4; i++) {
+        if (guessCopy[i] == codeCopy[i]) {
+          calculatedExact++;
+          guessCopy[i] = '';
+          codeCopy[i] = '';
+        }
+      }
+      int calculatedPartial = 0;
+      for (int i = 0; i < 4; i++) {
+        if (guessCopy[i].isNotEmpty && codeCopy.contains(guessCopy[i])) {
+          calculatedPartial++;
+          codeCopy[codeCopy.indexOf(guessCopy[i])] = '';
+        }
+      }
+      if (calculatedExact != hist['feedback']['exact'] ||
+          calculatedPartial != hist['feedback']['partial']) {
+        honest = false;
+        break;
+      }
+    }
+    setState(() {
+      _wasFeedbackHonest = honest;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
+    final wasHonest = _wasFeedbackHonest;
     return Scaffold(
       body: Container(
         decoration: const BoxDecoration(
@@ -392,6 +528,61 @@ class GalacticCodebreakerScreenState extends State<GalacticCodebreakerScreen> {
                       },
                     ),
                   ),
+                  if (!isGameOver &&
+                      isCreator &&
+                      guessHistory.isNotEmpty &&
+                      guessHistory.last['feedback'] == null)
+                    Column(
+                      children: [
+                        Text(
+                          'Provide Feedback for Guess: ${guessHistory.last['guess'].join(' ')}',
+                          style: GoogleFonts.orbitron(color: Colors.white),
+                        ),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text('Exact: '),
+                            DropdownButton<int>(
+                              value: null,
+                              onChanged: (value) => _tempExact = value,
+                              items: List.generate(
+                                5,
+                                (i) => DropdownMenuItem(
+                                  value: i,
+                                  child: Text('$i'),
+                                ),
+                              ),
+                            ),
+                            Text(' Partial: '),
+                            DropdownButton<int>(
+                              value: null,
+                              onChanged: (value) {
+                                if (_tempExact != null && value != null) {
+                                  _submitFeedback(_tempExact!, value);
+                                  _tempExact = null;
+                                }
+                              },
+                              items: List.generate(
+                                5,
+                                (i) => DropdownMenuItem(
+                                  value: i,
+                                  child: Text('$i'),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  if (!isCreator &&
+                      !isGameOver &&
+                      !isSinglePlayer &&
+                      guessHistory.isNotEmpty &&
+                      guessHistory.last['feedback'] == null)
+                    Text(
+                      'Waiting for Feedback...',
+                      style: GoogleFonts.orbitron(color: Colors.white70),
+                    ),
                   if (!isCreator && !isGameOver)
                     Column(
                       children: [
@@ -406,12 +597,23 @@ class GalacticCodebreakerScreenState extends State<GalacticCodebreakerScreen> {
                       ],
                     ),
                   if (isGameOver)
-                    Text(
-                      'Game Over! Code was ${secretCode.join(' ')}',
-                      style: GoogleFonts.orbitron(
-                        fontSize: 24,
-                        color: Colors.red,
-                      ),
+                    Column(
+                      children: [
+                        Text(
+                          'Game Over! Code was ${secretCode.join(' ')}',
+                          style: GoogleFonts.orbitron(
+                            fontSize: 24,
+                            color: Colors.red,
+                          ),
+                        ),
+                        if (wasHonest != null && !wasHonest)
+                          Text(
+                            'Feedback was inaccurate - no fair play!',
+                            style: GoogleFonts.orbitron(
+                              color: Colors.redAccent,
+                            ),
+                          ),
+                      ],
                     ),
                 ],
               ),
@@ -421,6 +623,8 @@ class GalacticCodebreakerScreenState extends State<GalacticCodebreakerScreen> {
       ),
     );
   }
+
+  int? _tempExact;
 
   Widget _buildGuessSlot(int index) {
     return Padding(
