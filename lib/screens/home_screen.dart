@@ -8,6 +8,7 @@ import 'package:brubaker_homeapp/screens/cosmic_name_screen.dart';
 import 'package:brubaker_homeapp/screens/minesweeper_screen.dart';
 import 'package:brubaker_homeapp/screens/toad_jumper_screen.dart';
 import 'package:brubaker_homeapp/screens/elements_screen.dart';
+import 'package:brubaker_homeapp/screens/galactic_codebreaker_screen.dart';
 import 'package:brubaker_homeapp/screens/star_field.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -20,7 +21,7 @@ class HomeScreen extends StatefulWidget {
 class HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
   int _gameScreenIndex =
-      0; // Track the current game screen (0 = GamesScreen, 1 = Elements, 2 = ToadJumper, 3 = SocketGame, 4 = CosmicName, 5 = Minesweeper)
+      0; // Track the current game screen (0 = GamesScreen, 1 = Elements, 2 = ToadJumper, 3 = SocketGame, 4 = CosmicName, 5 = Minesweeper, 6 = Codebreaker)
   final List<Widget> _mainPages = [
     LedControlsScreen(onGameSelected: (index) {}),
     GamesScreen(onGameSelected: (index) {}),
@@ -39,6 +40,7 @@ class HomeScreenState extends State<HomeScreen> {
       SocketGameScreen(onGameSelected: _selectGame),
       CosmicNameScreen(onGameSelected: _selectGame),
       MinesweeperScreen(onGameSelected: _selectGame),
+      GalacticCodebreakerScreen(onGameSelected: _selectGame),
     ];
     _mainPages[1] = _gamePages[0];
   }
@@ -86,7 +88,7 @@ class HomeScreenState extends State<HomeScreen> {
           BottomNavigationBarItem(icon: Icon(Icons.favorite), label: ''),
         ],
         currentIndex: _selectedIndex,
-        selectedItemColor: const Color(0xFF00FFD1),
+        selectedItemColor: const Color.fromARGB(255, 255, 225, 0),
         unselectedItemColor: const Color(0xFFFF4500),
         onTap: _onItemTapped,
         type: BottomNavigationBarType.fixed,
