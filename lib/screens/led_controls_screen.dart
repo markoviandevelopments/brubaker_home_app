@@ -82,6 +82,7 @@ class LedControlsScreenState extends State<LedControlsScreen>
       'image': 'assets/modes/electric-sheep-dream.png',
     },
     {'name': 'QRNG', 'image': 'assets/modes/qrng.png'},
+    {'name': 'sd-client', 'image': 'assets/modes/sd-client.png'},
   ];
   String currentMode = 'off';
   bool isLoading = true;
