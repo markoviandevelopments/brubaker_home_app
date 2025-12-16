@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:brubaker_homeapp/screens/star_field.dart';
+import 'package:brubaker_homeapp/screens/spooky_field.dart';
+import 'package:provider/provider.dart';
+import 'package:brubaker_homeapp/theme.dart';
 import 'dart:convert';
 import 'dart:ui';
 import 'dart:async';
@@ -137,17 +140,27 @@ class CosmicNameScreenState extends State<CosmicNameScreen>
 
   @override
   Widget build(BuildContext context) {
+    final themeProvider = Provider.of<ThemeProvider>(context);
     return Container(
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [Color(0xFF0A0A1E), Color(0xFF1A1A3A)],
+          colors: [
+            Theme.of(context).scaffoldBackgroundColor.withOpacity(0.9),
+            Theme.of(context).colorScheme.surface.withOpacity(0.7),
+          ],
         ),
       ),
       child: Stack(
         children: [
-          Positioned.fill(child: StarField(opacity: 0.2)),
+          Positioned.fill(
+            child:
+                Theme.of(context).scaffoldBackgroundColor ==
+                    const Color(0xFF1C2526)
+                ? const SpookyField()
+                : StarField(opacity: 0.2),
+          ),
           SafeArea(
             child: Column(
               children: [
@@ -160,22 +173,21 @@ class CosmicNameScreenState extends State<CosmicNameScreen>
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       IconButton(
-                        icon: const Icon(
+                        icon: Icon(
                           Icons.arrow_back,
-                          color: Colors.white70,
+                          color: Theme.of(context).textTheme.bodyLarge!.color,
                         ),
-                        onPressed: () =>
-                            widget.onGameSelected(0), // Return to GamesScreen
+                        onPressed: () => widget.onGameSelected(0),
                       ),
                       Text(
                         'Galactic Name Weaver',
                         style: GoogleFonts.orbitron(
                           fontWeight: FontWeight.bold,
                           fontSize: 22,
-                          color: Colors.white70,
+                          color: Theme.of(context).textTheme.bodyLarge!.color,
                         ),
                       ),
-                      const SizedBox(width: 30), // Placeholder for symmetry
+                      const SizedBox(width: 30),
                     ],
                   ),
                 ),
@@ -185,14 +197,16 @@ class CosmicNameScreenState extends State<CosmicNameScreen>
                         ? Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              const CircularProgressIndicator(
-                                color: Colors.white70,
+                              CircularProgressIndicator(
+                                color: Theme.of(context).primaryColor,
                               ),
                               const SizedBox(height: 16),
                               Text(
                                 'Weaving your cosmic name...',
                                 style: GoogleFonts.orbitron(
-                                  color: Colors.white70,
+                                  color: Theme.of(
+                                    context,
+                                  ).textTheme.bodyLarge!.color,
                                   fontSize: 16,
                                 ),
                               ),
@@ -213,22 +227,27 @@ class CosmicNameScreenState extends State<CosmicNameScreen>
                                       child: Container(
                                         padding: const EdgeInsets.all(12),
                                         decoration: BoxDecoration(
-                                          color: Colors.white.withValues(
-                                            alpha: 0.2,
-                                          ),
+                                          color: Theme.of(context)
+                                              .colorScheme
+                                              .surface
+                                              .withOpacity(0.2),
                                           borderRadius: BorderRadius.circular(
                                             12,
                                           ),
                                           border: Border.all(
-                                            color: Colors.white.withValues(
-                                              alpha: 0.3,
-                                            ),
+                                            color: Theme.of(context)
+                                                .textTheme
+                                                .bodyLarge!
+                                                .color!
+                                                .withOpacity(0.3),
                                           ),
                                         ),
                                         child: Text(
                                           _errorMessage,
                                           style: GoogleFonts.orbitron(
-                                            color: const Color(0xFF8B0000),
+                                            color: Theme.of(
+                                              context,
+                                            ).primaryColor,
                                             fontSize: 14,
                                           ),
                                           textAlign: TextAlign.center,
@@ -248,16 +267,19 @@ class CosmicNameScreenState extends State<CosmicNameScreen>
                                       child: Container(
                                         padding: const EdgeInsets.all(16),
                                         decoration: BoxDecoration(
-                                          color: Colors.white.withValues(
-                                            alpha: 0.2,
-                                          ),
+                                          color: Theme.of(context)
+                                              .colorScheme
+                                              .surface
+                                              .withOpacity(0.2),
                                           borderRadius: BorderRadius.circular(
                                             12,
                                           ),
                                           border: Border.all(
-                                            color: Colors.white.withValues(
-                                              alpha: 0.3,
-                                            ),
+                                            color: Theme.of(context)
+                                                .textTheme
+                                                .bodyLarge!
+                                                .color!
+                                                .withOpacity(0.3),
                                           ),
                                         ),
                                         child: Column(
@@ -265,7 +287,9 @@ class CosmicNameScreenState extends State<CosmicNameScreen>
                                             Text(
                                               'Your Cosmic Identity',
                                               style: GoogleFonts.orbitron(
-                                                color: Colors.white70,
+                                                color: Theme.of(
+                                                  context,
+                                                ).textTheme.bodyLarge!.color,
                                                 fontWeight: FontWeight.bold,
                                                 fontSize: 18,
                                               ),
@@ -274,28 +298,42 @@ class CosmicNameScreenState extends State<CosmicNameScreen>
                                             Text(
                                               'Silly Name: $_tribalName',
                                               style: GoogleFonts.orbitron(
-                                                color: Colors.white,
+                                                color: Theme.of(
+                                                  context,
+                                                ).textTheme.bodyLarge!.color,
                                                 fontSize: 16,
                                               ),
                                             ),
                                             Text(
                                               'Epoch Time: $_epochTime',
                                               style: GoogleFonts.orbitron(
-                                                color: Colors.white70,
+                                                color: Theme.of(context)
+                                                    .textTheme
+                                                    .bodyLarge!
+                                                    .color!
+                                                    .withOpacity(0.7),
                                                 fontSize: 14,
                                               ),
                                             ),
                                             Text(
                                               'Random Number: $_randomNumber',
                                               style: GoogleFonts.orbitron(
-                                                color: Colors.white70,
+                                                color: Theme.of(context)
+                                                    .textTheme
+                                                    .bodyLarge!
+                                                    .color!
+                                                    .withOpacity(0.7),
                                                 fontSize: 14,
                                               ),
                                             ),
                                             Text(
                                               'Num Visits: $_numVisits',
                                               style: GoogleFonts.orbitron(
-                                                color: Colors.white70,
+                                                color: Theme.of(context)
+                                                    .textTheme
+                                                    .bodyLarge!
+                                                    .color!
+                                                    .withOpacity(0.7),
                                                 fontSize: 14,
                                               ),
                                             ),
@@ -309,7 +347,9 @@ class CosmicNameScreenState extends State<CosmicNameScreen>
                                   Text(
                                     'Tap to discover your galactic name!',
                                     style: GoogleFonts.orbitron(
-                                      color: Colors.white70,
+                                      color: Theme.of(
+                                        context,
+                                      ).textTheme.bodyLarge!.color,
                                       fontSize: 16,
                                     ),
                                   ),
@@ -320,9 +360,10 @@ class CosmicNameScreenState extends State<CosmicNameScreen>
                                     borderRadius: BorderRadius.circular(12),
                                     boxShadow: [
                                       BoxShadow(
-                                        color: Colors.white.withValues(
-                                          alpha: 0.4 * _fadeAnimation.value,
-                                        ),
+                                        color: Theme.of(context).primaryColor
+                                            .withOpacity(
+                                              0.4 * _fadeAnimation.value,
+                                            ),
                                         blurRadius: 10 * _fadeAnimation.value,
                                         spreadRadius: 2 * _fadeAnimation.value,
                                       ),
@@ -330,15 +371,17 @@ class CosmicNameScreenState extends State<CosmicNameScreen>
                                   ),
                                   child: ElevatedButton(
                                     style: ElevatedButton.styleFrom(
-                                      backgroundColor: Colors.white.withValues(
-                                        alpha: 0.2,
-                                      ),
+                                      backgroundColor: Theme.of(
+                                        context,
+                                      ).colorScheme.surface.withOpacity(0.2),
                                       shape: RoundedRectangleBorder(
                                         borderRadius: BorderRadius.circular(12),
                                         side: BorderSide(
-                                          color: Colors.white.withValues(
-                                            alpha: 0.3,
-                                          ),
+                                          color: Theme.of(context)
+                                              .textTheme
+                                              .bodyLarge!
+                                              .color!
+                                              .withOpacity(0.3),
                                         ),
                                       ),
                                       padding: const EdgeInsets.symmetric(
@@ -352,7 +395,9 @@ class CosmicNameScreenState extends State<CosmicNameScreen>
                                           ? 'Retry'
                                           : 'Fetch Data',
                                       style: GoogleFonts.orbitron(
-                                        color: Colors.white70,
+                                        color: Theme.of(
+                                          context,
+                                        ).textTheme.bodyLarge!.color,
                                         fontSize: 16,
                                         fontWeight: FontWeight.bold,
                                       ),
@@ -366,9 +411,10 @@ class CosmicNameScreenState extends State<CosmicNameScreen>
                                     borderRadius: BorderRadius.circular(12),
                                     boxShadow: [
                                       BoxShadow(
-                                        color: Colors.white.withValues(
-                                          alpha: 0.4 * _fadeAnimation.value,
-                                        ),
+                                        color: Theme.of(context).primaryColor
+                                            .withOpacity(
+                                              0.4 * _fadeAnimation.value,
+                                            ),
                                         blurRadius: 10 * _fadeAnimation.value,
                                         spreadRadius: 2 * _fadeAnimation.value,
                                       ),
@@ -376,15 +422,17 @@ class CosmicNameScreenState extends State<CosmicNameScreen>
                                   ),
                                   child: ElevatedButton(
                                     style: ElevatedButton.styleFrom(
-                                      backgroundColor: Colors.white.withValues(
-                                        alpha: 0.2,
-                                      ),
+                                      backgroundColor: Theme.of(
+                                        context,
+                                      ).colorScheme.surface.withOpacity(0.2),
                                       shape: RoundedRectangleBorder(
                                         borderRadius: BorderRadius.circular(12),
                                         side: BorderSide(
-                                          color: Colors.white.withValues(
-                                            alpha: 0.3,
-                                          ),
+                                          color: Theme.of(context)
+                                              .textTheme
+                                              .bodyLarge!
+                                              .color!
+                                              .withOpacity(0.3),
                                         ),
                                       ),
                                       padding: const EdgeInsets.symmetric(
@@ -392,13 +440,13 @@ class CosmicNameScreenState extends State<CosmicNameScreen>
                                         vertical: 12,
                                       ),
                                     ),
-                                    onPressed: () => widget.onGameSelected(
-                                      0,
-                                    ), // Return to GamesScreen
+                                    onPressed: () => widget.onGameSelected(0),
                                     child: Text(
                                       'Back to Games',
                                       style: GoogleFonts.orbitron(
-                                        color: Colors.white70,
+                                        color: Theme.of(
+                                          context,
+                                        ).textTheme.bodyLarge!.color,
                                         fontSize: 16,
                                         fontWeight: FontWeight.bold,
                                       ),

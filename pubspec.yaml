@@ -24,6 +24,12 @@ dependencies:
   confetti: ^0.7.0
   shared_preferences: ^2.5.3
   sensors_plus: ^6.1.2
+  provider: ^6.1.5
+  crypto: ^3.0.2
+  app_links: ^4.0.0
+  url_launcher: ^6.1.10
+  flutter_dotenv: ^5.1.0
+  flame: ^1.18.0
 
 dev_dependencies:
   flutter_test:
@@ -36,8 +42,13 @@ flutter:
   assets:
     - assets/images/restaurants/
     - assets/cat.png
-    - assets/modes/  # Ensure bokanovsky-burst.png and water-brother-bond.png exist here
+    - assets/modes/
+    - assets/tracks/
     - assets/images/toad.png
+  fonts:
+    - family: Cinzel
+      fonts:
+        - asset: fonts/Cinzel-Regular.ttf
 
 flutter_launcher_icons:
   android: true

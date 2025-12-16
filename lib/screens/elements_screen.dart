@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:brubaker_homeapp/screens/star_field.dart';
+import 'package:brubaker_homeapp/screens/spooky_field.dart';
+import 'package:provider/provider.dart';
+import 'package:brubaker_homeapp/theme.dart';
 import 'dart:io';
 import 'dart:convert';
 import 'dart:ui';
@@ -45,18 +48,51 @@ class ElementsScreenState extends State<ElementsScreen>
   final Map<String, List<Offset>> _particleCache = {};
   final Map<String, IconData> _elementIcons = {
     'nothing': Icons.clear,
-    'sand': Icons.grain,
-    'water': Icons.water_drop,
-    'stone': Icons.brightness_4,
-    'cloud': Icons.cloud,
-    'gas': Icons.air,
-    'void': Icons.dark_mode,
-    'clone': Icons.copy,
-    'fire': Icons.local_fire_department,
-    'soil': Icons.terrain,
-    'plant': Icons.local_florist,
-    'birthday_cake': Icons.cake,
-    'candle': Icons.light,
+    'sand': Icons.blur_on, // Ghost Dust
+    'water': Icons.opacity, // Ectoplasm
+    'stone': Icons.account_circle, // Tombstone
+    'cloud': Icons.cloud_queue, // Phantom Mist
+    'gas': Icons.smoke_free, // Wraith Vapor
+    'void': Icons.nightlight_round, // Abyssal Void
+    'clone': Icons.face_retouching_natural, // Doppelgänger
+    'fire': Icons.whatshot, // Hellfire
+    'soil': Icons.eco, // Grave Soil
+    'plant': Icons.grass, // Creeping Vine
+    'birthday_cake': Icons.lightbulb_outline, // Jack-o'-lantern
+    'candle': Icons.light, // Witch Candle
+  };
+
+  final Map<bool, Map<String, String>> _elementNames = {
+    false: {
+      'nothing': 'Nothing',
+      'sand': 'Sand',
+      'water': 'Water',
+      'stone': 'Stone',
+      'cloud': 'Cloud',
+      'gas': 'Gas',
+      'void': 'Void',
+      'clone': 'Clone',
+      'fire': 'Fire',
+      'soil': 'Soil',
+      'plant': 'Plant',
+      'birthday_cake': 'Birthday Cake',
+      'candle': 'Candle',
+    },
+    true: {
+      'nothing': 'Nothing',
+      'sand': 'Ghost Dust',
+      'water': 'Ectoplasm',
+      'stone': 'Tombstone',
+      'cloud': 'Phantom Mist',
+      'gas': 'Wraith Vapor',
+      'void': 'Abyssal Void',
+      'clone': 'Doppelgänger',
+      'fire': 'Hellfire',
+      'soil': 'Grave Soil',
+      'plant': 'Creeping Vine',
+      'birthday_cake': 'Jack-o\'-lantern',
+      'candle': 'Witch Candle',
+    },
   };
 
   final List<String> elements = [
@@ -322,8 +358,25 @@ class ElementsScreenState extends State<ElementsScreen>
 
   Widget _buildCell(int row, int col) {
     final value = _grid[row][col];
+    final themeProvider = Provider.of<ThemeProvider>(context);
     Widget cellContent = Container();
     BoxDecoration? decoration;
+
+    if (Theme.of(context).scaffoldBackgroundColor == const Color(0xFF1C2526) &&
+        value != 'nothing') {
+      // Use vine-like structure for platforms in spooky mode
+      return CustomPaint(
+        painter: VinePlatformPainter(
+          glowAnimation: _glowAnimation.value,
+          element: value,
+          isLit: value == 'candle' ? _candleLit[row][col] : false,
+          primaryColor: Theme.of(context).primaryColor,
+          secondaryColor: Theme.of(context).colorScheme.secondary,
+          textColor: Theme.of(context).textTheme.bodyLarge!.color!,
+        ),
+        child: Container(),
+      );
+    }
 
     switch (value) {
       case 'sand':
@@ -331,9 +384,9 @@ class ElementsScreenState extends State<ElementsScreen>
           color: const Color(0xFFFFEFCE),
           boxShadow: [
             BoxShadow(
-              color: const Color(
-                0xFF00FFD1,
-              ).withValues(alpha: 0.3 * _glowAnimation.value),
+              color: Theme.of(
+                context,
+              ).primaryColor.withOpacity(0.3 * _glowAnimation.value),
               blurRadius: 6,
               spreadRadius: 2,
             ),
@@ -347,7 +400,7 @@ class ElementsScreenState extends State<ElementsScreen>
               child: Container(
                 width: 1,
                 height: 1,
-                color: const Color(0xFFD2B48C).withValues(alpha: 0.5),
+                color: const Color(0xFFD2B48C).withOpacity(0.5),
               ),
             );
           }).toList(),
@@ -355,8 +408,8 @@ class ElementsScreenState extends State<ElementsScreen>
         break;
       case 'water':
         List<Color> waterColors = [
-          const Color(0xFF00FFD1).withValues(alpha: 0.8),
-          const Color(0xFF1A4A8A).withValues(alpha: 0.8),
+          Theme.of(context).primaryColor.withOpacity(0.8),
+          const Color(0xFF1A4A8A).withOpacity(0.8),
         ];
         Gradient gradient;
         if (_isWaterAdjacent(row, col, 'left') &&
@@ -380,9 +433,9 @@ class ElementsScreenState extends State<ElementsScreen>
           gradient: gradient,
           boxShadow: [
             BoxShadow(
-              color: const Color(
-                0xFF00FFD1,
-              ).withValues(alpha: 0.4 * _glowAnimation.value),
+              color: Theme.of(
+                context,
+              ).primaryColor.withOpacity(0.4 * _glowAnimation.value),
               blurRadius: 8,
               spreadRadius: 2,
             ),
@@ -395,9 +448,8 @@ class ElementsScreenState extends State<ElementsScreen>
               child: Container(
                 height: 2,
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(
-                    alpha: 0.2 * _glowAnimation.value,
-                  ),
+                  color: Theme.of(context).textTheme.bodyLarge!.color!
+                      .withOpacity(0.2 * _glowAnimation.value),
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -410,15 +462,15 @@ class ElementsScreenState extends State<ElementsScreen>
           color: const Color(0xFF646464),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.3),
+              color: Colors.black.withOpacity(0.3),
               blurRadius: 4,
               spreadRadius: 1,
               offset: const Offset(2, 2),
             ),
             BoxShadow(
-              color: const Color(
-                0xFF00FFD1,
-              ).withValues(alpha: 0.2 * _glowAnimation.value),
+              color: Theme.of(
+                context,
+              ).primaryColor.withOpacity(0.2 * _glowAnimation.value),
               blurRadius: 6,
               spreadRadius: 2,
             ),
@@ -444,10 +496,10 @@ class ElementsScreenState extends State<ElementsScreen>
         decoration = BoxDecoration(
           gradient: SweepGradient(
             colors: [
-              const Color(
-                0xFFADD8E6,
-              ).withValues(alpha: 0.6 * _glowAnimation.value),
-              Colors.white.withValues(alpha: 0.3 * _glowAnimation.value),
+              Colors.white.withOpacity(0.6 * _glowAnimation.value),
+              Theme.of(
+                context,
+              ).colorScheme.secondary.withOpacity(0.3 * _glowAnimation.value),
             ],
             startAngle: 0,
             endAngle: 2 * math.pi,
@@ -455,9 +507,9 @@ class ElementsScreenState extends State<ElementsScreen>
           ),
           boxShadow: [
             BoxShadow(
-              color: const Color(
-                0xFF00FFD1,
-              ).withValues(alpha: 0.3 * _glowAnimation.value),
+              color: Theme.of(
+                context,
+              ).primaryColor.withOpacity(0.3 * _glowAnimation.value),
               blurRadius: 8,
               spreadRadius: 2,
             ),
@@ -472,9 +524,8 @@ class ElementsScreenState extends State<ElementsScreen>
                 width: 8,
                 height: 8,
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(
-                    alpha: 0.4 * _glowAnimation.value,
-                  ),
+                  color: Theme.of(context).textTheme.bodyLarge!.color!
+                      .withOpacity(0.4 * _glowAnimation.value),
                   shape: BoxShape.circle,
                 ),
               ),
@@ -486,9 +537,21 @@ class ElementsScreenState extends State<ElementsScreen>
                 width: 6,
                 height: 6,
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(
-                    alpha: 0.2 * _glowAnimation.value,
-                  ),
+                  color: Theme.of(context).textTheme.bodyLarge!.color!
+                      .withOpacity(0.2 * _glowAnimation.value),
+                  shape: BoxShape.circle,
+                ),
+              ),
+            ),
+            Positioned(
+              left: 6,
+              top: 6,
+              child: Container(
+                width: 5,
+                height: 5,
+                decoration: BoxDecoration(
+                  color: Theme.of(context).textTheme.bodyLarge!.color!
+                      .withOpacity(0.3 * _glowAnimation.value),
                   shape: BoxShape.circle,
                 ),
               ),
@@ -500,12 +563,12 @@ class ElementsScreenState extends State<ElementsScreen>
         decoration = BoxDecoration(
           gradient: SweepGradient(
             colors: [
-              const Color(
-                0xFFF50B94,
-              ).withValues(alpha: 0.7 * _glowAnimation.value),
-              const Color(
-                0xFF8B008B,
-              ).withValues(alpha: 0.4 * _glowAnimation.value),
+              Theme.of(
+                context,
+              ).primaryColor.withOpacity(0.4 * _glowAnimation.value),
+              Theme.of(
+                context,
+              ).colorScheme.secondary.withOpacity(0.2 * _glowAnimation.value),
             ],
             startAngle: -math.pi / 2,
             endAngle: 3 * math.pi / 2,
@@ -513,9 +576,9 @@ class ElementsScreenState extends State<ElementsScreen>
           ),
           boxShadow: [
             BoxShadow(
-              color: const Color(
-                0xFF00FFD1,
-              ).withValues(alpha: 0.5 * _glowAnimation.value),
+              color: Theme.of(
+                context,
+              ).primaryColor.withOpacity(0.3 * _glowAnimation.value),
               blurRadius: 10,
               spreadRadius: 3,
             ),
@@ -529,9 +592,8 @@ class ElementsScreenState extends State<ElementsScreen>
               child: Container(
                 width: 2,
                 height: 2,
-                color: Colors.white.withValues(
-                  alpha: 0.7 * _glowAnimation.value,
-                ),
+                color: Theme.of(context).textTheme.bodyLarge!.color!
+                    .withOpacity(0.3 * _glowAnimation.value),
               ),
             );
           }).toList(),
@@ -542,7 +604,7 @@ class ElementsScreenState extends State<ElementsScreen>
           color: const Color.fromARGB(255, 128, 69, 255),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.5),
+              color: Colors.black.withOpacity(0.5),
               blurRadius: 10,
               spreadRadius: 2,
             ),
@@ -555,9 +617,9 @@ class ElementsScreenState extends State<ElementsScreen>
           color: const Color(0xFFFFFF00),
           boxShadow: [
             BoxShadow(
-              color: const Color(
-                0xFF00FFD1,
-              ).withValues(alpha: 0.4 * _glowAnimation.value),
+              color: Theme.of(
+                context,
+              ).primaryColor.withOpacity(0.4 * _glowAnimation.value),
               blurRadius: 8,
               spreadRadius: 2,
             ),
@@ -568,14 +630,14 @@ class ElementsScreenState extends State<ElementsScreen>
       case 'fire':
         decoration = BoxDecoration(
           gradient: RadialGradient(
-            colors: [const Color(0xFFFF4500), const Color(0xFF8B0000)],
+            colors: [Theme.of(context).primaryColor, const Color(0xFF8B0000)],
             radius: 0.6,
           ),
           boxShadow: [
             BoxShadow(
-              color: const Color(
-                0xFFFF4500,
-              ).withValues(alpha: 0.5 * _glowAnimation.value),
+              color: Theme.of(
+                context,
+              ).primaryColor.withOpacity(0.5 * _glowAnimation.value),
               blurRadius: 10,
               spreadRadius: 3,
             ),
@@ -588,7 +650,9 @@ class ElementsScreenState extends State<ElementsScreen>
               child: ClipPath(
                 clipper: FlameClipper(),
                 child: Container(
-                  color: const Color(0xFFFFD700).withValues(alpha: 0.6),
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.secondary.withOpacity(0.6),
                   height: 12,
                   width: 8,
                 ),
@@ -602,9 +666,9 @@ class ElementsScreenState extends State<ElementsScreen>
           color: const Color(0xFFAF724E),
           boxShadow: [
             BoxShadow(
-              color: const Color(
-                0xFF00FFD1,
-              ).withValues(alpha: 0.3 * _glowAnimation.value),
+              color: Theme.of(
+                context,
+              ).primaryColor.withOpacity(0.3 * _glowAnimation.value),
               blurRadius: 6,
               spreadRadius: 2,
             ),
@@ -619,9 +683,9 @@ class ElementsScreenState extends State<ElementsScreen>
           ),
           boxShadow: [
             BoxShadow(
-              color: const Color(
-                0xFF00FFD1,
-              ).withValues(alpha: 0.4 * _glowAnimation.value),
+              color: Theme.of(
+                context,
+              ).primaryColor.withOpacity(0.4 * _glowAnimation.value),
               blurRadius: 8,
               spreadRadius: 2,
             ),
@@ -650,12 +714,12 @@ class ElementsScreenState extends State<ElementsScreen>
         break;
       case 'birthday_cake':
         decoration = BoxDecoration(
-          color: const Color(0xFFD2B48C),
+          color: const Color(0xFFEF7F1A), // Pumpkin orange
           boxShadow: [
             BoxShadow(
-              color: const Color(
-                0xFF00FFD1,
-              ).withValues(alpha: 0.4 * _glowAnimation.value),
+              color: Theme.of(
+                context,
+              ).primaryColor.withOpacity(0.4 * _glowAnimation.value),
               blurRadius: 8,
               spreadRadius: 2,
             ),
@@ -663,10 +727,44 @@ class ElementsScreenState extends State<ElementsScreen>
         );
         cellContent = Stack(
           children: [
-            Container(color: const Color(0xFFD2B48C)),
+            Container(color: const Color(0xFFEF7F1A)),
             Align(
               alignment: Alignment.topCenter,
-              child: Container(height: 8, color: const Color(0xFFFD6C99)),
+              child: Container(
+                height: 8,
+                color: const Color(0xFF000000), // Black for carved face
+                child: Stack(
+                  children: [
+                    Positioned(
+                      left: 3,
+                      top: 2,
+                      child: Container(
+                        width: 2,
+                        height: 2,
+                        color: Theme.of(context).colorScheme.secondary,
+                      ),
+                    ),
+                    Positioned(
+                      right: 3,
+                      top: 2,
+                      child: Container(
+                        width: 2,
+                        height: 2,
+                        color: Theme.of(context).colorScheme.secondary,
+                      ),
+                    ),
+                    Positioned(
+                      left: 5,
+                      bottom: 2,
+                      child: Container(
+                        width: 4,
+                        height: 2,
+                        color: Theme.of(context).colorScheme.secondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
           ],
         );
@@ -677,12 +775,12 @@ class ElementsScreenState extends State<ElementsScreen>
           boxShadow: [
             BoxShadow(
               color: _candleLit[row][col]
-                  ? const Color(
-                      0xFFFF4500,
-                    ).withValues(alpha: 0.5 * _glowAnimation.value)
-                  : const Color(
-                      0xFF00FFD1,
-                    ).withValues(alpha: 0.3 * _glowAnimation.value),
+                  ? Theme.of(
+                      context,
+                    ).primaryColor.withOpacity(0.5 * _glowAnimation.value)
+                  : Theme.of(
+                      context,
+                    ).primaryColor.withOpacity(0.3 * _glowAnimation.value),
               blurRadius: 8,
               spreadRadius: 2,
             ),
@@ -694,7 +792,7 @@ class ElementsScreenState extends State<ElementsScreen>
               child: Container(
                 width: 2,
                 height: 12,
-                color: const Color(0xFF00AAE4),
+                color: Theme.of(context).colorScheme.secondary,
               ),
             ),
             if (_candleLit[row][col])
@@ -704,11 +802,13 @@ class ElementsScreenState extends State<ElementsScreen>
                   width: 2,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: const Color(0xFFFF4500),
+                    color: Theme.of(context).primaryColor,
                     shape: BoxShape.circle,
                     boxShadow: [
                       BoxShadow(
-                        color: const Color(0xFFFFD700).withValues(alpha: 0.6),
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.secondary.withOpacity(0.6),
                         blurRadius: 4,
                         spreadRadius: 1,
                       ),
@@ -720,7 +820,9 @@ class ElementsScreenState extends State<ElementsScreen>
         );
         break;
       default:
-        decoration = const BoxDecoration(color: Color(0xFF0A0A1E));
+        decoration = BoxDecoration(
+          color: Theme.of(context).scaffoldBackgroundColor,
+        );
         cellContent = Container();
         break;
     }
@@ -735,29 +837,8 @@ class ElementsScreenState extends State<ElementsScreen>
     );
   }
 
-  void _handlePointerEvent(PointerEvent event) {
-    if (_debounceTimer?.isActive ?? false) return;
-    _debounceTimer = Timer(const Duration(milliseconds: 100), () {
-      if (!mounted) return;
-      final RenderBox? box =
-          _gridKey.currentContext?.findRenderObject() as RenderBox?;
-      if (box == null) return;
-      final Offset localPosition = box.globalToLocal(event.position);
-      final int row = (localPosition.dy / (box.size.height / gridW)).floor();
-      final int col = (localPosition.dx / (box.size.width / gridW)).floor();
-
-      if (row >= 0 && row < gridW && col >= 0 && col < gridW) {
-        _sendAction({
-          'action': 'place',
-          'x': col,
-          'y': row,
-          'element': _selectedElement,
-        });
-      }
-    });
-  }
-
   Widget _buildElementSelector() {
+    final themeProvider = Provider.of<ThemeProvider>(context);
     return Container(
       height: 80,
       margin: const EdgeInsets.all(8.0),
@@ -780,19 +861,21 @@ class ElementsScreenState extends State<ElementsScreen>
               margin: const EdgeInsets.symmetric(horizontal: 4.0),
               decoration: BoxDecoration(
                 color: isSelected
-                    ? const Color(0xFF00FFD1).withValues(alpha: 0.8)
-                    : Colors.white.withValues(alpha: 0.2),
+                    ? Theme.of(context).primaryColor.withOpacity(0.8)
+                    : Theme.of(context).colorScheme.surface.withOpacity(0.2),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
                   color: isSelected
-                      ? const Color(0xFF00FFD1).withValues(alpha: 0.7)
-                      : Colors.white.withValues(alpha: 0.3),
+                      ? Theme.of(context).primaryColor.withOpacity(0.7)
+                      : Theme.of(
+                          context,
+                        ).textTheme.bodyLarge!.color!.withOpacity(0.3),
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: const Color(
-                      0xFF00FFD1,
-                    ).withValues(alpha: 0.2 * _glowAnimation.value),
+                    color: Theme.of(
+                      context,
+                    ).primaryColor.withOpacity(0.2 * _glowAnimation.value),
                     blurRadius: 6,
                     spreadRadius: 1,
                   ),
@@ -801,12 +884,18 @@ class ElementsScreenState extends State<ElementsScreen>
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(_elementIcons[element], color: Colors.white70, size: 24),
+                  Icon(
+                    _elementIcons[element],
+                    color: Theme.of(context).textTheme.bodyLarge!.color,
+                    size: 24,
+                  ),
                   const SizedBox(height: 4),
                   Text(
-                    element.replaceAll('_', ' ').toUpperCase(),
+                    _elementNames[Theme.of(context).scaffoldBackgroundColor ==
+                            const Color(0xFF1C2526)]![element]!
+                        .toUpperCase(),
                     style: GoogleFonts.orbitron(
-                      color: Colors.white70,
+                      color: Theme.of(context).textTheme.bodyLarge!.color,
                       fontSize: 12,
                       fontWeight: FontWeight.w500,
                     ),
@@ -833,14 +922,16 @@ class ElementsScreenState extends State<ElementsScreen>
               padding: const EdgeInsets.all(16),
               margin: const EdgeInsets.symmetric(horizontal: 24),
               decoration: BoxDecoration(
-                color: const Color(0xFF0A0A1E).withValues(alpha: 0.4),
+                color: Theme.of(
+                  context,
+                ).scaffoldBackgroundColor.withOpacity(0.4),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
-                  color: const Color(0xFFFF4500).withValues(alpha: 0.5),
+                  color: Theme.of(context).primaryColor.withOpacity(0.5),
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: const Color(0xFFFF4500).withValues(alpha: 0.2),
+                    color: Theme.of(context).primaryColor.withOpacity(0.2),
                     blurRadius: 6,
                     spreadRadius: 2,
                   ),
@@ -852,7 +943,7 @@ class ElementsScreenState extends State<ElementsScreen>
                   Text(
                     _errorMessage,
                     style: GoogleFonts.orbitron(
-                      color: const Color(0xFFFF4500),
+                      color: Theme.of(context).primaryColor,
                       fontSize: 18,
                       fontWeight: FontWeight.w600,
                     ),
@@ -870,9 +961,9 @@ class ElementsScreenState extends State<ElementsScreen>
                           }
                         },
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(
-                            0xFFFF4500,
-                          ).withValues(alpha: 0.3),
+                          backgroundColor: Theme.of(
+                            context,
+                          ).primaryColor.withOpacity(0.3),
                           padding: const EdgeInsets.symmetric(
                             vertical: 12,
                             horizontal: 24,
@@ -880,16 +971,16 @@ class ElementsScreenState extends State<ElementsScreen>
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(10),
                             side: BorderSide(
-                              color: const Color(
-                                0xFFFF4500,
-                              ).withValues(alpha: 0.5),
+                              color: Theme.of(
+                                context,
+                              ).primaryColor.withOpacity(0.5),
                             ),
                           ),
                         ),
                         child: Text(
                           'Retry Connection',
                           style: GoogleFonts.orbitron(
-                            color: Colors.white70,
+                            color: Theme.of(context).textTheme.bodyLarge!.color,
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
                           ),
@@ -899,7 +990,9 @@ class ElementsScreenState extends State<ElementsScreen>
                       ElevatedButton(
                         onPressed: () => widget.onGameSelected(0),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.white.withValues(alpha: 0.2),
+                          backgroundColor: Theme.of(
+                            context,
+                          ).colorScheme.surface.withOpacity(0.2),
                           padding: const EdgeInsets.symmetric(
                             vertical: 12,
                             horizontal: 24,
@@ -907,14 +1000,16 @@ class ElementsScreenState extends State<ElementsScreen>
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(10),
                             side: BorderSide(
-                              color: Colors.white.withValues(alpha: 0.3),
+                              color: Theme.of(
+                                context,
+                              ).textTheme.bodyLarge!.color!.withOpacity(0.3),
                             ),
                           ),
                         ),
                         child: Text(
                           'Back to Games',
                           style: GoogleFonts.orbitron(
-                            color: Colors.white70,
+                            color: Theme.of(context).textTheme.bodyLarge!.color,
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
                           ),
@@ -931,19 +1026,51 @@ class ElementsScreenState extends State<ElementsScreen>
     );
   }
 
+  void _handlePointerEvent(PointerEvent event) {
+    if (_debounceTimer?.isActive ?? false) return;
+    _debounceTimer = Timer(const Duration(milliseconds: 100), () {
+      if (!mounted) return;
+      final RenderBox? box =
+          _gridKey.currentContext?.findRenderObject() as RenderBox?;
+      if (box == null) return;
+      final Offset localPosition = box.globalToLocal(event.position);
+      final int row = (localPosition.dy / (box.size.height / gridW)).floor();
+      final int col = (localPosition.dx / (box.size.width / gridW)).floor();
+
+      if (row >= 0 && row < gridW && col >= 0 && col < gridW) {
+        _sendAction({
+          'action': 'place',
+          'x': col,
+          'y': row,
+          'element': _selectedElement,
+        });
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
+    final themeProvider = Provider.of<ThemeProvider>(context);
     return Container(
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [Color(0xFF0A0A1E), Color(0xFF1A1A3A)],
+          colors: [
+            Theme.of(context).scaffoldBackgroundColor.withOpacity(0.9),
+            Theme.of(context).colorScheme.surface.withOpacity(0.7),
+          ],
         ),
       ),
       child: Stack(
         children: [
-          Positioned.fill(child: StarField(opacity: 0.2)),
+          Positioned.fill(
+            child:
+                Theme.of(context).scaffoldBackgroundColor ==
+                    const Color(0xFF1C2526)
+                ? const SpookyField()
+                : StarField(opacity: 0.2),
+          ),
           SafeArea(
             child: Column(
               children: [
@@ -956,17 +1083,20 @@ class ElementsScreenState extends State<ElementsScreen>
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       IconButton(
-                        icon: const Icon(
+                        icon: Icon(
                           Icons.arrow_back,
-                          color: Colors.white70,
+                          color: Theme.of(context).textTheme.bodyLarge!.color,
                           size: 30,
                         ),
                         onPressed: () => widget.onGameSelected(0),
                       ),
                       Text(
-                        'Galactic Elements',
+                        Theme.of(context).scaffoldBackgroundColor ==
+                                const Color(0xFF1C2526)
+                            ? 'Haunted Elements'
+                            : 'Galactic Elements',
                         style: GoogleFonts.orbitron(
-                          color: Colors.white70,
+                          color: Theme.of(context).textTheme.bodyLarge!.color,
                           fontSize: 24,
                           fontWeight: FontWeight.bold,
                         ),
@@ -975,8 +1105,8 @@ class ElementsScreenState extends State<ElementsScreen>
                         icon: Icon(
                           _isConnected ? Icons.link : Icons.link_off,
                           color: _isConnected
-                              ? const Color(0xFF00FFD1)
-                              : const Color(0xFFFF4500),
+                              ? Theme.of(context).primaryColor
+                              : Theme.of(context).primaryColor.withOpacity(0.5),
                           size: 30,
                         ),
                         onPressed: () {
@@ -998,14 +1128,16 @@ class ElementsScreenState extends State<ElementsScreen>
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            const CircularProgressIndicator(
-                              color: Color(0xFF00FFD1),
+                            CircularProgressIndicator(
+                              color: Theme.of(context).primaryColor,
                             ),
                             const SizedBox(height: 16),
                             Text(
                               'Connecting to server...',
                               style: GoogleFonts.orbitron(
-                                color: Colors.white70,
+                                color: Theme.of(
+                                  context,
+                                ).textTheme.bodyLarge!.color,
                                 fontSize: 18,
                                 fontWeight: FontWeight.w600,
                               ),
@@ -1028,7 +1160,6 @@ class ElementsScreenState extends State<ElementsScreen>
                             width: size,
                             height: size,
                             child: Listener(
-                              key: _gridKey,
                               onPointerDown: _handlePointerEvent,
                               onPointerMove: _handlePointerEvent,
                               child: GridView.builder(
@@ -1078,4 +1209,245 @@ class FlameClipper extends CustomClipper<Path> {
 
   @override
   bool shouldReclip(CustomClipper<Path> oldClipper) => false;
+}
+
+class VinePlatformPainter extends CustomPainter {
+  final double glowAnimation;
+  final String element;
+  final bool isLit;
+  final Color primaryColor;
+  final Color secondaryColor;
+  final Color textColor;
+
+  VinePlatformPainter({
+    required this.glowAnimation,
+    required this.element,
+    required this.isLit,
+    required this.primaryColor,
+    required this.secondaryColor,
+    required this.textColor,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.green.shade900.withOpacity(0.8)
+      ..strokeWidth = 2
+      ..style = PaintingStyle.stroke;
+
+    final shadowPaint = Paint()
+      ..color = primaryColor.withOpacity(0.3 * glowAnimation)
+      ..maskFilter = MaskFilter.blur(BlurStyle.normal, 6);
+
+    // Draw vine-like structure
+    final path = Path();
+    path.moveTo(size.width / 2, 0);
+    path.quadraticBezierTo(
+      size.width * 0.3,
+      size.height / 2,
+      size.width / 2,
+      size.height,
+    );
+    path.quadraticBezierTo(
+      size.width * 0.7,
+      size.height / 2,
+      size.width / 2,
+      0,
+    );
+
+    canvas.drawPath(path, shadowPaint);
+    canvas.drawPath(path, paint);
+
+    // Add element-specific visuals
+    switch (element) {
+      case 'sand':
+        for (var offset in List.generate(
+          5,
+          (_) => Offset(
+            math.Random().nextDouble() * size.width,
+            math.Random().nextDouble() * size.height,
+          ),
+        )) {
+          canvas.drawCircle(
+            offset,
+            1,
+            Paint()..color = const Color(0xFFD2B48C).withOpacity(0.5),
+          );
+        }
+        break;
+      case 'water':
+        canvas.drawCircle(
+          Offset(size.width / 2, size.height / 2),
+          5,
+          Paint()
+            ..shader = RadialGradient(
+              colors: [
+                primaryColor.withOpacity(0.8),
+                const Color(0xFF1A4A8A).withOpacity(0.8),
+              ],
+            ).createShader(Rect.fromLTWH(0, 0, size.width, size.height)),
+        );
+        break;
+      case 'stone':
+        for (var offset in List.generate(
+          3,
+          (_) => Offset(
+            math.Random().nextDouble() * size.width,
+            math.Random().nextDouble() * size.height,
+          ),
+        )) {
+          canvas.drawRect(
+            Rect.fromCenter(center: offset, width: 2, height: 2),
+            Paint()
+              ..color = math.Random().nextBool()
+                  ? const Color(0xFF4A4A4A)
+                  : const Color(0xFF808080),
+          );
+        }
+        break;
+      case 'cloud':
+        canvas.drawCircle(
+          Offset(size.width / 4, size.height / 4),
+          4,
+          Paint()..color = textColor.withOpacity(0.4 * glowAnimation),
+        );
+        canvas.drawCircle(
+          Offset(size.width * 3 / 4, size.height * 3 / 4),
+          3,
+          Paint()..color = textColor.withOpacity(0.2 * glowAnimation),
+        );
+        canvas.drawCircle(
+          Offset(size.width / 2, size.height / 2),
+          2.5,
+          Paint()..color = textColor.withOpacity(0.3 * glowAnimation),
+        );
+        break;
+      case 'gas':
+        for (var offset in List.generate(
+          5,
+          (_) => Offset(
+            math.Random().nextDouble() * size.width,
+            math.Random().nextDouble() * size.height,
+          ),
+        )) {
+          canvas.drawCircle(
+            offset,
+            1,
+            Paint()..color = textColor.withOpacity(0.3 * glowAnimation),
+          );
+        }
+        break;
+      case 'void':
+        canvas.drawRect(
+          Rect.fromLTWH(0, 0, size.width, size.height),
+          Paint()
+            ..color = const Color.fromARGB(255, 128, 69, 255).withOpacity(0.5),
+        );
+        break;
+      case 'clone':
+        canvas.drawRect(
+          Rect.fromLTWH(0, 0, size.width, size.height),
+          Paint()..color = const Color(0xFFFFFF00).withOpacity(0.5),
+        );
+        break;
+      case 'fire':
+        canvas.drawPath(
+          Path()
+            ..moveTo(size.width / 2, 0)
+            ..quadraticBezierTo(
+              size.width,
+              size.height / 2,
+              size.width / 2,
+              size.height,
+            )
+            ..quadraticBezierTo(0, size.height / 2, size.width / 2, 0),
+          Paint()..color = primaryColor.withOpacity(0.6),
+        );
+        break;
+      case 'soil':
+        canvas.drawRect(
+          Rect.fromLTWH(0, 0, size.width, size.height),
+          Paint()..color = const Color(0xFFAF724E).withOpacity(0.7),
+        );
+        break;
+      case 'plant':
+        canvas.drawRect(
+          Rect.fromCenter(
+            center: Offset(size.width / 2, size.height / 2),
+            width: 4,
+            height: 12,
+          ),
+          Paint()..color = const Color(0xFF228B22),
+        );
+        canvas.drawRect(
+          Rect.fromCenter(
+            center: Offset(size.width / 4, size.height / 4),
+            width: 6,
+            height: 4,
+          ),
+          Paint()..color = const Color(0xFF32CD32),
+        );
+        break;
+      case 'birthday_cake':
+        canvas.drawCircle(
+          Offset(size.width / 2, size.height / 2),
+          6,
+          Paint()..color = const Color(0xFFEF7F1A),
+        );
+        canvas.drawRect(
+          Rect.fromCenter(
+            center: Offset(size.width / 3, size.height / 4),
+            width: 2,
+            height: 2,
+          ),
+          Paint()..color = secondaryColor,
+        );
+        canvas.drawRect(
+          Rect.fromCenter(
+            center: Offset(size.width * 2 / 3, size.height / 4),
+            width: 2,
+            height: 2,
+          ),
+          Paint()..color = secondaryColor,
+        );
+        canvas.drawRect(
+          Rect.fromCenter(
+            center: Offset(size.width / 2, size.height * 3 / 4),
+            width: 4,
+            height: 2,
+          ),
+          Paint()..color = secondaryColor,
+        );
+        break;
+      case 'candle':
+        canvas.drawRect(
+          Rect.fromCenter(
+            center: Offset(size.width / 2, size.height / 2),
+            width: 2,
+            height: 12,
+          ),
+          Paint()..color = secondaryColor,
+        );
+        if (isLit) {
+          canvas.drawCircle(
+            Offset(size.width / 2, size.height / 4),
+            2,
+            Paint()
+              ..color = primaryColor
+              ..shader = RadialGradient(
+                colors: [
+                  secondaryColor.withOpacity(0.6),
+                  primaryColor.withOpacity(0.3),
+                ],
+              ).createShader(Rect.fromLTWH(0, 0, size.width, size.height)),
+          );
+        }
+        break;
+      default:
+        break;
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant VinePlatformPainter oldDelegate) => true;
 }

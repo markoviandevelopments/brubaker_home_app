@@ -6,14 +6,15 @@ import 'package:animate_do/animate_do.dart' as animate_do;
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter/services.dart';
 import 'package:sensors_plus/sensors_plus.dart';
-import 'dart:io'; // Added for Platform
+import 'dart:io';
 import 'package:brubaker_homeapp/screens/star_field.dart';
+import 'package:brubaker_homeapp/screens/spooky_field.dart';
+import 'package:provider/provider.dart';
+import 'package:brubaker_homeapp/theme.dart';
 
 class ToadJumperScreen extends StatefulWidget {
   final Function(int) onGameSelected;
-
   const ToadJumperScreen({super.key, required this.onGameSelected});
-
   @override
   ToadJumperScreenState createState() => ToadJumperScreenState();
 }
@@ -21,7 +22,6 @@ class ToadJumperScreen extends StatefulWidget {
 class ToadJumperScreenState extends State<ToadJumperScreen>
     with TickerProviderStateMixin {
   late AnimationController _controller;
-
   @override
   void initState() {
     super.initState();
@@ -40,20 +40,27 @@ class ToadJumperScreenState extends State<ToadJumperScreen>
 
   @override
   Widget build(BuildContext context) {
+    final themeProvider = Provider.of<ThemeProvider>(context);
     return Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
           colors: [
-            Color(0xFF0A0A1E).withValues(alpha: 0.9),
-            Color(0xFF1A1A3A).withValues(alpha: 0.7),
+            Theme.of(context).scaffoldBackgroundColor.withOpacity(0.9),
+            Theme.of(context).colorScheme.surface.withOpacity(0.7),
           ],
         ),
       ),
       child: Stack(
         children: [
-          Positioned.fill(child: StarField(opacity: 0.3)),
+          Positioned.fill(
+            child:
+                Theme.of(context).scaffoldBackgroundColor ==
+                    const Color(0xFF1C2526)
+                ? const SpookyField()
+                : StarField(opacity: 0.3),
+          ),
           SafeArea(
             child: Column(
               children: [
@@ -66,9 +73,9 @@ class ToadJumperScreenState extends State<ToadJumperScreen>
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       IconButton(
-                        icon: const Icon(
+                        icon: Icon(
                           Icons.arrow_back,
-                          color: Colors.white70,
+                          color: Theme.of(context).textTheme.bodyLarge!.color,
                           size: 30,
                         ),
                         onPressed: () => widget.onGameSelected(0),
@@ -76,7 +83,7 @@ class ToadJumperScreenState extends State<ToadJumperScreen>
                       Text(
                         'Toad Jumper',
                         style: GoogleFonts.orbitron(
-                          color: Colors.white70,
+                          color: Theme.of(context).textTheme.bodyLarge!.color,
                           fontSize: 24,
                           fontWeight: FontWeight.bold,
                         ),
@@ -103,7 +110,6 @@ class ToadJumperScreenState extends State<ToadJumperScreen>
 class Pickup {
   double offsetX;
   double offsetY;
-
   Pickup(this.offsetX, this.offsetY);
 }
 
@@ -111,20 +117,17 @@ class PlatformRect {
   Rect rect;
   double vx;
   Pickup? pickup;
-
   PlatformRect(this.rect, this.vx, {this.pickup});
 }
 
 class ToadJumperGame extends StatefulWidget {
   final AnimationController controller;
   final Function(int) onGameSelected;
-
   const ToadJumperGame({
     super.key,
     required this.controller,
     required this.onGameSelected,
   });
-
   @override
   ToadJumperGameState createState() => ToadJumperGameState();
 }
@@ -157,12 +160,10 @@ class ToadJumperGameState extends State<ToadJumperGame>
   Size? screenSize;
   double? bottomPadding;
   bool justLanded = false;
-  Color bgColorTop = const Color(0xFF0A0A1E);
-  Color bgColorBottom = const Color(0xFF1A1A3A);
-  Color platformColor = Colors.grey.shade300; // Simplified to single color
+  late Color platformColor;
   double starOpacity = 0.5;
   late AnimationController _colorController;
-  late Animation<Color> _colorAnimation; // Explicitly typed as Animation<Color>
+  late Animation<Color> _colorAnimation;
   int lives = 3;
   int spawnLifeAfter = -1;
   int lastLevel = 0;
@@ -170,7 +171,13 @@ class ToadJumperGameState extends State<ToadJumperGame>
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    final themeProvider = Provider.of<ThemeProvider>(context);
     bottomPadding = 0.0;
+    platformColor =
+        Theme.of(context).scaffoldBackgroundColor == const Color(0xFF1C2526)
+        ? Colors.orange.shade300
+        : Colors.grey.shade300;
+
     if (toadImage == null && isImageLoading) {
       _loadImage('assets/images/toad.png')
           .then((image) {
@@ -216,9 +223,12 @@ class ToadJumperGameState extends State<ToadJumperGame>
     _colorAnimation = _colorController.drive(
       Tween<Color>(
         begin: platformColor,
-        end: const Color(0xFF00FFD1),
+        end:
+            Theme.of(context).scaffoldBackgroundColor == const Color(0xFF1C2526)
+            ? Colors.deepOrange.shade400
+            : const Color(0xFF00FFD1),
       ).chain(CurveTween(curve: Curves.easeInOut)),
-    ); // Use Tween<Color> directly
+    );
     _colorAnimation.addListener(() {
       if (mounted) {
         setState(() {
@@ -239,7 +249,6 @@ class ToadJumperGameState extends State<ToadJumperGame>
   void spawnInitialPlatforms() {
     if (screenSize == null || bottomPadding == null) return;
     platforms.clear();
-    // Initial platform (toad's starting platform, full screen width)
     double initialWidth = screenSize!.width;
     platforms.add(
       PlatformRect(
@@ -252,7 +261,6 @@ class ToadJumperGameState extends State<ToadJumperGame>
         0,
       ),
     );
-    // Platforms above
     for (int i = 1; i < 10; i++) {
       double pWidth = 100 - (worldHeight / 2000).clamp(0, 40);
       double left = random.nextDouble() * (screenSize!.width - pWidth);
@@ -278,6 +286,7 @@ class ToadJumperGameState extends State<ToadJumperGame>
 
   void resetGame() {
     if (!mounted) return;
+    final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
     setState(() {
       score = 0;
       worldHeight = 0;
@@ -301,15 +310,20 @@ class ToadJumperGameState extends State<ToadJumperGame>
       bgOffset2 = 0;
       bgSpeed1 = 20;
       bgSpeed2 = 30;
-      bgColorTop = const Color(0xFF0A0A1E);
-      bgColorBottom = const Color(0xFF1A1A3A);
-      platformColor = Colors.grey.shade300;
+      platformColor =
+          Theme.of(context).scaffoldBackgroundColor == const Color(0xFF1C2526)
+          ? Colors.orange.shade300
+          : Colors.grey.shade300;
       starOpacity = 0.5;
       _colorController.reset();
       _colorAnimation = _colorController.drive(
         Tween<Color>(
           begin: platformColor,
-          end: const Color(0xFF00FFD1),
+          end:
+              Theme.of(context).scaffoldBackgroundColor ==
+                  const Color(0xFF1C2526)
+              ? Colors.deepOrange.shade400
+              : const Color(0xFF00FFD1),
         ).chain(CurveTween(curve: Curves.easeInOut)),
       );
     });
@@ -331,14 +345,12 @@ class ToadJumperGameState extends State<ToadJumperGame>
   void updateGame(double dt) {
     if (!mounted || screenSize == null || bottomPadding == null) return;
     setState(() {
-      // Update moving platforms
       for (var platform in platforms) {
         platform.rect = platform.rect.translate(platform.vx * dt, 0);
         if (platform.rect.left < 0 || platform.rect.right > screenSize!.width) {
           platform.vx = -platform.vx;
         }
       }
-
       if (isJumping || !isOnPlatform()) {
         velocityY += gravity * dt;
         toadY += velocityY * dt;
@@ -350,15 +362,12 @@ class ToadJumperGameState extends State<ToadJumperGame>
         }
         justLanded = false;
       }
-
-      // Check for falling too far
       if (toadY > screenSize!.height - bottomPadding! + 120) {
         lives--;
         if (lives <= 0) {
           isGameOver = true;
         } else {
           spawnLifeAfter = 5 + random.nextInt(6);
-          // Respawn on bottommost platform
           double maxTop = double.negativeInfinity;
           PlatformRect? bottomPlatform;
           for (var p in platforms) {
@@ -379,8 +388,6 @@ class ToadJumperGameState extends State<ToadJumperGame>
           isJumping = false;
         }
       }
-
-      // Check for landing on platforms and picking up lives
       final toadRect = Rect.fromLTWH(toadX, toadY, 60, 60);
       for (var platform in platforms) {
         if (toadRect.overlaps(platform.rect) && velocityY >= 0) {
@@ -398,7 +405,6 @@ class ToadJumperGameState extends State<ToadJumperGame>
             }
           }
         }
-        // Check for life pickup
         if (platform.pickup != null) {
           double px = platform.rect.left + platform.pickup!.offsetX;
           double py = platform.rect.top + platform.pickup!.offsetY;
@@ -409,8 +415,6 @@ class ToadJumperGameState extends State<ToadJumperGame>
           }
         }
       }
-
-      // Camera follows toad only when above one-third of screen height
       if (toadY < screenSize!.height / 3) {
         final dy = screenSize!.height / 3 - toadY;
         toadY = screenSize!.height / 3;
@@ -418,10 +422,8 @@ class ToadJumperGameState extends State<ToadJumperGame>
           platforms[i].rect = platforms[i].rect.translate(0, dy);
         }
         worldHeight += dy;
-
         bgOffset1 += bgSpeed1 * dt;
         bgOffset2 += bgSpeed2 * dt;
-
         while (platforms.isNotEmpty && platforms.last.rect.top > -200) {
           final newY =
               platforms.last.rect.top - (120 + random.nextDouble() * 80);
@@ -445,15 +447,12 @@ class ToadJumperGameState extends State<ToadJumperGame>
           }
           platforms.add(newPlatform);
         }
-
         platforms.removeWhere(
           (p) => p.rect.top > screenSize!.height - bottomPadding! + 120,
         );
       }
-
       if (bgOffset1 >= screenSize!.height) bgOffset1 -= screenSize!.height * 2;
       if (bgOffset2 >= screenSize!.height) bgOffset2 -= screenSize!.height * 2;
-
       if (!Platform.isLinux && lastAccelerometerEvent != null) {
         final x = lastAccelerometerEvent!.x;
         if (x.abs() > 2.0) {
@@ -462,13 +461,11 @@ class ToadJumperGameState extends State<ToadJumperGame>
           if (toadX > screenSize!.width - 60) toadX = screenSize!.width - 60;
         }
       }
-
       int currentLevel = (score / 20).floor();
       if (currentLevel > lastLevel) {
         lastLevel = currentLevel;
         updateBackgroundProgress();
       }
-
       for (int i = particleAges.length - 1; i >= 0; i--) {
         particleAges[i] += dt;
         if (particleAges[i] > 0.5) {
@@ -480,31 +477,26 @@ class ToadJumperGameState extends State<ToadJumperGame>
   }
 
   void updateBackgroundProgress() {
+    final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
     final level = lastLevel + 1;
     bgSpeed1 += 2;
     bgSpeed2 += 3;
-
     final hue = (level * 5.0) % 360;
-    bgColorTop = HSVColor.fromAHSV(1.0, hue, 0.7, 0.2).toColor();
-    bgColorBottom = HSVColor.fromAHSV(
-      1.0,
-      (hue + 30) % 360,
-      0.56,
-      0.24,
-    ).toColor();
-
-    // Smooth color transition for platforms
+    starOpacity = 0.4 + math.sin(level * 0.05) * 0.15;
     _colorController.stop();
     _colorController.reset();
     _colorAnimation = _colorController.drive(
       Tween<Color>(
         begin: platformColor,
-        end: HSVColor.fromAHSV(
-          1.0,
-          (hue + random.nextDouble() * 20 - 10) % 360,
-          0.7,
-          0.5,
-        ).toColor(),
+        end:
+            Theme.of(context).scaffoldBackgroundColor == const Color(0xFF1C2526)
+            ? Colors.deepOrange.shade400
+            : HSVColor.fromAHSV(
+                1.0,
+                (hue + random.nextDouble() * 20 - 10) % 360,
+                0.7,
+                0.5,
+              ).toColor(),
       ).chain(CurveTween(curve: Curves.easeInOut)),
     );
     _colorAnimation.addListener(() {
@@ -515,11 +507,11 @@ class ToadJumperGameState extends State<ToadJumperGame>
       }
     });
     _colorController.forward();
-    starOpacity = 0.4 + math.sin(level * 0.05) * 0.15;
   }
 
   @override
   Widget build(BuildContext context) {
+    final themeProvider = Provider.of<ThemeProvider>(context);
     return LayoutBuilder(
       builder: (BuildContext context, BoxConstraints constraints) {
         if (screenSize == null) {
@@ -570,7 +562,11 @@ class ToadJumperGameState extends State<ToadJumperGame>
                   child: SizedBox(
                     width: screenSize!.width,
                     height: screenSize!.height * 2,
-                    child: StarField(opacity: starOpacity, offset: bgOffset1),
+                    child:
+                        Theme.of(context).scaffoldBackgroundColor ==
+                            const Color(0xFF1C2526)
+                        ? SpookyField()
+                        : StarField(opacity: starOpacity, offset: bgOffset1),
                   ),
                 ),
                 if (!isImageLoading && toadImage != null)
@@ -587,8 +583,8 @@ class ToadJumperGameState extends State<ToadJumperGame>
                         animationPhase: animationPhase,
                         particles: particles,
                         particleAges: particleAges,
-                        bgColorTop: bgColorTop,
-                        bgColorBottom: bgColorBottom,
+                        bgColorTop: Theme.of(context).scaffoldBackgroundColor,
+                        bgColorBottom: Theme.of(context).colorScheme.surface,
                         platformColor: platformColor,
                         lives: lives,
                       ),
@@ -599,14 +595,14 @@ class ToadJumperGameState extends State<ToadJumperGame>
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const CircularProgressIndicator(
-                          color: Color(0xFF00FFD1),
+                        CircularProgressIndicator(
+                          color: Theme.of(context).primaryColor,
                         ),
                         const SizedBox(height: 16),
                         Text(
                           'Loading Toad Jumper...',
                           style: GoogleFonts.orbitron(
-                            color: Colors.white70,
+                            color: Theme.of(context).textTheme.bodyLarge!.color,
                             fontSize: 18,
                             fontWeight: FontWeight.w600,
                           ),
@@ -626,21 +622,21 @@ class ToadJumperGameState extends State<ToadJumperGame>
                             padding: const EdgeInsets.all(16),
                             margin: const EdgeInsets.symmetric(horizontal: 24),
                             decoration: BoxDecoration(
-                              color: const Color(
-                                0xFF0A0A1E,
-                              ).withValues(alpha: 0.4),
+                              color: Theme.of(
+                                context,
+                              ).scaffoldBackgroundColor.withOpacity(0.4),
                               borderRadius: BorderRadius.circular(16),
                               border: Border.all(
-                                color: const Color(
-                                  0xFFFF4500,
-                                ).withValues(alpha: 0.5),
+                                color: Theme.of(
+                                  context,
+                                ).primaryColor.withOpacity(0.5),
                                 width: 2,
                               ),
                               boxShadow: [
                                 BoxShadow(
-                                  color: const Color(
-                                    0xFFFF4500,
-                                  ).withValues(alpha: 0.2),
+                                  color: Theme.of(
+                                    context,
+                                  ).primaryColor.withOpacity(0.2),
                                   blurRadius: 8,
                                   spreadRadius: 2,
                                 ),
@@ -655,13 +651,11 @@ class ToadJumperGameState extends State<ToadJumperGame>
                                     'Game Over',
                                     style: GoogleFonts.orbitron(
                                       fontSize: 28,
-                                      color: const Color(0xFFFF4500),
+                                      color: Theme.of(context).primaryColor,
                                       fontWeight: FontWeight.bold,
                                       shadows: [
                                         Shadow(
-                                          color: Colors.black.withValues(
-                                            alpha: 0.5,
-                                          ),
+                                          color: Colors.black.withOpacity(0.5),
                                           blurRadius: 6,
                                           offset: const Offset(0, 4),
                                         ),
@@ -674,7 +668,9 @@ class ToadJumperGameState extends State<ToadJumperGame>
                                   'Score: $score',
                                   style: GoogleFonts.orbitron(
                                     fontSize: 20,
-                                    color: const Color(0xFF00FFD1),
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.secondary,
                                   ),
                                 ),
                                 const SizedBox(height: 16),
@@ -686,17 +682,17 @@ class ToadJumperGameState extends State<ToadJumperGame>
                                     ElevatedButton(
                                       onPressed: resetGame,
                                       style: ElevatedButton.styleFrom(
-                                        backgroundColor: const Color(
-                                          0xFF00FFD1,
-                                        ).withValues(alpha: 0.3),
+                                        backgroundColor: Theme.of(
+                                          context,
+                                        ).primaryColor.withOpacity(0.3),
                                         shape: RoundedRectangleBorder(
                                           borderRadius: BorderRadius.circular(
                                             10,
                                           ),
                                           side: BorderSide(
-                                            color: const Color(
-                                              0xFF00FFD1,
-                                            ).withValues(alpha: 0.5),
+                                            color: Theme.of(
+                                              context,
+                                            ).primaryColor.withOpacity(0.5),
                                           ),
                                         ),
                                         padding: const EdgeInsets.symmetric(
@@ -709,7 +705,9 @@ class ToadJumperGameState extends State<ToadJumperGame>
                                         'Restart',
                                         style: GoogleFonts.orbitron(
                                           fontSize: 14,
-                                          color: Colors.white70,
+                                          color: Theme.of(
+                                            context,
+                                          ).textTheme.bodyLarge!.color,
                                           fontWeight: FontWeight.bold,
                                         ),
                                       ),
@@ -717,16 +715,19 @@ class ToadJumperGameState extends State<ToadJumperGame>
                                     ElevatedButton(
                                       onPressed: () => widget.onGameSelected(0),
                                       style: ElevatedButton.styleFrom(
-                                        backgroundColor: Colors.white
-                                            .withValues(alpha: 0.2),
+                                        backgroundColor: Theme.of(
+                                          context,
+                                        ).colorScheme.surface.withOpacity(0.2),
                                         shape: RoundedRectangleBorder(
                                           borderRadius: BorderRadius.circular(
                                             10,
                                           ),
                                           side: BorderSide(
-                                            color: Colors.white.withValues(
-                                              alpha: 0.3,
-                                            ),
+                                            color: Theme.of(context)
+                                                .textTheme
+                                                .bodyLarge!
+                                                .color!
+                                                .withOpacity(0.3),
                                           ),
                                         ),
                                         padding: const EdgeInsets.symmetric(
@@ -739,7 +740,9 @@ class ToadJumperGameState extends State<ToadJumperGame>
                                         'Back to Games',
                                         style: GoogleFonts.orbitron(
                                           fontSize: 14,
-                                          color: Colors.white70,
+                                          color: Theme.of(
+                                            context,
+                                          ).textTheme.bodyLarge!.color,
                                           fontWeight: FontWeight.bold,
                                         ),
                                       ),
@@ -773,7 +776,7 @@ class ToadJumperGameState extends State<ToadJumperGame>
       final canvas = Canvas(recorder);
       canvas.drawRect(
         const Rect.fromLTWH(0, 0, 60, 60),
-        Paint()..color = const Color(0xFF00FFD1),
+        Paint()..color = Theme.of(context).primaryColor,
       );
       final picture = recorder.endRecording();
       return await picture.toImage(60, 60);
@@ -841,10 +844,7 @@ class ToadJumperPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final bgPaint = Paint()
       ..shader = LinearGradient(
-        colors: [
-          bgColorTop.withValues(alpha: 0.2),
-          bgColorBottom.withValues(alpha: 0.2),
-        ],
+        colors: [bgColorTop.withOpacity(0.2), bgColorBottom.withOpacity(0.2)],
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
       ).createShader(Rect.fromLTWH(0, bgOffset2, size.width, size.height))
@@ -857,8 +857,7 @@ class ToadJumperPainter extends CustomPainter {
       Rect.fromLTWH(0, bgOffset2 + size.height, size.width, size.height),
       bgPaint,
     );
-
-    final cityPaint = Paint()..color = Colors.black.withValues(alpha: 0.3);
+    final cityPaint = Paint()..color = Colors.black.withOpacity(0.3);
     canvas.drawPath(
       Path()
         ..moveTo(0, size.height)
@@ -871,9 +870,8 @@ class ToadJumperPainter extends CustomPainter {
         ..close(),
       cityPaint,
     );
-
     final gridPaint = Paint()
-      ..color = const Color(0xFF00FFD1).withValues(alpha: 0.1)
+      ..color = bgColorBottom.withOpacity(0.1)
       ..strokeWidth = 0.5
       ..style = PaintingStyle.stroke;
     for (double y = bgOffset2 % 100; y < size.height; y += 100) {
@@ -886,12 +884,11 @@ class ToadJumperPainter extends CustomPainter {
         gridPaint,
       );
     }
-
     final platformPaint = Paint()
-      ..color = platformColor.withValues(alpha: 0.8)
+      ..color = platformColor.withOpacity(0.8)
       ..style = PaintingStyle.fill;
     final platformBorderPaint = Paint()
-      ..color = platformColor.withValues(alpha: 0.7)
+      ..color = platformColor.withOpacity(0.7)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 3;
     for (var platform in platforms) {
@@ -909,21 +906,17 @@ class ToadJumperPainter extends CustomPainter {
         canvas.drawPath(getHeartPath(px, py, 20), Paint()..color = Colors.red);
       }
     }
-
     for (int i = 0; i < particles.length; i++) {
       final opacity = 1.0 - (particleAges[i] / 0.5);
-      final paint = Paint()
-        ..color = const Color(0xFF00FFD1).withValues(alpha: opacity);
+      final paint = Paint()..color = bgColorBottom.withOpacity(opacity);
       canvas.drawCircle(particles[i], 2, paint);
     }
-
     final glowPaint = Paint()
-      ..color = const Color(
-        0xFF00FFD1,
-      ).withValues(alpha: 0.5 + 0.2 * math.sin(animationPhase * 2))
+      ..color = bgColorBottom.withOpacity(
+        0.5 + 0.2 * math.sin(animationPhase * 2),
+      )
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 10);
     canvas.drawCircle(Offset(toadX + 30, toadY + 30), 40, glowPaint);
-
     canvas.drawImageRect(
       toadImage,
       Rect.fromLTWH(
@@ -935,18 +928,14 @@ class ToadJumperPainter extends CustomPainter {
       Rect.fromLTWH(toadX, toadY, 60, 60),
       Paint(),
     );
-
     final textPainter = TextPainter(
       text: TextSpan(
         text: 'Score: $score',
         style: GoogleFonts.orbitron(
-          color: const Color(0xFF00FFD1),
+          color: bgColorBottom,
           fontSize: 24,
           shadows: [
-            Shadow(
-              color: const Color(0xFFFF4500).withValues(alpha: 0.6),
-              blurRadius: 6,
-            ),
+            Shadow(color: bgColorBottom.withOpacity(0.6), blurRadius: 6),
           ],
         ),
       ),
@@ -954,14 +943,12 @@ class ToadJumperPainter extends CustomPainter {
     );
     textPainter.layout();
     textPainter.paint(canvas, const Offset(10, 10));
-
-    // Draw lives as hearts
     double heartSize = 20;
     double startX = size.width - 10 - 3 * (heartSize + 5);
     for (int i = 0; i < 3; i++) {
       double hx = startX + i * (heartSize + 5);
       double hy = 10;
-      Color hc = (i < lives) ? Colors.red : Colors.grey.withValues(alpha: 0.5);
+      Color hc = (i < lives) ? Colors.red : Colors.grey.withOpacity(0.5);
       var hpaint = Paint()..color = hc;
       canvas.drawPath(getHeartPath(hx, hy, heartSize), hpaint);
     }

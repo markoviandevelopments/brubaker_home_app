@@ -7,6 +7,10 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
 import 'package:uuid/uuid.dart';
 import 'package:brubaker_homeapp/screens/star_field.dart';
+import 'package:brubaker_homeapp/screens/spooky_field.dart';
+import 'package:provider/provider.dart';
+import 'package:brubaker_homeapp/theme.dart';
+import 'package:animate_do/animate_do.dart';
 
 class GalacticCodebreakerScreen extends StatefulWidget {
   final Function(int) onGameSelected;
@@ -19,7 +23,7 @@ class GalacticCodebreakerScreen extends StatefulWidget {
 }
 
 class GalacticCodebreakerScreenState extends State<GalacticCodebreakerScreen> {
-  final String serverUrl = 'http://192.168.1.126:6097';
+  final String serverUrl = 'http://192.168.1.198:6097';
   final Uuid uuid = Uuid();
   final Random random = Random();
   String? playerId;
@@ -33,8 +37,8 @@ class GalacticCodebreakerScreenState extends State<GalacticCodebreakerScreen> {
   bool isMyTurn = false;
   Timer? pollTimer;
   bool? _wasFeedbackHonest;
-
-  final List<String> possibleIcons = ['🌑', '⭐', '🪐', '☄️', '🌌', '🚀'];
+  int? _tempExact;
+  int? _tempPartial;
 
   @override
   void initState() {
@@ -51,15 +55,53 @@ class GalacticCodebreakerScreenState extends State<GalacticCodebreakerScreen> {
     super.dispose();
   }
 
+  List<String> _getIcons(bool isSpooky) {
+    return isSpooky
+        ? ['🦇', '👻', '🎃', '💀', '🕸️', '🕷️'] // Spooky emojis
+        : ['🌑', '⭐', '🪐', '☄️', '🌌', '🚀']; // Galactic emojis
+  }
+
+  Map<String, Color> _getColors(BuildContext context, bool isSpooky) {
+    return {
+      'background': Theme.of(context).scaffoldBackgroundColor,
+      'surface': Theme.of(context).colorScheme.surface,
+      'primary': Theme.of(context).primaryColor,
+      'secondary': Theme.of(context).colorScheme.secondary,
+      'text': Theme.of(context).textTheme.bodyLarge!.color!,
+      'error': isSpooky ? Colors.red[900]! : Colors.red,
+      'success': isSpooky ? Colors.orange[900]! : Colors.green,
+      'pending': isSpooky ? Colors.purple[700]! : Colors.orange,
+    };
+  }
+
   Future<void> _showRoleDialog() async {
+    final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
+    final colors = _getColors(
+      context,
+      Theme.of(context).scaffoldBackgroundColor == const Color(0xFF1C2526),
+    );
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(
-          'Galactic Codebreaker',
-          style: GoogleFonts.orbitron(color: Colors.white),
+        title: FadeIn(
+          duration: const Duration(milliseconds: 500),
+          child: Text(
+            Theme.of(context).scaffoldBackgroundColor == const Color(0xFF1C2526)
+                ? 'Haunted Codebreaker'
+                : 'Galactic Codebreaker',
+            style: GoogleFonts.orbitron(
+              color: colors['text'],
+              shadows: [
+                Shadow(
+                  color: colors['primary']!.withOpacity(0.4),
+                  blurRadius: 6,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+          ),
         ),
-        backgroundColor: Color(0xFF1A1A3A),
+        backgroundColor: colors['surface']!.withOpacity(0.8),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -68,7 +110,17 @@ class GalacticCodebreakerScreenState extends State<GalacticCodebreakerScreen> {
                 Navigator.pop(context);
                 _startSinglePlayer();
               },
-              child: Text('Play Single Player (Guess)'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: colors['primary']!.withOpacity(0.5),
+                side: BorderSide(color: colors['primary']!.withOpacity(0.7)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              child: Text(
+                'Play Single Player (Guess)',
+                style: GoogleFonts.orbitron(color: colors['text']),
+              ),
             ),
             const SizedBox(height: 10),
             ElevatedButton(
@@ -76,15 +128,33 @@ class GalacticCodebreakerScreenState extends State<GalacticCodebreakerScreen> {
                 Navigator.pop(context);
                 _showSetCodeDialog();
               },
-              child: Text('Create Game (Set Code)'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: colors['secondary']!.withOpacity(0.5),
+                side: BorderSide(color: colors['secondary']!.withOpacity(0.7)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              child: Text(
+                'Create Game (Set Code)',
+                style: GoogleFonts.orbitron(color: colors['text']),
+              ),
             ),
             const SizedBox(height: 10),
             TextField(
               decoration: InputDecoration(
                 hintText: 'Enter PIN to Join (Guess)',
-                hintStyle: TextStyle(color: Colors.white70),
+                hintStyle: TextStyle(color: colors['text']!.withOpacity(0.7)),
+                enabledBorder: UnderlineInputBorder(
+                  borderSide: BorderSide(
+                    color: colors['primary']!.withOpacity(0.5),
+                  ),
+                ),
+                focusedBorder: UnderlineInputBorder(
+                  borderSide: BorderSide(color: colors['primary']!),
+                ),
               ),
-              style: TextStyle(color: Colors.white),
+              style: TextStyle(color: colors['text']),
               onSubmitted: (pin) {
                 Navigator.pop(context);
                 _joinGame(pin);
@@ -97,19 +167,27 @@ class GalacticCodebreakerScreenState extends State<GalacticCodebreakerScreen> {
   }
 
   void _startSinglePlayer() {
+    final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
     setState(() {
       isSinglePlayer = true;
       isCreator = false;
       isMyTurn = true;
       secretCode = List.generate(
         4,
-        (_) => possibleIcons[random.nextInt(possibleIcons.length)],
+        (_) => _getIcons(
+          Theme.of(context).scaffoldBackgroundColor == const Color(0xFF1C2526),
+        )[random.nextInt(6)],
       );
-      gamePin = null; // No PIN for single-player
+      gamePin = null;
     });
   }
 
   Future<void> _showSetCodeDialog() async {
+    final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
+    final colors = _getColors(
+      context,
+      Theme.of(context).scaffoldBackgroundColor == const Color(0xFF1C2526),
+    );
     List<String> tempCode = ['', '', '', ''];
     showDialog(
       context: context,
@@ -117,11 +195,26 @@ class GalacticCodebreakerScreenState extends State<GalacticCodebreakerScreen> {
         return StatefulBuilder(
           builder: (BuildContext context, StateSetter setDialogState) {
             return AlertDialog(
-              title: Text(
-                'Set Secret Cosmic Code',
-                style: GoogleFonts.orbitron(color: Colors.white),
+              title: FadeIn(
+                duration: const Duration(milliseconds: 500),
+                child: Text(
+                  Theme.of(context).scaffoldBackgroundColor ==
+                          const Color(0xFF1C2526)
+                      ? 'Set Haunted Code'
+                      : 'Set Secret Cosmic Code',
+                  style: GoogleFonts.orbitron(
+                    color: colors['text'],
+                    shadows: [
+                      Shadow(
+                        color: colors['primary']!.withOpacity(0.4),
+                        blurRadius: 6,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                ),
               ),
-              backgroundColor: Color(0xFF1A1A3A),
+              backgroundColor: colors['surface']!.withOpacity(0.8),
               content: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -136,14 +229,27 @@ class GalacticCodebreakerScreenState extends State<GalacticCodebreakerScreen> {
                             tempCode[i] = value!;
                           });
                         },
-                        items: possibleIcons
-                            .map(
-                              (icon) => DropdownMenuItem(
-                                value: icon,
-                                child: Text(icon),
-                              ),
-                            )
-                            .toList(),
+                        items:
+                            _getIcons(
+                                  Theme.of(context).scaffoldBackgroundColor ==
+                                      const Color(0xFF1C2526),
+                                )
+                                .map(
+                                  (icon) => DropdownMenuItem(
+                                    value: icon,
+                                    child: Text(
+                                      icon,
+                                      style: TextStyle(fontSize: 24),
+                                    ),
+                                  ),
+                                )
+                                .toList(),
+                        dropdownColor: colors['surface']!.withOpacity(0.9),
+                        style: TextStyle(color: colors['text'], fontSize: 24),
+                        underline: Container(
+                          height: 2,
+                          color: colors['primary']!.withOpacity(0.5),
+                        ),
                       ),
                     ),
                   ),
@@ -154,7 +260,19 @@ class GalacticCodebreakerScreenState extends State<GalacticCodebreakerScreen> {
                             Navigator.pop(dialogContext);
                             _createGame(tempCode);
                           },
-                    child: Text('Confirm and Create'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: colors['primary']!.withOpacity(0.5),
+                      side: BorderSide(
+                        color: colors['primary']!.withOpacity(0.7),
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: Text(
+                      'Confirm and Create',
+                      style: GoogleFonts.orbitron(color: colors['text']),
+                    ),
                   ),
                 ],
               ),
@@ -166,6 +284,10 @@ class GalacticCodebreakerScreenState extends State<GalacticCodebreakerScreen> {
   }
 
   Future<void> _createGame(List<String> code) async {
+    final colors = _getColors(
+      context,
+      Theme.of(context).scaffoldBackgroundColor == const Color(0xFF1C2526),
+    );
     try {
       final response = await http.post(
         Uri.parse('$serverUrl/create-game'),
@@ -189,9 +311,18 @@ class GalacticCodebreakerScreenState extends State<GalacticCodebreakerScreen> {
           builder: (context) => AlertDialog(
             title: Text(
               'Error creating game: ${response.statusCode} ${response.body}',
-              style: TextStyle(color: Colors.white),
+              style: GoogleFonts.orbitron(color: colors['error']),
             ),
-            backgroundColor: Color(0xFF1A1A3A),
+            backgroundColor: colors['surface']!.withOpacity(0.8),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text(
+                  'OK',
+                  style: GoogleFonts.orbitron(color: colors['text']),
+                ),
+              ),
+            ],
           ),
         );
       }
@@ -202,15 +333,28 @@ class GalacticCodebreakerScreenState extends State<GalacticCodebreakerScreen> {
         builder: (context) => AlertDialog(
           title: Text(
             'Network error: $e',
-            style: TextStyle(color: Colors.white),
+            style: GoogleFonts.orbitron(color: colors['error']),
           ),
-          backgroundColor: Color(0xFF1A1A3A),
+          backgroundColor: colors['surface']!.withOpacity(0.8),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text(
+                'OK',
+                style: GoogleFonts.orbitron(color: colors['text']),
+              ),
+            ),
+          ],
         ),
       );
     }
   }
 
   Future<void> _joinGame(String pin) async {
+    final colors = _getColors(
+      context,
+      Theme.of(context).scaffoldBackgroundColor == const Color(0xFF1C2526),
+    );
     try {
       final response = await http.post(
         Uri.parse('$serverUrl/join-game'),
@@ -237,9 +381,18 @@ class GalacticCodebreakerScreenState extends State<GalacticCodebreakerScreen> {
           builder: (context) => AlertDialog(
             title: Text(
               'Error joining game: ${response.statusCode} ${response.body}',
-              style: TextStyle(color: Colors.white),
+              style: GoogleFonts.orbitron(color: colors['error']),
             ),
-            backgroundColor: Color(0xFF1A1A3A),
+            backgroundColor: colors['surface']!.withOpacity(0.8),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text(
+                  'OK',
+                  style: GoogleFonts.orbitron(color: colors['text']),
+                ),
+              ),
+            ],
           ),
         );
       }
@@ -250,15 +403,25 @@ class GalacticCodebreakerScreenState extends State<GalacticCodebreakerScreen> {
         builder: (context) => AlertDialog(
           title: Text(
             'Network error: $e',
-            style: TextStyle(color: Colors.white),
+            style: GoogleFonts.orbitron(color: colors['error']),
           ),
-          backgroundColor: Color(0xFF1A1A3A),
+          backgroundColor: colors['surface']!.withOpacity(0.8),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text(
+                'OK',
+                style: GoogleFonts.orbitron(color: colors['text']),
+              ),
+            ),
+          ],
         ),
       );
     }
   }
 
   void _startPolling() {
+    pollTimer?.cancel();
     pollTimer = Timer.periodic(Duration(seconds: 2), (_) async {
       if (gamePin != null) {
         try {
@@ -268,11 +431,11 @@ class GalacticCodebreakerScreenState extends State<GalacticCodebreakerScreen> {
           if (!mounted) return;
           if (response.statusCode == 200) {
             final data = jsonDecode(response.body);
+            bool previousGameOver = isGameOver;
             setState(() {
               guessHistory = List<Map<String, dynamic>>.from(
                 data['guessHistory'],
               );
-              bool previousGameOver = isGameOver;
               isGameOver = data['gameOver'];
               if (data.containsKey('code')) {
                 secretCode = List<String>.from(data['code']);
@@ -281,13 +444,14 @@ class GalacticCodebreakerScreenState extends State<GalacticCodebreakerScreen> {
                   !isGameOver &&
                   ((isCreator && data['pendingFeedback']) ||
                       (!isCreator && !data['pendingFeedback']));
-              if (isGameOver && !previousGameOver && !isSinglePlayer) {
-                _checkFeedbackHonesty();
-              }
             });
+            if (isGameOver && !previousGameOver && !isSinglePlayer) {
+              _checkFeedbackHonesty();
+              _showSummaryDialog();
+            }
           }
         } catch (e) {
-          // Optionally handle polling errors silently or log
+          // Handle polling errors silently
         }
       }
     });
@@ -295,9 +459,14 @@ class GalacticCodebreakerScreenState extends State<GalacticCodebreakerScreen> {
 
   Future<void> _submitGuess() async {
     if (currentGuess.contains('') || isGameOver || !isMyTurn) return;
+    bool previousGameOver = isGameOver;
     if (isSinglePlayer) {
       _provideLocalFeedback();
     } else {
+      final colors = _getColors(
+        context,
+        Theme.of(context).scaffoldBackgroundColor == const Color(0xFF1C2526),
+      );
       try {
         final response = await http.post(
           Uri.parse('$serverUrl/submit-guess'),
@@ -312,7 +481,7 @@ class GalacticCodebreakerScreenState extends State<GalacticCodebreakerScreen> {
         if (response.statusCode == 200) {
           setState(() {
             currentGuess = ['', '', '', ''];
-            isMyTurn = false; // Wait for feedback
+            isMyTurn = false;
           });
         } else {
           showDialog(
@@ -320,9 +489,18 @@ class GalacticCodebreakerScreenState extends State<GalacticCodebreakerScreen> {
             builder: (context) => AlertDialog(
               title: Text(
                 'Error submitting guess: ${response.statusCode} ${response.body}',
-                style: TextStyle(color: Colors.white),
+                style: GoogleFonts.orbitron(color: colors['error']),
               ),
-              backgroundColor: Color(0xFF1A1A3A),
+              backgroundColor: colors['surface']!.withOpacity(0.8),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: Text(
+                    'OK',
+                    style: GoogleFonts.orbitron(color: colors['text']),
+                  ),
+                ),
+              ],
             ),
           );
         }
@@ -333,12 +511,24 @@ class GalacticCodebreakerScreenState extends State<GalacticCodebreakerScreen> {
           builder: (context) => AlertDialog(
             title: Text(
               'Network error: $e',
-              style: TextStyle(color: Colors.white),
+              style: GoogleFonts.orbitron(color: colors['error']),
             ),
-            backgroundColor: Color(0xFF1A1A3A),
+            backgroundColor: colors['surface']!.withOpacity(0.8),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text(
+                  'OK',
+                  style: GoogleFonts.orbitron(color: colors['text']),
+                ),
+              ),
+            ],
           ),
         );
       }
+    }
+    if (isGameOver && !previousGameOver && isSinglePlayer) {
+      _showSummaryDialog();
     }
   }
 
@@ -360,7 +550,6 @@ class GalacticCodebreakerScreenState extends State<GalacticCodebreakerScreen> {
         codeCopy[codeCopy.indexOf(guessCopy[i])] = '';
       }
     }
-    bool previousGameOver = isGameOver;
     setState(() {
       guessHistory.add({
         'guess': currentGuess.toList(),
@@ -371,12 +560,13 @@ class GalacticCodebreakerScreenState extends State<GalacticCodebreakerScreen> {
         isGameOver = true;
       }
     });
-    if (isGameOver && !previousGameOver && !isSinglePlayer) {
-      _checkFeedbackHonesty();
-    }
   }
 
   Future<void> _submitFeedback(int exact, int partial) async {
+    final colors = _getColors(
+      context,
+      Theme.of(context).scaffoldBackgroundColor == const Color(0xFF1C2526),
+    );
     try {
       final response = await http.post(
         Uri.parse('$serverUrl/submit-feedback'),
@@ -395,11 +585,25 @@ class GalacticCodebreakerScreenState extends State<GalacticCodebreakerScreen> {
           builder: (context) => AlertDialog(
             title: Text(
               'Error submitting feedback: ${response.statusCode} ${response.body}',
-              style: TextStyle(color: Colors.white),
+              style: GoogleFonts.orbitron(color: colors['error']),
             ),
-            backgroundColor: Color(0xFF1A1A3A),
+            backgroundColor: colors['surface']!.withOpacity(0.8),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text(
+                  'OK',
+                  style: GoogleFonts.orbitron(color: colors['text']),
+                ),
+              ),
+            ],
           ),
         );
+      } else {
+        setState(() {
+          _tempExact = null;
+          _tempPartial = null;
+        });
       }
     } catch (e) {
       if (!mounted) return;
@@ -408,9 +612,18 @@ class GalacticCodebreakerScreenState extends State<GalacticCodebreakerScreen> {
         builder: (context) => AlertDialog(
           title: Text(
             'Network error: $e',
-            style: TextStyle(color: Colors.white),
+            style: GoogleFonts.orbitron(color: colors['error']),
           ),
-          backgroundColor: Color(0xFF1A1A3A),
+          backgroundColor: colors['surface']!.withOpacity(0.8),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text(
+                'OK',
+                style: GoogleFonts.orbitron(color: colors['text']),
+              ),
+            ),
+          ],
         ),
       );
     }
@@ -447,21 +660,108 @@ class GalacticCodebreakerScreenState extends State<GalacticCodebreakerScreen> {
     });
   }
 
+  void _showSummaryDialog() {
+    final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
+    final colors = _getColors(
+      context,
+      Theme.of(context).scaffoldBackgroundColor == const Color(0xFF1C2526),
+    );
+    String message;
+    bool won =
+        guessHistory.isNotEmpty && guessHistory.last['feedback']['exact'] == 4;
+    if (isCreator) {
+      if (won) {
+        message =
+            Theme.of(context).scaffoldBackgroundColor == const Color(0xFF1C2526)
+            ? 'The ghoul cracked your haunted code!'
+            : 'The guesser cracked your cosmic code!';
+      } else {
+        message =
+            Theme.of(context).scaffoldBackgroundColor == const Color(0xFF1C2526)
+            ? 'The ghoul ran out of guesses - your crypt prevails!'
+            : 'The guesser ran out of guesses - you win!';
+      }
+    } else {
+      if (won) {
+        message =
+            Theme.of(context).scaffoldBackgroundColor == const Color(0xFF1C2526)
+            ? 'You’ve broken the haunted code in ${guessHistory.length} guesses!'
+            : 'Congratulations! You cracked the code in ${guessHistory.length} guesses!';
+      } else {
+        message =
+            Theme.of(context).scaffoldBackgroundColor == const Color(0xFF1C2526)
+            ? 'Out of guesses! The spirits outwitted you.'
+            : 'Out of guesses! Better luck next time.';
+      }
+      if (!isSinglePlayer && _wasFeedbackHonest == false) {
+        message +=
+            Theme.of(context).scaffoldBackgroundColor == const Color(0xFF1C2526)
+            ? '\nBut the spirits were dishonest - cursed play!'
+            : '\nBut the feedback was dishonest - no fair play!';
+      }
+    }
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: colors['surface']!.withOpacity(0.8),
+        title: FadeIn(
+          duration: const Duration(milliseconds: 500),
+          child: Text(
+            message,
+            style: GoogleFonts.orbitron(
+              color: won ? colors['success'] : colors['error'],
+              shadows: [
+                Shadow(
+                  color:
+                      Theme.of(context).scaffoldBackgroundColor ==
+                          const Color(0xFF1C2526)
+                      ? Colors.purple[900]!.withOpacity(0.4)
+                      : colors['primary']!.withOpacity(0.4),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(
+              'OK',
+              style: GoogleFonts.orbitron(color: colors['text']),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final wasHonest = _wasFeedbackHonest;
+    final themeProvider = Provider.of<ThemeProvider>(context);
+    final colors = _getColors(
+      context,
+      Theme.of(context).scaffoldBackgroundColor == const Color(0xFF1C2526),
+    );
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Color(0xFF0A0A1E), Color(0xFF1A1A3A)],
+            colors: [colors['background']!, colors['surface']!],
           ),
         ),
         child: Stack(
           children: [
-            Positioned.fill(child: StarField(opacity: 0.4)),
+            Positioned.fill(
+              child:
+                  Theme.of(context).scaffoldBackgroundColor ==
+                      const Color(0xFF1C2526)
+                  ? const SpookyField()
+                  : const StarField(opacity: 0.4),
+            ),
             SafeArea(
               child: Column(
                 children: [
@@ -469,16 +769,18 @@ class GalacticCodebreakerScreenState extends State<GalacticCodebreakerScreen> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       IconButton(
-                        icon: Icon(Icons.arrow_back),
-                        color: Colors.white,
+                        icon: Icon(Icons.arrow_back, color: colors['text']),
                         onPressed: () => widget.onGameSelected(0),
                       ),
                       if (gamePin != null)
-                        Text(
-                          'PIN: $gamePin',
-                          style: GoogleFonts.orbitron(
-                            fontSize: 16,
-                            color: Colors.white70,
+                        FadeIn(
+                          duration: const Duration(milliseconds: 500),
+                          child: Text(
+                            'PIN: $gamePin',
+                            style: GoogleFonts.orbitron(
+                              fontSize: 16,
+                              color: colors['text']!.withOpacity(0.7),
+                            ),
                           ),
                         ),
                     ],
@@ -486,28 +788,54 @@ class GalacticCodebreakerScreenState extends State<GalacticCodebreakerScreen> {
                   if (isCreator)
                     Column(
                       children: [
-                        Text(
-                          'Waiting for Guesses',
-                          style: GoogleFonts.orbitron(
-                            fontSize: 20,
-                            color: Colors.white,
+                        FadeIn(
+                          duration: const Duration(milliseconds: 500),
+                          child: Text(
+                            Theme.of(context).scaffoldBackgroundColor ==
+                                    const Color(0xFF1C2526)
+                                ? 'Awaiting Ghoulish Guesses'
+                                : 'Waiting for Guesses',
+                            style: GoogleFonts.orbitron(
+                              fontSize: 20,
+                              color: colors['text'],
+                              shadows: [
+                                Shadow(
+                                  color: colors['primary']!.withOpacity(0.4),
+                                  blurRadius: 6,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                         Text(
                           '(Code: ${secretCode.join(' ')})',
                           style: GoogleFonts.orbitron(
                             fontSize: 16,
-                            color: Colors.white70,
+                            color: colors['text']!.withOpacity(0.7),
                           ),
                         ),
                       ],
                     )
                   else
-                    Text(
-                      'Make Your Guess',
-                      style: GoogleFonts.orbitron(
-                        fontSize: 20,
-                        color: Colors.white,
+                    FadeIn(
+                      duration: const Duration(milliseconds: 500),
+                      child: Text(
+                        Theme.of(context).scaffoldBackgroundColor ==
+                                const Color(0xFF1C2526)
+                            ? 'Unravel the Haunted Code'
+                            : 'Make Your Guess',
+                        style: GoogleFonts.orbitron(
+                          fontSize: 20,
+                          color: colors['text'],
+                          shadows: [
+                            Shadow(
+                              color: colors['primary']!.withOpacity(0.4),
+                              blurRadius: 6,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   Expanded(
@@ -518,12 +846,23 @@ class GalacticCodebreakerScreenState extends State<GalacticCodebreakerScreen> {
                         return ListTile(
                           title: Text(
                             hist['guess'].join(' '),
-                            style: TextStyle(color: Colors.white),
+                            style: TextStyle(
+                              color: colors['text'],
+                              fontSize: 24,
+                            ),
                           ),
-                          trailing: Text(
-                            'Exact: ${hist['feedback']['exact']} Partial: ${hist['feedback']['partial']}',
-                            style: TextStyle(color: Colors.yellow),
-                          ),
+                          trailing: hist['feedback'] != null
+                              ? Text(
+                                  'Exact: ${hist['feedback']['exact']} Partial: ${hist['feedback']['partial']}',
+                                  style: TextStyle(color: colors['success']),
+                                )
+                              : Flash(
+                                  duration: const Duration(milliseconds: 600),
+                                  child: Text(
+                                    'Pending Feedback',
+                                    style: TextStyle(color: colors['pending']),
+                                  ),
+                                ),
                         );
                       },
                     ),
@@ -536,41 +875,88 @@ class GalacticCodebreakerScreenState extends State<GalacticCodebreakerScreen> {
                       children: [
                         Text(
                           'Provide Feedback for Guess: ${guessHistory.last['guess'].join(' ')}',
-                          style: GoogleFonts.orbitron(color: Colors.white),
+                          style: GoogleFonts.orbitron(color: colors['text']),
                         ),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Text('Exact: '),
+                            Text(
+                              'Exact: ',
+                              style: TextStyle(color: colors['text']),
+                            ),
                             DropdownButton<int>(
-                              value: null,
-                              onChanged: (value) => _tempExact = value,
+                              value: _tempExact,
+                              onChanged: (value) =>
+                                  setState(() => _tempExact = value),
                               items: List.generate(
                                 5,
                                 (i) => DropdownMenuItem(
                                   value: i,
-                                  child: Text('$i'),
+                                  child: Text(
+                                    '$i',
+                                    style: TextStyle(color: colors['text']),
+                                  ),
                                 ),
                               ),
+                              dropdownColor: colors['surface']!.withOpacity(
+                                0.9,
+                              ),
+                              style: TextStyle(color: colors['text']),
+                              underline: Container(
+                                height: 2,
+                                color: colors['primary']!.withOpacity(0.5),
+                              ),
                             ),
-                            Text(' Partial: '),
+                            Text(
+                              ' Partial: ',
+                              style: TextStyle(color: colors['text']),
+                            ),
                             DropdownButton<int>(
-                              value: null,
-                              onChanged: (value) {
-                                if (_tempExact != null && value != null) {
-                                  _submitFeedback(_tempExact!, value);
-                                  _tempExact = null;
-                                }
-                              },
+                              value: _tempPartial,
+                              onChanged: (value) =>
+                                  setState(() => _tempPartial = value),
                               items: List.generate(
                                 5,
                                 (i) => DropdownMenuItem(
                                   value: i,
-                                  child: Text('$i'),
+                                  child: Text(
+                                    '$i',
+                                    style: TextStyle(color: colors['text']),
+                                  ),
                                 ),
+                              ),
+                              dropdownColor: colors['surface']!.withOpacity(
+                                0.9,
+                              ),
+                              style: TextStyle(color: colors['text']),
+                              underline: Container(
+                                height: 2,
+                                color: colors['primary']!.withOpacity(0.5),
                               ),
                             ),
                           ],
+                        ),
+                        ElevatedButton(
+                          onPressed:
+                              (_tempExact != null && _tempPartial != null)
+                              ? () =>
+                                    _submitFeedback(_tempExact!, _tempPartial!)
+                              : null,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: colors['primary']!.withOpacity(
+                              0.5,
+                            ),
+                            side: BorderSide(
+                              color: colors['primary']!.withOpacity(0.7),
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: Text(
+                            'Submit Feedback',
+                            style: GoogleFonts.orbitron(color: colors['text']),
+                          ),
                         ),
                       ],
                     ),
@@ -579,9 +965,14 @@ class GalacticCodebreakerScreenState extends State<GalacticCodebreakerScreen> {
                       !isSinglePlayer &&
                       guessHistory.isNotEmpty &&
                       guessHistory.last['feedback'] == null)
-                    Text(
-                      'Waiting for Feedback...',
-                      style: GoogleFonts.orbitron(color: Colors.white70),
+                    Flash(
+                      duration: const Duration(milliseconds: 600),
+                      child: Text(
+                        'Waiting for Feedback...',
+                        style: GoogleFonts.orbitron(
+                          color: colors['text']!.withOpacity(0.7),
+                        ),
+                      ),
                     ),
                   if (!isCreator && !isGameOver)
                     Column(
@@ -592,25 +983,71 @@ class GalacticCodebreakerScreenState extends State<GalacticCodebreakerScreen> {
                         ),
                         ElevatedButton(
                           onPressed: _submitGuess,
-                          child: Text('Submit Guess'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: colors['secondary']!.withOpacity(
+                              0.5,
+                            ),
+                            side: BorderSide(
+                              color: colors['secondary']!.withOpacity(0.7),
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: Text(
+                            'Submit Guess',
+                            style: GoogleFonts.orbitron(color: colors['text']),
+                          ),
                         ),
                       ],
                     ),
                   if (isGameOver)
                     Column(
                       children: [
-                        Text(
-                          'Game Over! Code was ${secretCode.join(' ')}',
-                          style: GoogleFonts.orbitron(
-                            fontSize: 24,
-                            color: Colors.red,
+                        FadeIn(
+                          duration: const Duration(milliseconds: 500),
+                          child: Text(
+                            'Game Over! Code was ${secretCode.join(' ')}',
+                            style: GoogleFonts.orbitron(
+                              fontSize: 24,
+                              color: colors['error'],
+                              shadows: [
+                                Shadow(
+                                  color:
+                                      Theme.of(
+                                            context,
+                                          ).scaffoldBackgroundColor ==
+                                          const Color(0xFF1C2526)
+                                      ? Colors.purple[900]!.withOpacity(0.4)
+                                      : colors['primary']!.withOpacity(0.4),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
-                        if (wasHonest != null && !wasHonest)
+                        if (_wasFeedbackHonest == false)
                           Text(
-                            'Feedback was inaccurate - no fair play!',
+                            Theme.of(context).scaffoldBackgroundColor ==
+                                    const Color(0xFF1C2526)
+                                ? 'Cursed feedback - spirits deceived you!'
+                                : 'Feedback was inaccurate - no fair play!',
                             style: GoogleFonts.orbitron(
-                              color: Colors.redAccent,
+                              color: colors['error'],
+                              shadows: [
+                                Shadow(
+                                  color:
+                                      Theme.of(
+                                            context,
+                                          ).scaffoldBackgroundColor ==
+                                          const Color(0xFF1C2526)
+                                      ? Colors.purple[900]!.withOpacity(0.4)
+                                      : colors['primary']!.withOpacity(0.4),
+                                  blurRadius: 6,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
                             ),
                           ),
                       ],
@@ -624,38 +1061,69 @@ class GalacticCodebreakerScreenState extends State<GalacticCodebreakerScreen> {
     );
   }
 
-  int? _tempExact;
-
   Widget _buildGuessSlot(int index) {
+    final themeProvider = Provider.of<ThemeProvider>(context);
+    final colors = _getColors(
+      context,
+      Theme.of(context).scaffoldBackgroundColor == const Color(0xFF1C2526),
+    );
     return Padding(
       padding: const EdgeInsets.all(8.0),
       child: DropdownButton<String>(
         value: currentGuess[index].isEmpty ? null : currentGuess[index],
         onChanged: (value) => setState(() => currentGuess[index] = value!),
-        items: possibleIcons
-            .map((icon) => DropdownMenuItem(value: icon, child: Text(icon)))
-            .toList(),
+        items:
+            _getIcons(
+                  Theme.of(context).scaffoldBackgroundColor ==
+                      const Color(0xFF1C2526),
+                )
+                .map(
+                  (icon) => DropdownMenuItem(
+                    value: icon,
+                    child: Text(icon, style: TextStyle(fontSize: 24)),
+                  ),
+                )
+                .toList(),
+        dropdownColor: colors['surface']!.withOpacity(0.9),
+        style: TextStyle(color: colors['text'], fontSize: 24),
+        underline: Container(
+          height: 2,
+          color: colors['primary']!.withOpacity(0.5),
+        ),
       ),
     );
   }
 
   void _showPinShareDialog(String pin) {
+    final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
+    final colors = _getColors(
+      context,
+      Theme.of(context).scaffoldBackgroundColor == const Color(0xFF1C2526),
+    );
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: Color(0xFF1A1A3A),
-        title: Text(
-          'Share PIN: $pin',
-          style: GoogleFonts.orbitron(color: Colors.white),
+        backgroundColor: colors['surface']!.withOpacity(0.8),
+        title: FadeIn(
+          duration: const Duration(milliseconds: 500),
+          child: Text(
+            'Share PIN: $pin',
+            style: GoogleFonts.orbitron(color: colors['text']),
+          ),
         ),
         content: Text(
-          'Give this to your opponent to join and guess!',
-          style: TextStyle(color: Colors.white70),
+          Theme.of(context).scaffoldBackgroundColor == const Color(0xFF1C2526)
+              ? 'Whisper this PIN to summon your opponent!'
+              : 'Give this to your opponent to join and guess!',
+          style: GoogleFonts.orbitron(color: colors['text']!.withOpacity(0.7)),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('OK', style: TextStyle(color: Colors.white)),
+            child: Text(
+              'OK',
+              style: GoogleFonts.orbitron(color: colors['text']),
+            ),
           ),
         ],
       ),

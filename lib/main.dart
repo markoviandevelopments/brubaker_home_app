@@ -1,22 +1,34 @@
+// lib/main.dart
+
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
 import 'theme.dart';
 import 'screens/home_screen.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  runApp(const GuestApp());
+  runApp(const BrubakerApp());
 }
 
-class GuestApp extends StatelessWidget {
-  const GuestApp({super.key});
+/// Root widget – renamed to something that actually matches your app
+class BrubakerApp extends StatelessWidget {
+  const BrubakerApp({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Katy TX Guest App',
-      theme: getAppTheme(),
-      debugShowCheckedModeBanner: false,
-      home: const HomeScreen(),
+    return ChangeNotifierProvider(
+      create: (_) => ThemeProvider(),
+      child: Consumer<ThemeProvider>(
+        builder: (context, themeProvider, _) {
+          return MaterialApp(
+            title: 'Brubaker Home',
+            theme: themeProvider.currentTheme,
+            debugShowCheckedModeBanner: false,
+            home: const HomeScreen(),
+          );
+        },
+      ),
     );
   }
 }

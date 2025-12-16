@@ -1,560 +1,402 @@
+// lib/screens/scroll_screen.dart
+
 import 'dart:io';
 import 'dart:convert';
 import 'dart:ui';
-import 'package:chewie/chewie.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:video_player/video_player.dart';
-import 'package:http/http.dart' as http; // For server communication
-import '../screens/star_field.dart';
-import '../models/post.dart';
+import 'package:http/http.dart' as http;
+import 'package:path/path.dart' as path; // For extracting filename from path
+
+import 'star_field.dart'; // Only the default galactic background
 
 class ScrollScreen extends StatefulWidget {
   const ScrollScreen({super.key});
 
   @override
-  ScrollScreenState createState() => ScrollScreenState();
+  State<ScrollScreen> createState() => _ScrollScreenState();
 }
 
-class ScrollScreenState extends State<ScrollScreen> {
-  List<Post> _posts = [];
+class _ScrollScreenState extends State<ScrollScreen> {
   final GlobalKey<ScaffoldMessengerState> _scaffoldMessengerKey =
-      GlobalKey<ScaffoldMessengerState>(); // Safe context handling
-
-  @override
-  void initState() {
-    super.initState();
-    _loadPostsFromServer();
-  }
-
-  Future<void> _loadPostsFromServer() async {
-    final scaffoldMessenger = _scaffoldMessengerKey.currentState;
-    try {
-      final response = await http.get(
-        Uri.parse('http://192.168.1.126:6042/posts'),
-      );
-      if (response.statusCode == 200) {
-        final List<dynamic> postsJson = jsonDecode(response.body);
-        if (mounted) {
-          setState(() {
-            _posts = postsJson.map((json) => Post.fromJson(json)).toList();
-          });
-        }
-      } else {
-        if (mounted && scaffoldMessenger != null) {
-          scaffoldMessenger.showSnackBar(
-            SnackBar(
-              content: Text(
-                'Failed to load posts: ${response.statusCode}',
-                style: GoogleFonts.orbitron(
-                  color: Colors.white70,
-                  fontSize: 14,
-                ),
-              ),
-              backgroundColor: Colors.black.withValues(alpha: 0.8),
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
-        }
-      }
-    } catch (e) {
-      if (mounted && scaffoldMessenger != null) {
-        scaffoldMessenger.showSnackBar(
-          SnackBar(
-            content: Text(
-              'Error loading posts: $e',
-              style: GoogleFonts.orbitron(color: Colors.white70, fontSize: 14),
-            ),
-            backgroundColor: Colors.black.withValues(alpha: 0.8),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
-    }
-  }
-
-  Future<void> _savePostToServer(Post post) async {
-    final scaffoldMessenger = _scaffoldMessengerKey.currentState;
-    try {
-      final response = await http.post(
-        Uri.parse('http://192.168.1.126:6042/posts'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode(post.toJson()),
-      );
-      if (response.statusCode != 200 && response.statusCode != 201) {
-        throw Exception('Failed to save post: ${response.statusCode}');
-      }
-      // Remove the local add here; we'll reload from server instead
-    } catch (e) {
-      if (mounted && scaffoldMessenger != null) {
-        scaffoldMessenger.showSnackBar(
-          SnackBar(
-            content: Text(
-              'Error saving post: $e',
-              style: GoogleFonts.orbitron(color: Colors.white70, fontSize: 14),
-            ),
-            backgroundColor: Colors.black.withValues(alpha: 0.8),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
-    }
-  }
-
-  void _deletePost(int index) async {
-    final scaffoldMessenger = _scaffoldMessengerKey.currentState;
-    try {
-      final response = await http.delete(
-        Uri.parse('http://192.168.1.126:6042/posts/$index'),
-      );
-      if (response.statusCode == 200) {
-        if (mounted) {
-          setState(() {
-            _posts.removeAt(index);
-          });
-        }
-      } else {
-        if (mounted && scaffoldMessenger != null) {
-          scaffoldMessenger.showSnackBar(
-            SnackBar(
-              content: Text(
-                'Failed to delete post: ${response.statusCode}',
-                style: GoogleFonts.orbitron(
-                  color: Colors.white70,
-                  fontSize: 14,
-                ),
-              ),
-              backgroundColor: Colors.black.withValues(alpha: 0.8),
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
-        }
-      }
-    } catch (e) {
-      if (mounted && scaffoldMessenger != null) {
-        scaffoldMessenger.showSnackBar(
-          SnackBar(
-            content: Text(
-              'Error deleting post: $e',
-              style: GoogleFonts.orbitron(color: Colors.white70, fontSize: 14),
-            ),
-            backgroundColor: Colors.black.withValues(alpha: 0.8),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
-    }
-  }
+      GlobalKey<ScaffoldMessengerState>();
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Scaffold(
       key: _scaffoldMessengerKey,
+      backgroundColor: Colors.transparent,
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [
-              Color(0xFF0A0A1E).withValues(alpha: 0.9),
-              Color(0xFF1A1A3A).withValues(alpha: 0.7),
-            ],
+            colors: [theme.scaffoldBackgroundColor, theme.colorScheme.surface],
           ),
         ),
         child: Stack(
           children: [
-            Positioned.fill(child: StarField(opacity: 0.3)),
-            ListView.builder(
-              padding: const EdgeInsets.all(16.0),
-              itemCount: _posts.length,
-              itemBuilder: (context, index) {
-                return PostWidget(
-                  post: _posts[index],
-                  onDelete: () => _deletePost(index),
-                );
-              },
+            // Default starfield – subtle and cosmic
+            const Positioned.fill(child: StarField(opacity: 0.4)),
+
+            // Nebula glow using app theme colors
+            Positioned.fill(
+              child: _NebulaBackground(
+                primaryColor: theme.primaryColor,
+                secondaryColor: theme.colorScheme.secondary,
+              ),
+            ),
+
+            // Image gallery list
+            SafeArea(
+              child: FutureBuilder<List<String>>(
+                future: _loadImagesFromServer(),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+
+                  final images = snapshot.data ?? [];
+
+                  if (images.isEmpty) {
+                    return Center(
+                      child: Text(
+                        'No images yet...\nTap + to share one!',
+                        textAlign: TextAlign.center,
+                        style: GoogleFonts.orbitron(
+                          color: theme.textTheme.bodyLarge!.color!.withOpacity(
+                            0.7,
+                          ),
+                          fontSize: 18,
+                        ),
+                      ),
+                    );
+                  }
+
+                  return ListView.builder(
+                    padding: const EdgeInsets.all(16),
+                    itemCount: images.length,
+                    itemBuilder: (context, index) {
+                      final imagePath = images[index];
+                      final imageUrl = 'http://192.168.1.198:6042$imagePath';
+                      final filename = path.basename(
+                        imagePath,
+                      ); // e.g., 'photo.jpg' for display
+
+                      return Dismissible(
+                        key: Key(imagePath), // Unique key for each image
+                        direction: DismissDirection.endToStart,
+                        background: Container(
+                          color: Colors.red[700],
+                          alignment: Alignment.centerRight,
+                          padding: const EdgeInsets.only(right: 20),
+                          child: Icon(
+                            Icons.delete,
+                            color: Colors.white,
+                            size: 30,
+                          ),
+                        ),
+                        confirmDismiss: (direction) async {
+                          return await _showDeleteConfirmation(
+                            context,
+                            filename,
+                          );
+                        },
+                        onDismissed: (direction) {
+                          _deleteImage(imagePath);
+                        },
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(16),
+                            child: BackdropFilter(
+                              filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  color: theme.colorScheme.surface.withOpacity(
+                                    0.15,
+                                  ),
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(
+                                    color: theme.textTheme.bodyLarge!.color!
+                                        .withOpacity(0.3),
+                                    width: 2,
+                                  ),
+                                ),
+                                child: Image.network(
+                                  imageUrl,
+                                  fit: BoxFit.contain,
+                                  loadingBuilder:
+                                      (context, child, loadingProgress) {
+                                        if (loadingProgress == null)
+                                          return child;
+                                        return Container(
+                                          height: 300,
+                                          color: Colors.white.withOpacity(0.1),
+                                          child: const Center(
+                                            child: CircularProgressIndicator(),
+                                          ),
+                                        );
+                                      },
+                                  errorBuilder: (context, error, stackTrace) {
+                                    return Container(
+                                      height: 200,
+                                      color: Colors.red.withOpacity(0.2),
+                                      child: Center(
+                                        child: Icon(
+                                          Icons.error,
+                                          color: Colors.red[300],
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  );
+                },
+              ),
             ),
           ],
         ),
       ),
+
+      // FAB for image upload – themed to galactic primary
       floatingActionButton: FloatingActionButton(
-        backgroundColor: Colors.white.withValues(alpha: 0.2),
-        elevation: 6,
+        backgroundColor: theme.primaryColor.withOpacity(0.8),
+        elevation: 12,
         child: Container(
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            border: Border.all(color: Colors.white.withValues(alpha: 0.4)),
+            gradient: RadialGradient(
+              colors: [theme.primaryColor, theme.primaryColor.withOpacity(0.6)],
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: theme.primaryColor.withOpacity(0.5),
+                blurRadius: 20,
+                spreadRadius: 5,
+              ),
+            ],
           ),
-          child: const Icon(Icons.add, color: Colors.white70),
+          child: const Icon(Icons.add_a_photo, color: Colors.white, size: 28),
         ),
-        onPressed: () => _showPostDialog(context),
+        onPressed: () => _uploadImage(context),
       ),
     );
   }
 
-  Future<void> _handlePostSubmission({
-    required String userName,
-    required String text,
-    required File? mediaFile,
-    required String? mediaType,
-    required double mediaHeight,
-    required VideoPlayerController? videoController,
-    required ChewieController? chewieController,
-  }) async {
-    final newPost = Post(
-      userName: userName,
-      text: text,
-      mediaPath: mediaFile?.path,
-      mediaType: mediaType,
-      timestamp: DateTime.now(),
-      mediaHeight: mediaHeight,
-    );
-    await _savePostToServer(newPost);
-    await _loadPostsFromServer();
-    if (videoController != null) {
-      videoController.dispose();
-    }
-    if (chewieController != null) {
-      chewieController.dispose();
+  Future<bool> _showDeleteConfirmation(
+    BuildContext context,
+    String filename,
+  ) async {
+    return await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            backgroundColor: Theme.of(
+              context,
+            ).colorScheme.surface.withOpacity(0.9),
+            title: Text(
+              'Delete Image?',
+              style: GoogleFonts.orbitron(
+                color: Theme.of(context).primaryColor,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            content: Text(
+              'Are you sure you want to remove "$filename" from the frame? This action cannot be undone.',
+              style: GoogleFonts.orbitron(color: Colors.white70),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: Text(
+                  'Cancel',
+                  style: GoogleFonts.orbitron(color: Colors.grey[600]),
+                ),
+              ),
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(true),
+                child: Text(
+                  'Delete',
+                  style: GoogleFonts.orbitron(color: Colors.red[400]),
+                ),
+              ),
+            ],
+          ),
+        ) ??
+        false; // Default to false if dialog is dismissed
+  }
+
+  Future<void> _deleteImage(String imagePath) async {
+    try {
+      final response = await http.delete(
+        Uri.parse(
+          'http://192.168.1.198:6042/images$imagePath',
+        ), // Assumes DELETE /images/{path}
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 204) {
+        _scaffoldMessengerKey.currentState?.showSnackBar(
+          SnackBar(
+            content: Text(
+              'Image deleted successfully!',
+              style: GoogleFonts.orbitron(color: Colors.white),
+            ),
+            backgroundColor: Colors.green[700],
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        setState(() {}); // Refresh the list
+      } else {
+        throw Exception('Delete failed: ${response.statusCode}');
+      }
+    } catch (e) {
+      _scaffoldMessengerKey.currentState?.showSnackBar(
+        SnackBar(
+          content: Text(
+            'Delete failed: $e',
+            style: GoogleFonts.orbitron(color: Colors.white),
+          ),
+          backgroundColor: Colors.red[700],
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      // Revert the dismiss if delete fails (add back to list)
+      setState(() {});
     }
   }
 
-  void _showPostDialog(BuildContext context) {
-    String userName = '';
-    String text = '';
-    File? mediaFile;
-    String? mediaType;
-    double mediaHeight = 200.0;
-    VideoPlayerController? videoController;
-    ChewieController? chewieController;
-
-    void updateMediaPreview() {
-      if (mediaFile != null && mediaType == 'video') {
-        videoController = VideoPlayerController.file(mediaFile!)
-          ..initialize().then((_) {
-            chewieController = ChewieController(
-              videoPlayerController: videoController!,
-              autoPlay: true,
-              looping: false,
-            );
-            if (mounted) {
-              setState(() {});
-            }
-          });
-      } else if (mediaFile != null && mediaType == 'image') {
-        if (mounted) {
-          setState(() {});
-        }
+  Future<List<String>> _loadImagesFromServer() async {
+    try {
+      final response = await http.get(
+        Uri.parse('http://192.168.1.198:6042/images'),
+      );
+      if (response.statusCode == 200) {
+        final List<dynamic> list = jsonDecode(response.body);
+        return list.cast<String>();
       }
+    } catch (e) {
+      print('Error loading images: $e');
     }
+    return [];
+  }
 
-    showDialog(
-      context: context,
-      builder: (dialogContext) => StatefulBuilder(
-        builder: (dialogContext, setDialogState) => AlertDialog(
-          backgroundColor: Colors.transparent,
-          content: ClipRect(
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 6, sigmaY: 6),
-              child: Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.3),
-                  ),
-                ),
-                child: SingleChildScrollView(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      TextField(
-                        decoration: InputDecoration(
-                          labelText: 'Your Name',
-                          labelStyle: GoogleFonts.orbitron(
-                            color: Colors.white70,
-                          ),
-                          enabledBorder: UnderlineInputBorder(
-                            borderSide: BorderSide(
-                              color: Colors.white.withValues(alpha: 0.3),
-                            ),
-                          ),
-                        ),
-                        style: GoogleFonts.orbitron(color: Colors.white70),
-                        onChanged: (value) => userName = value,
-                      ),
-                      TextField(
-                        decoration: InputDecoration(
-                          labelText: 'Status Update',
-                          labelStyle: GoogleFonts.orbitron(
-                            color: Colors.white70,
-                          ),
-                          enabledBorder: UnderlineInputBorder(
-                            borderSide: BorderSide(
-                              color: Colors.white.withValues(alpha: 0.3),
-                            ),
-                          ),
-                        ),
-                        style: GoogleFonts.orbitron(color: Colors.white70),
-                        onChanged: (value) => text = value,
-                      ),
-                      const SizedBox(height: 16),
-                      if (mediaFile != null)
-                        Column(
-                          children: [
-                            mediaType == 'image'
-                                ? Image.file(
-                                    mediaFile!,
-                                    height: mediaHeight,
-                                    width: double.infinity,
-                                    fit: BoxFit.contain,
-                                  )
-                                : chewieController != null &&
-                                      chewieController!
-                                          .videoPlayerController
-                                          .value
-                                          .isInitialized
-                                ? SizedBox(
-                                    height: mediaHeight,
-                                    width: double.infinity,
-                                    child: Chewie(
-                                      controller: chewieController!,
-                                    ),
-                                  )
-                                : const CircularProgressIndicator(
-                                    color: Colors.white70,
-                                  ),
-                            Slider(
-                              value: mediaHeight,
-                              min: 100.0,
-                              max: 400.0,
-                              divisions: 6,
-                              label: '${mediaHeight.round()}px',
-                              activeColor: const Color(
-                                0xFF00FFD1,
-                              ).withValues(alpha: 0.7),
-                              inactiveColor: Colors.white.withValues(
-                                alpha: 0.3,
-                              ),
-                              onChanged: (value) {
-                                setDialogState(() {
-                                  mediaHeight = value;
-                                });
-                              },
-                            ),
-                          ],
-                        ),
-                      const SizedBox(height: 16),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                        children: [
-                          ElevatedButton(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.white.withValues(
-                                alpha: 0.2,
-                              ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
-                                side: BorderSide(
-                                  color: Colors.white.withValues(alpha: 0.3),
-                                ),
-                              ),
-                              elevation: 6,
-                            ),
-                            onPressed: () async {
-                              final picked = await ImagePicker().pickImage(
-                                source: ImageSource.gallery,
-                              );
-                              if (picked != null) {
-                                mediaFile = File(picked.path);
-                                mediaType = 'image';
-                                updateMediaPreview();
-                                setDialogState(() {});
-                              }
-                            },
-                            child: Text(
-                              'Image',
-                              style: GoogleFonts.orbitron(
-                                color: Colors.white70,
-                              ),
-                            ),
-                          ),
-                          ElevatedButton(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.white.withValues(
-                                alpha: 0.2,
-                              ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
-                                side: BorderSide(
-                                  color: Colors.white.withValues(alpha: 0.3),
-                                ),
-                              ),
-                              elevation: 6,
-                            ),
-                            onPressed: () async {
-                              final picked = await ImagePicker().pickVideo(
-                                source: ImageSource.gallery,
-                              );
-                              if (picked != null) {
-                                mediaFile = File(picked.path);
-                                mediaType = 'video';
-                                updateMediaPreview();
-                                setDialogState(() {});
-                              }
-                            },
-                            child: Text(
-                              'Video',
-                              style: GoogleFonts.orbitron(
-                                color: Colors.white70,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ),
+  Future<void> _uploadImage(BuildContext context) async {
+    final picker = ImagePicker();
+    final XFile? pickedFile = await picker.pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 1920,
+      maxHeight: 1920,
+      imageQuality: 85,
+    );
+
+    if (pickedFile == null) return;
+
+    final bytes = await pickedFile.readAsBytes();
+    final filename = pickedFile.name;
+
+    try {
+      var request = http.MultipartRequest(
+        'POST',
+        Uri.parse('http://192.168.1.198:6042/upload'),
+      );
+      request.files.add(
+        http.MultipartFile.fromBytes('image', bytes, filename: filename),
+      );
+
+      final response = await request.send();
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        _scaffoldMessengerKey.currentState?.showSnackBar(
+          SnackBar(
+            content: Text(
+              'Image uploaded successfully!',
+              style: GoogleFonts.orbitron(color: Colors.white),
             ),
+            backgroundColor: Colors.green[700],
+            behavior: SnackBarBehavior.floating,
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext),
-              child: Text(
-                'Cancel',
-                style: GoogleFonts.orbitron(color: Colors.white70),
-              ),
-            ),
-            TextButton(
-              onPressed: () {
-                if (userName.isNotEmpty && text.isNotEmpty) {
-                  if (Navigator.of(dialogContext).canPop()) {
-                    Navigator.of(dialogContext).pop();
-                    _handlePostSubmission(
-                      userName: userName,
-                      text: text,
-                      mediaFile: mediaFile,
-                      mediaType: mediaType,
-                      mediaHeight: mediaHeight,
-                      videoController: videoController,
-                      chewieController: chewieController,
-                    );
-                  }
-                } else {
-                  if (mounted && _scaffoldMessengerKey.currentState != null) {
-                    _scaffoldMessengerKey.currentState!.showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          'Name and status required',
-                          style: GoogleFonts.orbitron(color: Colors.white70),
-                        ),
-                        backgroundColor: Colors.black.withValues(alpha: 0.8),
-                        behavior: SnackBarBehavior.floating,
-                      ),
-                    );
-                  }
-                }
-              },
-              child: Text(
-                'Post',
-                style: GoogleFonts.orbitron(color: Colors.white70),
-              ),
-            ),
-          ],
+        );
+        setState(() {}); // Refresh the list
+      } else {
+        throw Exception('Upload failed');
+      }
+    } catch (e) {
+      _scaffoldMessengerKey.currentState?.showSnackBar(
+        SnackBar(
+          content: Text(
+            'Upload failed: $e',
+            style: GoogleFonts.orbitron(color: Colors.white),
+          ),
+          backgroundColor: Colors.red[700],
+          behavior: SnackBarBehavior.floating,
         ),
+      );
+    }
+  }
+}
+
+// Reusable nebula glow – tied to theme
+class _NebulaBackground extends StatelessWidget {
+  final Color primaryColor;
+  final Color secondaryColor;
+
+  const _NebulaBackground({
+    required this.primaryColor,
+    required this.secondaryColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return CustomPaint(
+      painter: _NebulaPainter(
+        primaryColor: primaryColor,
+        secondaryColor: secondaryColor,
       ),
     );
   }
 }
 
-class PostWidget extends StatelessWidget {
-  final Post post;
-  final VoidCallback onDelete;
+class _NebulaPainter extends CustomPainter {
+  final Color primaryColor;
+  final Color secondaryColor;
 
-  const PostWidget({super.key, required this.post, required this.onDelete});
+  _NebulaPainter({required this.primaryColor, required this.secondaryColor});
 
   @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
-      child: ClipRect(
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 6, sigmaY: 6),
-          child: Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.2),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  post.userName,
-                  style: GoogleFonts.orbitron(
-                    color: Colors.white70,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  post.text,
-                  style: GoogleFonts.orbitron(
-                    color: Colors.white70,
-                    fontSize: 14,
-                  ),
-                ),
-                if (post.mediaPath != null && post.mediaType != null) ...[
-                  const SizedBox(height: 12),
-                  post.mediaType == 'image'
-                      ? Image.file(
-                          File(post.mediaPath!),
-                          height: post.mediaHeight,
-                          width: double.infinity,
-                          fit: BoxFit.contain,
-                        )
-                      : Chewie(
-                          controller: ChewieController(
-                            videoPlayerController: VideoPlayerController.file(
-                              File(post.mediaPath!),
-                            )..initialize(),
-                            autoPlay: false,
-                            looping: false,
-                            aspectRatio: 16 / 9,
-                          ),
-                        ),
-                ],
-                const SizedBox(height: 8),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      post.timestamp.toString(),
-                      style: GoogleFonts.orbitron(
-                        color: Colors.white54,
-                        fontSize: 12,
-                      ),
-                    ),
-                    IconButton(
-                      icon: const Icon(
-                        Icons.delete_outline,
-                        color: Colors.white54,
-                        size: 18,
-                      ),
-                      onPressed: onDelete,
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..shader = RadialGradient(
+        colors: [
+          primaryColor.withOpacity(0.3),
+          secondaryColor.withOpacity(0.2),
+          Colors.transparent,
+        ],
+        center: const Alignment(0.3, 0.4),
+        radius: 0.6,
+      ).createShader(Rect.fromLTWH(0, 0, size.width, size.height))
+      ..blendMode = BlendMode.overlay;
+
+    canvas.drawCircle(
+      Offset(size.width * 0.3, size.height * 0.4),
+      size.width * 0.6,
+      paint,
+    );
+    canvas.drawCircle(
+      Offset(size.width * 0.7, size.height * 0.7),
+      size.width * 0.5,
+      paint..color = primaryColor.withOpacity(0.25),
     );
   }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter old) => false;
 }

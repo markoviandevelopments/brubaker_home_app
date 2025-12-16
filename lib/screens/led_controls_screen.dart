@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:google_fonts/google_fonts.dart';
 import 'package:brubaker_homeapp/screens/star_field.dart';
+import 'package:brubaker_homeapp/screens/spooky_field.dart';
+import 'package:provider/provider.dart';
+import 'package:brubaker_homeapp/theme.dart';
 import 'dart:convert';
 import 'dart:ui';
 import 'dart:async';
@@ -17,9 +20,9 @@ class LedControlsScreen extends StatefulWidget {
 
 class LedControlsScreenState extends State<LedControlsScreen>
     with SingleTickerProviderStateMixin {
-  static const String localServerUrl = 'http://192.168.1.126:5000';
+  static const String localServerUrl = 'http://192.168.1.198:5000';
   static const String publicServerUrl = 'http://108.254.1.184:5000';
-  String serverUrl = localServerUrl; // Default to local
+  String serverUrl = localServerUrl;
   final List<Map<String, String>> modes = [
     {'name': 'off', 'image': 'assets/modes/off.png'},
     {'name': 'rainbow-flow', 'image': 'assets/modes/rainbow-flow.png'},
@@ -194,9 +197,14 @@ class LedControlsScreenState extends State<LedControlsScreen>
       SnackBar(
         content: Text(
           message,
-          style: GoogleFonts.orbitron(color: Colors.white70, fontSize: 14),
+          style: GoogleFonts.orbitron(
+            color: Theme.of(context).textTheme.bodyLarge!.color,
+            fontSize: 14,
+          ),
         ),
-        backgroundColor: Colors.black.withValues(alpha: 0.8),
+        backgroundColor: Theme.of(
+          context,
+        ).scaffoldBackgroundColor.withOpacity(0.8),
         behavior: SnackBarBehavior.floating,
       ),
     );
@@ -211,20 +219,27 @@ class LedControlsScreenState extends State<LedControlsScreen>
 
   @override
   Widget build(BuildContext context) {
+    final themeProvider = Provider.of<ThemeProvider>(context);
     return Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
           colors: [
-            Color(0xFF0A0A1E).withValues(alpha: 0.9),
-            Color(0xFF1A1A3A).withValues(alpha: 0.7),
+            Theme.of(context).scaffoldBackgroundColor.withOpacity(0.9),
+            Theme.of(context).colorScheme.surface.withOpacity(0.7),
           ],
         ),
       ),
       child: Stack(
         children: [
-          Positioned.fill(child: StarField(opacity: 0.3)),
+          Positioned.fill(
+            child:
+                Theme.of(context).scaffoldBackgroundColor ==
+                    const Color(0xFF1C2526)
+                ? const SpookyField()
+                : const StarField(opacity: 0.3),
+          ),
           SafeArea(
             child: Column(
               children: [
@@ -241,7 +256,7 @@ class LedControlsScreenState extends State<LedControlsScreen>
                         style: GoogleFonts.orbitron(
                           fontWeight: FontWeight.bold,
                           fontSize: 22,
-                          color: Colors.white70,
+                          color: Theme.of(context).textTheme.bodyLarge!.color,
                         ),
                       ),
                     ],
@@ -249,9 +264,9 @@ class LedControlsScreenState extends State<LedControlsScreen>
                 ),
                 Expanded(
                   child: isLoading
-                      ? const Center(
+                      ? Center(
                           child: CircularProgressIndicator(
-                            color: Colors.white70,
+                            color: Theme.of(context).primaryColor,
                           ),
                         )
                       : ListView(
@@ -263,12 +278,16 @@ class LedControlsScreenState extends State<LedControlsScreen>
                                 child: Container(
                                   padding: const EdgeInsets.all(12),
                                   decoration: BoxDecoration(
-                                    color: Colors.white.withValues(alpha: 0.2),
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.surface.withOpacity(0.2),
                                     borderRadius: BorderRadius.circular(12),
                                     border: Border.all(
-                                      color: Colors.white.withValues(
-                                        alpha: 0.3,
-                                      ),
+                                      color: Theme.of(context)
+                                          .textTheme
+                                          .bodyLarge!
+                                          .color!
+                                          .withOpacity(0.3),
                                     ),
                                   ),
                                   child: Row(
@@ -282,10 +301,10 @@ class LedControlsScreenState extends State<LedControlsScreen>
                                                   BorderRadius.circular(8),
                                               boxShadow: [
                                                 BoxShadow(
-                                                  color: Colors.white
-                                                      .withValues(
-                                                        alpha:
-                                                            0.4 *
+                                                  color: Theme.of(context)
+                                                      .primaryColor
+                                                      .withOpacity(
+                                                        0.4 *
                                                             _glowAnimation
                                                                 .value,
                                                       ),
@@ -309,9 +328,12 @@ class LedControlsScreenState extends State<LedControlsScreen>
                                                     context,
                                                     error,
                                                     stackTrace,
-                                                  ) => const Icon(
+                                                  ) => Icon(
                                                     Icons.image_not_supported,
-                                                    color: Colors.white70,
+                                                    color: Theme.of(context)
+                                                        .textTheme
+                                                        .bodyLarge!
+                                                        .color,
                                                     size: 100,
                                                   ),
                                             ),
@@ -323,7 +345,9 @@ class LedControlsScreenState extends State<LedControlsScreen>
                                         child: Text(
                                           'Current Mode: ${titleCase(currentMode)}',
                                           style: GoogleFonts.orbitron(
-                                            color: Colors.white70,
+                                            color: Theme.of(
+                                              context,
+                                            ).textTheme.bodyLarge!.color,
                                             fontSize: 18,
                                           ),
                                         ),
@@ -343,20 +367,24 @@ class LedControlsScreenState extends State<LedControlsScreen>
                                     return Container(
                                       padding: const EdgeInsets.all(12),
                                       decoration: BoxDecoration(
-                                        color: Colors.white.withValues(
-                                          alpha: 0.2,
-                                        ),
+                                        color: Theme.of(
+                                          context,
+                                        ).colorScheme.surface.withOpacity(0.2),
                                         borderRadius: BorderRadius.circular(12),
                                         border: Border.all(
-                                          color: Colors.white.withValues(
-                                            alpha: 0.3,
-                                          ),
+                                          color: Theme.of(context)
+                                              .textTheme
+                                              .bodyLarge!
+                                              .color!
+                                              .withOpacity(0.3),
                                         ),
                                       ),
                                       child: Text(
                                         'Select Mode',
                                         style: GoogleFonts.orbitron(
-                                          color: Colors.white70,
+                                          color: Theme.of(
+                                            context,
+                                          ).textTheme.bodyLarge!.color,
                                           fontWeight: FontWeight.bold,
                                           fontSize: 20,
                                         ),
@@ -395,38 +423,43 @@ class LedControlsScreenState extends State<LedControlsScreen>
                                         builder: (context, child) {
                                           return Container(
                                             decoration: BoxDecoration(
-                                              color: Colors.white.withValues(
-                                                alpha: 0.2,
-                                              ),
+                                              color: Theme.of(context)
+                                                  .colorScheme
+                                                  .surface
+                                                  .withOpacity(0.2),
                                               borderRadius:
                                                   BorderRadius.circular(12),
                                               border: Border.all(
                                                 color:
                                                     mode['name'] == currentMode
-                                                    ? Colors.white.withValues(
-                                                        alpha:
+                                                    ? Theme.of(context)
+                                                          .primaryColor
+                                                          .withOpacity(
                                                             0.8 *
-                                                            _glowAnimation
-                                                                .value,
-                                                      )
-                                                    : Colors.white.withValues(
-                                                        alpha: 0.3,
-                                                      ),
+                                                                _glowAnimation
+                                                                    .value,
+                                                          )
+                                                    : Theme.of(context)
+                                                          .textTheme
+                                                          .bodyLarge!
+                                                          .color!
+                                                          .withOpacity(0.3),
                                               ),
                                               boxShadow: [
                                                 BoxShadow(
                                                   color:
                                                       mode['name'] ==
                                                           currentMode
-                                                      ? Colors.white.withValues(
-                                                          alpha:
+                                                      ? Theme.of(context)
+                                                            .primaryColor
+                                                            .withOpacity(
                                                               0.4 *
-                                                              _glowAnimation
-                                                                  .value,
-                                                        )
-                                                      : Colors.black.withValues(
-                                                          alpha: 0.3,
-                                                        ),
+                                                                  _glowAnimation
+                                                                      .value,
+                                                            )
+                                                      : Theme.of(context)
+                                                            .scaffoldBackgroundColor
+                                                            .withOpacity(0.3),
                                                   blurRadius:
                                                       10 * _glowAnimation.value,
                                                   spreadRadius:
@@ -452,11 +485,16 @@ class LedControlsScreenState extends State<LedControlsScreen>
                                                             context,
                                                             error,
                                                             stackTrace,
-                                                          ) => const Icon(
+                                                          ) => Icon(
                                                             Icons
                                                                 .image_not_supported,
                                                             color:
-                                                                Colors.white70,
+                                                                Theme.of(
+                                                                      context,
+                                                                    )
+                                                                    .textTheme
+                                                                    .bodyLarge!
+                                                                    .color,
                                                             size: 120,
                                                           ),
                                                     ),
@@ -470,8 +508,15 @@ class LedControlsScreenState extends State<LedControlsScreen>
                                                     color:
                                                         mode['name'] ==
                                                             currentMode
-                                                        ? Colors.white
-                                                        : Colors.white70,
+                                                        ? Theme.of(context)
+                                                              .textTheme
+                                                              .bodyLarge!
+                                                              .color
+                                                        : Theme.of(context)
+                                                              .textTheme
+                                                              .bodyLarge!
+                                                              .color!
+                                                              .withOpacity(0.7),
                                                     fontSize: 14,
                                                   ),
                                                 ),
