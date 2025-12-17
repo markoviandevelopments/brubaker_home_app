@@ -120,7 +120,7 @@ class _InfoScreenState extends State<InfoScreen> with TickerProviderStateMixin {
                       'Starbase Brubaker\nActive & Thriving',
                       style: GoogleFonts.orbitron(
                         color: theme.textTheme.bodyLarge!.color,
-                        fontWeight: FontWeight.bold,r
+                        fontWeight: FontWeight.bold,
                         fontSize: 28,
                         shadows: [
                           Shadow(
