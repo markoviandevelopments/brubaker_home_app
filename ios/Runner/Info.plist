@@ -53,5 +53,7 @@
 	<string>This app needs microphone access to record video with sound.</string>
 	<key>NSMotionUsageDescription</key>
 	<string>This app uses motion sensors for interactive animations and features.</string>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 </dict>
 </plist>
