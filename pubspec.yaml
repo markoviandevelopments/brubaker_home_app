@@ -1,9 +1,9 @@
 name: brubaker_homeapp
-description: "A new Flutter project."
+description: "Brubaker Home Smart App"
 
 publish_to: 'none'
 
-version: 1.0.0+3
+version: 1.0.0+4
 
 environment:
   sdk: ^3.8.1
