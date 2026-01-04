@@ -6,8 +6,7 @@ import 'package:flutter/scheduler.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
 import 'package:uuid/uuid.dart';
-import 'package:brubaker_homeapp/screens/star_field.dart';
-import 'package:brubaker_homeapp/screens/spooky_field.dart';
+import 'package:brubaker_homeapp/screens/star_field.dart'; // Only StarField remains
 import 'package:provider/provider.dart';
 import 'package:brubaker_homeapp/theme.dart';
 import 'package:animate_do/animate_do.dart';
@@ -55,40 +54,34 @@ class GalacticCodebreakerScreenState extends State<GalacticCodebreakerScreen> {
     super.dispose();
   }
 
-  List<String> _getIcons(bool isSpooky) {
-    return isSpooky
-        ? ['🦇', '👻', '🎃', '💀', '🕸️', '🕷️'] // Spooky emojis
-        : ['🌑', '⭐', '🪐', '☄️', '🌌', '🚀']; // Galactic emojis
+  // Always galactic icons
+  List<String> _getIcons() {
+    return ['🌑', '⭐', '🪐', '☄️', '🌌', '🚀'];
   }
 
-  Map<String, Color> _getColors(BuildContext context, bool isSpooky) {
+  // Galactic colors only
+  Map<String, Color> _getColors(BuildContext context) {
     return {
       'background': Theme.of(context).scaffoldBackgroundColor,
       'surface': Theme.of(context).colorScheme.surface,
       'primary': Theme.of(context).primaryColor,
       'secondary': Theme.of(context).colorScheme.secondary,
       'text': Theme.of(context).textTheme.bodyLarge!.color!,
-      'error': isSpooky ? Colors.red[900]! : Colors.red,
-      'success': isSpooky ? Colors.orange[900]! : Colors.green,
-      'pending': isSpooky ? Colors.purple[700]! : Colors.orange,
+      'error': Colors.red,
+      'success': Colors.green,
+      'pending': Colors.orange,
     };
   }
 
   Future<void> _showRoleDialog() async {
-    final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
-    final colors = _getColors(
-      context,
-      Theme.of(context).scaffoldBackgroundColor == const Color(0xFF1C2526),
-    );
+    final colors = _getColors(context);
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: FadeIn(
           duration: const Duration(milliseconds: 500),
           child: Text(
-            Theme.of(context).scaffoldBackgroundColor == const Color(0xFF1C2526)
-                ? 'Haunted Codebreaker'
-                : 'Galactic Codebreaker',
+            'Galactic Codebreaker',
             style: GoogleFonts.orbitron(
               color: colors['text'],
               shadows: [
@@ -167,27 +160,17 @@ class GalacticCodebreakerScreenState extends State<GalacticCodebreakerScreen> {
   }
 
   void _startSinglePlayer() {
-    final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
     setState(() {
       isSinglePlayer = true;
       isCreator = false;
       isMyTurn = true;
-      secretCode = List.generate(
-        4,
-        (_) => _getIcons(
-          Theme.of(context).scaffoldBackgroundColor == const Color(0xFF1C2526),
-        )[random.nextInt(6)],
-      );
+      secretCode = List.generate(4, (_) => _getIcons()[random.nextInt(6)]);
       gamePin = null;
     });
   }
 
   Future<void> _showSetCodeDialog() async {
-    final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
-    final colors = _getColors(
-      context,
-      Theme.of(context).scaffoldBackgroundColor == const Color(0xFF1C2526),
-    );
+    final colors = _getColors(context);
     List<String> tempCode = ['', '', '', ''];
     showDialog(
       context: context,
@@ -198,10 +181,7 @@ class GalacticCodebreakerScreenState extends State<GalacticCodebreakerScreen> {
               title: FadeIn(
                 duration: const Duration(milliseconds: 500),
                 child: Text(
-                  Theme.of(context).scaffoldBackgroundColor ==
-                          const Color(0xFF1C2526)
-                      ? 'Set Haunted Code'
-                      : 'Set Secret Cosmic Code',
+                  'Set Secret Cosmic Code',
                   style: GoogleFonts.orbitron(
                     color: colors['text'],
                     shadows: [
@@ -229,21 +209,17 @@ class GalacticCodebreakerScreenState extends State<GalacticCodebreakerScreen> {
                             tempCode[i] = value!;
                           });
                         },
-                        items:
-                            _getIcons(
-                                  Theme.of(context).scaffoldBackgroundColor ==
-                                      const Color(0xFF1C2526),
-                                )
-                                .map(
-                                  (icon) => DropdownMenuItem(
-                                    value: icon,
-                                    child: Text(
-                                      icon,
-                                      style: TextStyle(fontSize: 24),
-                                    ),
-                                  ),
-                                )
-                                .toList(),
+                        items: _getIcons()
+                            .map(
+                              (icon) => DropdownMenuItem(
+                                value: icon,
+                                child: Text(
+                                  icon,
+                                  style: const TextStyle(fontSize: 24),
+                                ),
+                              ),
+                            )
+                            .toList(),
                         dropdownColor: colors['surface']!.withOpacity(0.9),
                         style: TextStyle(color: colors['text'], fontSize: 24),
                         underline: Container(
@@ -284,10 +260,7 @@ class GalacticCodebreakerScreenState extends State<GalacticCodebreakerScreen> {
   }
 
   Future<void> _createGame(List<String> code) async {
-    final colors = _getColors(
-      context,
-      Theme.of(context).scaffoldBackgroundColor == const Color(0xFF1C2526),
-    );
+    final colors = _getColors(context);
     try {
       final response = await http.post(
         Uri.parse('$serverUrl/create-game'),
@@ -351,10 +324,7 @@ class GalacticCodebreakerScreenState extends State<GalacticCodebreakerScreen> {
   }
 
   Future<void> _joinGame(String pin) async {
-    final colors = _getColors(
-      context,
-      Theme.of(context).scaffoldBackgroundColor == const Color(0xFF1C2526),
-    );
+    final colors = _getColors(context);
     try {
       final response = await http.post(
         Uri.parse('$serverUrl/join-game'),
@@ -463,10 +433,7 @@ class GalacticCodebreakerScreenState extends State<GalacticCodebreakerScreen> {
     if (isSinglePlayer) {
       _provideLocalFeedback();
     } else {
-      final colors = _getColors(
-        context,
-        Theme.of(context).scaffoldBackgroundColor == const Color(0xFF1C2526),
-      );
+      final colors = _getColors(context);
       try {
         final response = await http.post(
           Uri.parse('$serverUrl/submit-guess'),
@@ -563,10 +530,7 @@ class GalacticCodebreakerScreenState extends State<GalacticCodebreakerScreen> {
   }
 
   Future<void> _submitFeedback(int exact, int partial) async {
-    final colors = _getColors(
-      context,
-      Theme.of(context).scaffoldBackgroundColor == const Color(0xFF1C2526),
-    );
+    final colors = _getColors(context);
     try {
       final response = await http.post(
         Uri.parse('$serverUrl/submit-feedback'),
@@ -661,43 +625,25 @@ class GalacticCodebreakerScreenState extends State<GalacticCodebreakerScreen> {
   }
 
   void _showSummaryDialog() {
-    final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
-    final colors = _getColors(
-      context,
-      Theme.of(context).scaffoldBackgroundColor == const Color(0xFF1C2526),
-    );
+    final colors = _getColors(context);
     String message;
     bool won =
         guessHistory.isNotEmpty && guessHistory.last['feedback']['exact'] == 4;
     if (isCreator) {
       if (won) {
-        message =
-            Theme.of(context).scaffoldBackgroundColor == const Color(0xFF1C2526)
-            ? 'The ghoul cracked your haunted code!'
-            : 'The guesser cracked your cosmic code!';
+        message = 'The guesser cracked your cosmic code!';
       } else {
-        message =
-            Theme.of(context).scaffoldBackgroundColor == const Color(0xFF1C2526)
-            ? 'The ghoul ran out of guesses - your crypt prevails!'
-            : 'The guesser ran out of guesses - you win!';
+        message = 'The guesser ran out of guesses - you win!';
       }
     } else {
       if (won) {
         message =
-            Theme.of(context).scaffoldBackgroundColor == const Color(0xFF1C2526)
-            ? 'You’ve broken the haunted code in ${guessHistory.length} guesses!'
-            : 'Congratulations! You cracked the code in ${guessHistory.length} guesses!';
+            'Congratulations! You cracked the code in ${guessHistory.length} guesses!';
       } else {
-        message =
-            Theme.of(context).scaffoldBackgroundColor == const Color(0xFF1C2526)
-            ? 'Out of guesses! The spirits outwitted you.'
-            : 'Out of guesses! Better luck next time.';
+        message = 'Out of guesses! Better luck next time.';
       }
       if (!isSinglePlayer && _wasFeedbackHonest == false) {
-        message +=
-            Theme.of(context).scaffoldBackgroundColor == const Color(0xFF1C2526)
-            ? '\nBut the spirits were dishonest - cursed play!'
-            : '\nBut the feedback was dishonest - no fair play!';
+        message += '\nBut the feedback was dishonest - no fair play!';
       }
     }
     showDialog(
@@ -739,11 +685,7 @@ class GalacticCodebreakerScreenState extends State<GalacticCodebreakerScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final themeProvider = Provider.of<ThemeProvider>(context);
-    final colors = _getColors(
-      context,
-      Theme.of(context).scaffoldBackgroundColor == const Color(0xFF1C2526),
-    );
+    final colors = _getColors(context);
     return Scaffold(
       body: Container(
         decoration: BoxDecoration(
@@ -755,13 +697,7 @@ class GalacticCodebreakerScreenState extends State<GalacticCodebreakerScreen> {
         ),
         child: Stack(
           children: [
-            Positioned.fill(
-              child:
-                  Theme.of(context).scaffoldBackgroundColor ==
-                      const Color(0xFF1C2526)
-                  ? const SpookyField()
-                  : const StarField(opacity: 0.4),
-            ),
+            const Positioned.fill(child: StarField(opacity: 0.4)),
             SafeArea(
               child: Column(
                 children: [
@@ -1062,28 +998,20 @@ class GalacticCodebreakerScreenState extends State<GalacticCodebreakerScreen> {
   }
 
   Widget _buildGuessSlot(int index) {
-    final themeProvider = Provider.of<ThemeProvider>(context);
-    final colors = _getColors(
-      context,
-      Theme.of(context).scaffoldBackgroundColor == const Color(0xFF1C2526),
-    );
+    final colors = _getColors(context);
     return Padding(
       padding: const EdgeInsets.all(8.0),
       child: DropdownButton<String>(
         value: currentGuess[index].isEmpty ? null : currentGuess[index],
         onChanged: (value) => setState(() => currentGuess[index] = value!),
-        items:
-            _getIcons(
-                  Theme.of(context).scaffoldBackgroundColor ==
-                      const Color(0xFF1C2526),
-                )
-                .map(
-                  (icon) => DropdownMenuItem(
-                    value: icon,
-                    child: Text(icon, style: TextStyle(fontSize: 24)),
-                  ),
-                )
-                .toList(),
+        items: _getIcons()
+            .map(
+              (icon) => DropdownMenuItem(
+                value: icon,
+                child: Text(icon, style: const TextStyle(fontSize: 24)),
+              ),
+            )
+            .toList(),
         dropdownColor: colors['surface']!.withOpacity(0.9),
         style: TextStyle(color: colors['text'], fontSize: 24),
         underline: Container(
@@ -1095,11 +1023,7 @@ class GalacticCodebreakerScreenState extends State<GalacticCodebreakerScreen> {
   }
 
   void _showPinShareDialog(String pin) {
-    final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
-    final colors = _getColors(
-      context,
-      Theme.of(context).scaffoldBackgroundColor == const Color(0xFF1C2526),
-    );
+    final colors = _getColors(context);
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -1112,9 +1036,7 @@ class GalacticCodebreakerScreenState extends State<GalacticCodebreakerScreen> {
           ),
         ),
         content: Text(
-          Theme.of(context).scaffoldBackgroundColor == const Color(0xFF1C2526)
-              ? 'Whisper this PIN to summon your opponent!'
-              : 'Give this to your opponent to join and guess!',
+          'Give this to your opponent to join and guess!',
           style: GoogleFonts.orbitron(color: colors['text']!.withOpacity(0.7)),
         ),
         actions: [

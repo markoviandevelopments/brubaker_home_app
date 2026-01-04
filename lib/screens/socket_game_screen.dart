@@ -1,13 +1,15 @@
-import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
-import 'package:animate_do/animate_do.dart' as animate_do;
-import 'dart:math';
 import 'dart:async';
+import 'dart:math';
 import 'dart:ui';
+import 'package:flutter/material.dart';
+import 'package:animate_do/animate_do.dart' as animate_do;
+import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter/services.dart';
+import 'package:sensors_plus/sensors_plus.dart';
+import 'dart:io';
+import 'package:brubaker_homeapp/screens/star_field.dart';
 import 'package:provider/provider.dart';
 import 'package:brubaker_homeapp/theme.dart';
-import 'package:brubaker_homeapp/screens/star_field.dart';
-import 'package:brubaker_homeapp/screens/spooky_field.dart';
 
 enum Direction { none, up, down, left, right }
 
@@ -53,16 +55,14 @@ class SocketGameScreenState extends State<SocketGameScreen>
   void initState() {
     super.initState();
     _playerScale = 1.0;
-    // Initialize non-theme-dependent state
     hasCollectible = List.generate(10, (_) => List.generate(10, (_) => false));
     hasObstacle = List.generate(10, (_) => List.generate(10, (_) => false));
-    // Defer gridColors initialization to didChangeDependencies
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // Initialize theme-dependent state
+    // Galactic colors only
     gridColors = List.generate(
       10,
       (_) => List.generate(10, (_) => _getGridColor()),
@@ -70,34 +70,26 @@ class SocketGameScreenState extends State<SocketGameScreen>
     _initializeGame();
   }
 
-  Map<String, Color> _getColors(BuildContext context, bool isSpooky) {
+  Color _getGridColor() {
+    final baseColor = Theme.of(context).colorScheme.surface;
+    return baseColor.withOpacity(0.2 + random.nextDouble() * 0.1);
+  }
+
+  Map<String, Color> _getColors(BuildContext context) {
     return {
       'background': Theme.of(context).scaffoldBackgroundColor,
       'surface': Theme.of(context).colorScheme.surface,
       'primary': Theme.of(context).primaryColor,
       'secondary': Theme.of(context).colorScheme.secondary,
       'text': Theme.of(context).textTheme.bodyLarge!.color!,
-      'ghost': isSpooky ? Colors.red[900]! : Colors.red,
-      'collectible': isSpooky ? Colors.orange[900]! : Colors.yellowAccent,
-      'obstacle': isSpooky ? Colors.purple[900]! : Colors.red,
+      'ghost': Colors.red,
+      'collectible': Colors.yellowAccent,
+      'obstacle': Colors.red,
     };
   }
 
-  Map<String, dynamic> _getIcons(bool isSpooky) {
-    return {
-      'collectible': isSpooky ? '🍬' : '⭐',
-      'ghost': isSpooky ? '👻' : Icons.adb,
-      'player': isSpooky ? '😺' : 'assets/cat.png',
-    };
-  }
-
-  Color _getGridColor() {
-    final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
-    final baseColor =
-        Theme.of(context).scaffoldBackgroundColor == const Color(0xFF1C2526)
-        ? Colors.grey[800]!
-        : Theme.of(context).colorScheme.surface;
-    return baseColor.withOpacity(0.2 + random.nextDouble() * 0.1);
+  Map<String, dynamic> _getIcons() {
+    return {'collectible': '⭐', 'ghost': Icons.adb, 'player': 'assets/cat.png'};
   }
 
   void _initializeGame() {
@@ -155,10 +147,7 @@ class SocketGameScreenState extends State<SocketGameScreen>
 
   void _spawnGhosts(int count) {
     int placed = 0;
-    final colors = _getColors(
-      context,
-      Theme.of(context).scaffoldBackgroundColor == const Color(0xFF1C2526),
-    );
+    final colors = _getColors(context);
     while (placed < count) {
       int x = random.nextInt(10);
       int y = random.nextInt(10);
@@ -304,11 +293,7 @@ class SocketGameScreenState extends State<SocketGameScreen>
   }
 
   void _showGameOverDialog() {
-    final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
-    final colors = _getColors(
-      context,
-      Theme.of(context).scaffoldBackgroundColor == const Color(0xFF1C2526),
-    );
+    final colors = _getColors(context);
     if (!mounted) return;
     showDialog(
       context: context,
@@ -336,10 +321,7 @@ class SocketGameScreenState extends State<SocketGameScreen>
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    Theme.of(context).scaffoldBackgroundColor ==
-                            const Color(0xFF1C2526)
-                        ? 'Haunted Defeat!'
-                        : 'Game Over',
+                    'Game Over',
                     style: GoogleFonts.orbitron(
                       color: colors['text'],
                       fontSize: 24,
@@ -488,21 +470,13 @@ class SocketGameScreenState extends State<SocketGameScreen>
 
   @override
   Widget build(BuildContext context) {
-    final themeProvider = Provider.of<ThemeProvider>(context);
-    final colors = _getColors(
-      context,
-      Theme.of(context).scaffoldBackgroundColor == const Color(0xFF1C2526),
-    );
-    final icons = _getIcons(
-      Theme.of(context).scaffoldBackgroundColor == const Color(0xFF1C2526),
-    );
+    final colors = _getColors(context);
+    final icons = _getIcons();
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(
         title: Text(
-          Theme.of(context).scaffoldBackgroundColor == const Color(0xFF1C2526)
-              ? 'Haunted Cat Quest'
-              : 'Galactic Cat Pacventure',
+          'Galactic Cat Pacventure',
           style: GoogleFonts.orbitron(
             fontSize: 22,
             fontWeight: FontWeight.bold,
@@ -537,13 +511,7 @@ class SocketGameScreenState extends State<SocketGameScreen>
         ),
         child: Stack(
           children: [
-            Positioned.fill(
-              child:
-                  Theme.of(context).scaffoldBackgroundColor ==
-                      const Color(0xFF1C2526)
-                  ? const SpookyField()
-                  : const StarField(opacity: 0.4),
-            ),
+            const Positioned.fill(child: StarField(opacity: 0.4)),
             Positioned.fill(
               child: _NebulaBackground(
                 primaryColor: colors['primary']!,
@@ -680,12 +648,10 @@ class SocketGameScreenState extends State<SocketGameScreen>
                                               duration: const Duration(
                                                 milliseconds: 600,
                                               ),
-                                              child: Text(
-                                                icons['ghost'] as String,
-                                                style: TextStyle(
-                                                  fontSize: 15,
-                                                  color: ghostHere.color,
-                                                ),
+                                              child: Icon(
+                                                icons['ghost'] as IconData,
+                                                color: ghostHere.color,
+                                                size: 15,
                                               ),
                                             )
                                           : isPlayer
@@ -767,10 +733,7 @@ class SocketGameScreenState extends State<SocketGameScreen>
                   Padding(
                     padding: const EdgeInsets.all(16.0),
                     child: Text(
-                      Theme.of(context).scaffoldBackgroundColor ==
-                              const Color(0xFF1C2526)
-                          ? 'Collect candy 🍬, dodge ghosts 👻!'
-                          : 'Collect stars ⭐, dodge enemies!',
+                      'Collect stars ⭐, dodge enemies!',
                       style: GoogleFonts.orbitron(
                         fontSize: 16,
                         color: colors['text']!.withOpacity(0.7),

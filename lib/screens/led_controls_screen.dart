@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:google_fonts/google_fonts.dart';
-import 'package:brubaker_homeapp/screens/star_field.dart';
-import 'package:brubaker_homeapp/screens/spooky_field.dart';
+import 'package:brubaker_homeapp/screens/star_field.dart'; // Only StarField
 import 'package:provider/provider.dart';
 import 'package:brubaker_homeapp/theme.dart';
 import 'dart:convert';
@@ -219,7 +218,6 @@ class LedControlsScreenState extends State<LedControlsScreen>
 
   @override
   Widget build(BuildContext context) {
-    final themeProvider = Provider.of<ThemeProvider>(context);
     return Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(
@@ -233,12 +231,8 @@ class LedControlsScreenState extends State<LedControlsScreen>
       ),
       child: Stack(
         children: [
-          Positioned.fill(
-            child:
-                Theme.of(context).scaffoldBackgroundColor ==
-                    const Color(0xFF1C2526)
-                ? const SpookyField()
-                : const StarField(opacity: 0.3),
+          const Positioned.fill(
+            child: StarField(opacity: 0.3), // Always galactic background
           ),
           SafeArea(
             child: Column(

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:brubaker_homeapp/screens/star_field.dart';
-import 'package:brubaker_homeapp/screens/spooky_field.dart';
+import 'package:brubaker_homeapp/screens/star_field.dart'; // Only StarField remains
 import 'package:provider/provider.dart';
 import 'package:brubaker_homeapp/theme.dart';
 import 'dart:io';
@@ -244,68 +243,43 @@ class MinesweeperScreenState extends State<MinesweeperScreen> {
     }
   }
 
-  Color _getCellColor(BuildContext context, dynamic value, bool isSpooky) {
+  // Galactic colors only
+  Color _getCellColor(BuildContext context, dynamic value) {
     if (value == 'hidden') {
-      return isSpooky
-          ? Colors.grey[800]!.withOpacity(0.9) // Ghostly gray
-          : Theme.of(context).colorScheme.surface.withOpacity(0.9);
+      return Theme.of(context).colorScheme.surface.withOpacity(0.9);
     } else if (value == 'flag') {
-      return isSpooky
-          ? Colors.orange[900]!.withOpacity(0.3) // Eerie orange
-          : Theme.of(context).primaryColor.withOpacity(0.3);
+      return Theme.of(context).primaryColor.withOpacity(0.3);
     } else if (value == 'mine') {
-      return isSpooky
-          ? Colors.red[900]!.withOpacity(0.8) // Blood-red
-          : Theme.of(context).colorScheme.secondary.withOpacity(0.8);
+      return Theme.of(context).colorScheme.secondary.withOpacity(0.8);
     } else {
       return Theme.of(context).scaffoldBackgroundColor.withOpacity(0.2);
     }
   }
 
-  Color _getTextColor(BuildContext context, dynamic value, bool isSpooky) {
+  // Galactic number colors only
+  Color _getTextColor(BuildContext context, dynamic value) {
     if (value is int && value > 0) {
-      return isSpooky
-          ? [
-              Colors.white,
-              Colors.orangeAccent, // Spooky orange
-              Colors.purple[700]!, // Deep purple
-              Colors.red[900]!, // Blood-red
-              Colors.grey[300]!, // Ghostly silver
-              Colors.orange[900]!,
-              Colors.purple[900]!,
-              Colors.white,
-              Colors.grey[400]!,
-            ][value.clamp(0, 8)]
-          : [
-              Colors.white,
-              Theme.of(context).primaryColor,
-              Colors.purple[700]!,
-              Theme.of(context).colorScheme.secondary,
-              Colors.white70,
-              Theme.of(context).primaryColor,
-              Colors.purple[700]!,
-              Colors.white,
-              Colors.white54,
-            ][value.clamp(0, 8)];
+      return [
+        Colors.white,
+        Theme.of(context).primaryColor,
+        Colors.purple[700]!,
+        Theme.of(context).colorScheme.secondary,
+        Colors.white70,
+        Theme.of(context).primaryColor,
+        Colors.purple[700]!,
+        Colors.white,
+        Colors.white54,
+      ][value.clamp(0, 8)];
     }
     return Theme.of(context).textTheme.bodyLarge!.color!;
   }
 
   Widget _buildCell(int row, int col) {
-    final themeProvider = Provider.of<ThemeProvider>(context);
     final value = _board[row][col];
     IconData? icon;
     String text = '';
-    Color cellColor = _getCellColor(
-      context,
-      value,
-      Theme.of(context).scaffoldBackgroundColor == const Color(0xFF1C2526),
-    );
-    Color textColor = _getTextColor(
-      context,
-      value,
-      Theme.of(context).scaffoldBackgroundColor == const Color(0xFF1C2526),
-    );
+    Color cellColor = _getCellColor(context, value);
+    Color textColor = _getTextColor(context, value);
     double opacity = value is int ? 0.2 : 0.9;
 
     if (value == 'flag') {
@@ -348,11 +322,7 @@ class MinesweeperScreenState extends State<MinesweeperScreen> {
                 borderRadius: BorderRadius.circular(8),
                 boxShadow: [
                   BoxShadow(
-                    color:
-                        Theme.of(context).scaffoldBackgroundColor ==
-                            const Color(0xFF1C2526)
-                        ? Colors.purple[900]!.withOpacity(0.3)
-                        : Theme.of(context).primaryColor.withOpacity(0.3),
+                    color: Theme.of(context).primaryColor.withOpacity(0.3),
                     blurRadius: 6,
                     spreadRadius: 2,
                   ),
@@ -361,11 +331,7 @@ class MinesweeperScreenState extends State<MinesweeperScreen> {
               child: Center(
                 child: icon != null
                     ? Flash(
-                        duration:
-                            Theme.of(context).scaffoldBackgroundColor ==
-                                const Color(0xFF1C2526)
-                            ? const Duration(milliseconds: 600)
-                            : const Duration(milliseconds: 200),
+                        duration: const Duration(milliseconds: 200),
                         child: Icon(icon, color: textColor, size: 28),
                       )
                     : Text(
@@ -385,15 +351,10 @@ class MinesweeperScreenState extends State<MinesweeperScreen> {
   }
 
   Widget _buildStatusMessage() {
-    final themeProvider = Provider.of<ThemeProvider>(context);
     String message = _isWinStatus()
-        ? (Theme.of(context).scaffoldBackgroundColor == const Color(0xFF1C2526)
-              ? 'Haunted Victory!'
-              : 'Galactic Victory!')
+        ? 'Galactic Victory!'
         : _status == 'lose'
-        ? (Theme.of(context).scaffoldBackgroundColor == const Color(0xFF1C2526)
-              ? 'Graveyard Defeat!'
-              : 'Black Hole Defeat!')
+        ? 'Black Hole Defeat!'
         : 'Mines: $_mines';
     Color bgColor = Theme.of(context).scaffoldBackgroundColor.withOpacity(0.3);
 
@@ -419,11 +380,7 @@ class MinesweeperScreenState extends State<MinesweeperScreen> {
               ),
               boxShadow: [
                 BoxShadow(
-                  color:
-                      Theme.of(context).scaffoldBackgroundColor ==
-                          const Color(0xFF1C2526)
-                      ? Colors.purple[900]!.withOpacity(0.3)
-                      : Theme.of(context).primaryColor.withOpacity(0.3),
+                  color: Theme.of(context).primaryColor.withOpacity(0.3),
                   blurRadius: 8,
                   spreadRadius: 3,
                 ),
@@ -437,11 +394,7 @@ class MinesweeperScreenState extends State<MinesweeperScreen> {
                 color: Theme.of(context).textTheme.bodyLarge!.color,
                 shadows: [
                   Shadow(
-                    color:
-                        Theme.of(context).scaffoldBackgroundColor ==
-                            const Color(0xFF1C2526)
-                        ? Colors.orange[900]!.withOpacity(0.4)
-                        : Theme.of(context).primaryColor.withOpacity(0.4),
+                    color: Theme.of(context).primaryColor.withOpacity(0.4),
                     blurRadius: 8,
                     offset: const Offset(0, 2),
                   ),
@@ -456,7 +409,6 @@ class MinesweeperScreenState extends State<MinesweeperScreen> {
   }
 
   Widget _buildWinOverlay() {
-    final themeProvider = Provider.of<ThemeProvider>(context);
     if (!_showWinOverlay) return const SizedBox.shrink();
     return BounceInDown(
       duration: const Duration(milliseconds: 600),
@@ -479,19 +431,12 @@ class MinesweeperScreenState extends State<MinesweeperScreen> {
                         Pulse(
                           duration: const Duration(milliseconds: 1200),
                           child: Text(
-                            Theme.of(context).scaffoldBackgroundColor ==
-                                    const Color(0xFF1C2526)
-                                ? 'GHOSTLY TRIUMPH!'
-                                : 'GALACTIC VICTORY!',
+                            'GALACTIC VICTORY!',
                             textAlign: TextAlign.center,
                             style: GoogleFonts.orbitron(
                               fontSize: 48,
                               fontWeight: FontWeight.bold,
-                              color:
-                                  Theme.of(context).scaffoldBackgroundColor ==
-                                      const Color(0xFF1C2526)
-                                  ? Colors.orange[900]
-                                  : Theme.of(context).primaryColor,
+                              color: Theme.of(context).primaryColor,
                               shadows: [
                                 Shadow(
                                   color: Theme.of(
@@ -501,15 +446,9 @@ class MinesweeperScreenState extends State<MinesweeperScreen> {
                                   offset: const Offset(0, 8),
                                 ),
                                 Shadow(
-                                  color:
-                                      Theme.of(
-                                            context,
-                                          ).scaffoldBackgroundColor ==
-                                          const Color(0xFF1C2526)
-                                      ? Colors.purple[900]!.withOpacity(0.5)
-                                      : Theme.of(
-                                          context,
-                                        ).primaryColor.withOpacity(0.5),
+                                  color: Theme.of(
+                                    context,
+                                  ).primaryColor.withOpacity(0.5),
                                   blurRadius: 10,
                                   offset: const Offset(0, -2),
                                 ),
@@ -534,15 +473,9 @@ class MinesweeperScreenState extends State<MinesweeperScreen> {
                                     }
                                   },
                                   style: ElevatedButton.styleFrom(
-                                    backgroundColor:
-                                        Theme.of(
-                                              context,
-                                            ).scaffoldBackgroundColor ==
-                                            const Color(0xFF1C2526)
-                                        ? Colors.purple[900]!.withOpacity(0.5)
-                                        : Theme.of(
-                                            context,
-                                          ).primaryColor.withOpacity(0.5),
+                                    backgroundColor: Theme.of(
+                                      context,
+                                    ).primaryColor.withOpacity(0.5),
                                     padding: const EdgeInsets.symmetric(
                                       vertical: 16,
                                       horizontal: 24,
@@ -550,17 +483,9 @@ class MinesweeperScreenState extends State<MinesweeperScreen> {
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(15),
                                       side: BorderSide(
-                                        color:
-                                            Theme.of(
-                                                  context,
-                                                ).scaffoldBackgroundColor ==
-                                                const Color(0xFF1C2526)
-                                            ? Colors.orange[900]!.withOpacity(
-                                                0.7,
-                                              )
-                                            : Theme.of(
-                                                context,
-                                              ).primaryColor.withOpacity(0.7),
+                                        color: Theme.of(
+                                          context,
+                                        ).primaryColor.withOpacity(0.7),
                                       ),
                                     ),
                                     elevation: 12,
@@ -575,17 +500,9 @@ class MinesweeperScreenState extends State<MinesweeperScreen> {
                                       ).textTheme.bodyLarge!.color,
                                       shadows: [
                                         Shadow(
-                                          color:
-                                              Theme.of(
-                                                    context,
-                                                  ).scaffoldBackgroundColor ==
-                                                  const Color(0xFF1C2526)
-                                              ? Colors.orange[900]!.withOpacity(
-                                                  0.6,
-                                                )
-                                              : Theme.of(
-                                                  context,
-                                                ).primaryColor.withOpacity(0.6),
+                                          color: Theme.of(
+                                            context,
+                                          ).primaryColor.withOpacity(0.6),
                                           blurRadius: 8,
                                           offset: const Offset(0, 2),
                                         ),
@@ -679,7 +596,6 @@ class MinesweeperScreenState extends State<MinesweeperScreen> {
   }
 
   Widget _buildLoseOverlay() {
-    final themeProvider = Provider.of<ThemeProvider>(context);
     if (!_showLoseOverlay) return const SizedBox.shrink();
     return BounceInDown(
       duration: const Duration(milliseconds: 600),
@@ -704,19 +620,12 @@ class MinesweeperScreenState extends State<MinesweeperScreen> {
                           child: Flash(
                             duration: const Duration(milliseconds: 300),
                             child: Text(
-                              Theme.of(context).scaffoldBackgroundColor ==
-                                      const Color(0xFF1C2526)
-                                  ? 'WITCHES’ CURSE!'
-                                  : 'BLACK HOLE DEFEAT!',
+                              'BLACK HOLE DEFEAT!',
                               textAlign: TextAlign.center,
                               style: GoogleFonts.orbitron(
                                 fontSize: 48,
                                 fontWeight: FontWeight.bold,
-                                color:
-                                    Theme.of(context).scaffoldBackgroundColor ==
-                                        const Color(0xFF1C2526)
-                                    ? Colors.red[900]
-                                    : Theme.of(context).colorScheme.secondary,
+                                color: Theme.of(context).colorScheme.secondary,
                                 shadows: [
                                   Shadow(
                                     color: Theme.of(
@@ -726,16 +635,9 @@ class MinesweeperScreenState extends State<MinesweeperScreen> {
                                     offset: const Offset(0, 8),
                                   ),
                                   Shadow(
-                                    color:
-                                        Theme.of(
-                                              context,
-                                            ).scaffoldBackgroundColor ==
-                                            const Color(0xFF1C2526)
-                                        ? Colors.purple[900]!.withOpacity(0.5)
-                                        : Theme.of(context)
-                                              .colorScheme
-                                              .secondary
-                                              .withOpacity(0.5),
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.secondary.withOpacity(0.5),
                                     blurRadius: 10,
                                     offset: const Offset(0, -2),
                                   ),
@@ -761,16 +663,9 @@ class MinesweeperScreenState extends State<MinesweeperScreen> {
                                     }
                                   },
                                   style: ElevatedButton.styleFrom(
-                                    backgroundColor:
-                                        Theme.of(
-                                              context,
-                                            ).scaffoldBackgroundColor ==
-                                            const Color(0xFF1C2526)
-                                        ? Colors.red[900]!.withOpacity(0.5)
-                                        : Theme.of(context)
-                                              .colorScheme
-                                              .secondary
-                                              .withOpacity(0.5),
+                                    backgroundColor: Theme.of(
+                                      context,
+                                    ).colorScheme.secondary.withOpacity(0.5),
                                     padding: const EdgeInsets.symmetric(
                                       vertical: 16,
                                       horizontal: 24,
@@ -778,18 +673,10 @@ class MinesweeperScreenState extends State<MinesweeperScreen> {
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(15),
                                       side: BorderSide(
-                                        color:
-                                            Theme.of(
-                                                  context,
-                                                ).scaffoldBackgroundColor ==
-                                                const Color(0xFF1C2526)
-                                            ? Colors.orange[900]!.withOpacity(
-                                                0.7,
-                                              )
-                                            : Theme.of(context)
-                                                  .colorScheme
-                                                  .secondary
-                                                  .withOpacity(0.7),
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .secondary
+                                            .withOpacity(0.7),
                                       ),
                                     ),
                                     elevation: 12,
@@ -804,18 +691,10 @@ class MinesweeperScreenState extends State<MinesweeperScreen> {
                                       ).textTheme.bodyLarge!.color,
                                       shadows: [
                                         Shadow(
-                                          color:
-                                              Theme.of(
-                                                    context,
-                                                  ).scaffoldBackgroundColor ==
-                                                  const Color(0xFF1C2526)
-                                              ? Colors.orange[900]!.withOpacity(
-                                                  0.6,
-                                                )
-                                              : Theme.of(context)
-                                                    .colorScheme
-                                                    .secondary
-                                                    .withOpacity(0.6),
+                                          color: Theme.of(context)
+                                              .colorScheme
+                                              .secondary
+                                              .withOpacity(0.6),
                                           blurRadius: 8,
                                           offset: const Offset(0, 2),
                                         ),
@@ -909,7 +788,6 @@ class MinesweeperScreenState extends State<MinesweeperScreen> {
   }
 
   Widget _buildErrorOverlay() {
-    final themeProvider = Provider.of<ThemeProvider>(context);
     if (_errorMessage.isEmpty) return const SizedBox.shrink();
     return FadeIn(
       duration: const Duration(milliseconds: 500),
@@ -924,35 +802,22 @@ class MinesweeperScreenState extends State<MinesweeperScreen> {
                 gradient: LinearGradient(
                   colors: [
                     Theme.of(context).scaffoldBackgroundColor.withOpacity(0.5),
-                    Theme.of(context).scaffoldBackgroundColor ==
-                            const Color(0xFF1C2526)
-                        ? Colors.red[900]!.withOpacity(0.2)
-                        : Theme.of(
-                            context,
-                          ).colorScheme.secondary.withOpacity(0.2),
+                    Theme.of(context).colorScheme.secondary.withOpacity(0.2),
                   ],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
                 borderRadius: BorderRadius.circular(15),
                 border: Border.all(
-                  color:
-                      Theme.of(context).scaffoldBackgroundColor ==
-                          const Color(0xFF1C2526)
-                      ? Colors.orange[900]!.withOpacity(0.6)
-                      : Theme.of(
-                          context,
-                        ).colorScheme.secondary.withOpacity(0.6),
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.secondary.withOpacity(0.6),
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color:
-                        Theme.of(context).scaffoldBackgroundColor ==
-                            const Color(0xFF1C2526)
-                        ? Colors.purple[900]!.withOpacity(0.3)
-                        : Theme.of(
-                            context,
-                          ).colorScheme.secondary.withOpacity(0.3),
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.secondary.withOpacity(0.3),
                     blurRadius: 8,
                     spreadRadius: 3,
                   ),
@@ -964,11 +829,7 @@ class MinesweeperScreenState extends State<MinesweeperScreen> {
                   Text(
                     _errorMessage,
                     style: GoogleFonts.orbitron(
-                      color:
-                          Theme.of(context).scaffoldBackgroundColor ==
-                              const Color(0xFF1C2526)
-                          ? Colors.red[900]
-                          : Theme.of(context).colorScheme.secondary,
+                      color: Theme.of(context).colorScheme.secondary,
                       fontSize: 20,
                       fontWeight: FontWeight.w600,
                       shadows: [
@@ -993,13 +854,9 @@ class MinesweeperScreenState extends State<MinesweeperScreen> {
                           child: ElevatedButton(
                             onPressed: _connectToServer,
                             style: ElevatedButton.styleFrom(
-                              backgroundColor:
-                                  Theme.of(context).scaffoldBackgroundColor ==
-                                      const Color(0xFF1C2526)
-                                  ? Colors.red[900]!.withOpacity(0.4)
-                                  : Theme.of(
-                                      context,
-                                    ).colorScheme.secondary.withOpacity(0.4),
+                              backgroundColor: Theme.of(
+                                context,
+                              ).colorScheme.secondary.withOpacity(0.4),
                               padding: const EdgeInsets.symmetric(
                                 vertical: 14,
                                 horizontal: 20,
@@ -1007,14 +864,9 @@ class MinesweeperScreenState extends State<MinesweeperScreen> {
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(12),
                                 side: BorderSide(
-                                  color:
-                                      Theme.of(
-                                            context,
-                                          ).scaffoldBackgroundColor ==
-                                          const Color(0xFF1C2526)
-                                      ? Colors.orange[900]!.withOpacity(0.6)
-                                      : Theme.of(context).colorScheme.secondary
-                                            .withOpacity(0.6),
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.secondary.withOpacity(0.6),
                                 ),
                               ),
                             ),
@@ -1028,16 +880,9 @@ class MinesweeperScreenState extends State<MinesweeperScreen> {
                                 fontWeight: FontWeight.bold,
                                 shadows: [
                                   Shadow(
-                                    color:
-                                        Theme.of(
-                                              context,
-                                            ).scaffoldBackgroundColor ==
-                                            const Color(0xFF1C2526)
-                                        ? Colors.orange[900]!.withOpacity(0.5)
-                                        : Theme.of(context)
-                                              .colorScheme
-                                              .secondary
-                                              .withOpacity(0.5),
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.secondary.withOpacity(0.5),
                                     blurRadius: 6,
                                     offset: const Offset(0, 2),
                                   ),
@@ -1110,7 +955,6 @@ class MinesweeperScreenState extends State<MinesweeperScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final themeProvider = Provider.of<ThemeProvider>(context);
     return Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(
@@ -1124,12 +968,8 @@ class MinesweeperScreenState extends State<MinesweeperScreen> {
       ),
       child: Stack(
         children: [
-          Positioned.fill(
-            child:
-                Theme.of(context).scaffoldBackgroundColor ==
-                    const Color(0xFF1C2526)
-                ? const SpookyField()
-                : const StarField(opacity: 0.3),
+          const Positioned.fill(
+            child: StarField(opacity: 0.3), // Always galactic background
           ),
           SafeArea(
             child: Column(
@@ -1152,23 +992,16 @@ class MinesweeperScreenState extends State<MinesweeperScreen> {
                       ),
                       Expanded(
                         child: Text(
-                          Theme.of(context).scaffoldBackgroundColor ==
-                                  const Color(0xFF1C2526)
-                              ? 'Haunted Minesweeper'
-                              : 'Galactic Minesweeper',
+                          'Galactic Minesweeper',
                           style: GoogleFonts.orbitron(
                             color: Theme.of(context).textTheme.bodyLarge!.color,
                             fontSize: 24,
                             fontWeight: FontWeight.bold,
                             shadows: [
                               Shadow(
-                                color:
-                                    Theme.of(context).scaffoldBackgroundColor ==
-                                        const Color(0xFF1C2526)
-                                    ? Colors.purple[900]!.withOpacity(0.4)
-                                    : Theme.of(
-                                        context,
-                                      ).primaryColor.withOpacity(0.4),
+                                color: Theme.of(
+                                  context,
+                                ).primaryColor.withOpacity(0.4),
                                 blurRadius: 8,
                                 offset: const Offset(0, 2),
                               ),
@@ -1190,18 +1023,11 @@ class MinesweeperScreenState extends State<MinesweeperScreen> {
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             CircularProgressIndicator(
-                              color:
-                                  Theme.of(context).scaffoldBackgroundColor ==
-                                      const Color(0xFF1C2526)
-                                  ? Colors.orange[900]
-                                  : Theme.of(context).primaryColor,
+                              color: Theme.of(context).primaryColor,
                             ),
                             const SizedBox(height: 16),
                             Text(
-                              Theme.of(context).scaffoldBackgroundColor ==
-                                      const Color(0xFF1C2526)
-                                  ? 'Summoning ghostly mines...'
-                                  : 'Scanning cosmic mines...',
+                              'Scanning cosmic mines...',
                               style: GoogleFonts.orbitron(
                                 color: Theme.of(
                                   context,
@@ -1210,15 +1036,9 @@ class MinesweeperScreenState extends State<MinesweeperScreen> {
                                 fontWeight: FontWeight.w600,
                                 shadows: [
                                   Shadow(
-                                    color:
-                                        Theme.of(
-                                              context,
-                                            ).scaffoldBackgroundColor ==
-                                            const Color(0xFF1C2526)
-                                        ? Colors.purple[900]!.withOpacity(0.3)
-                                        : Theme.of(
-                                            context,
-                                          ).primaryColor.withOpacity(0.3),
+                                    color: Theme.of(
+                                      context,
+                                    ).primaryColor.withOpacity(0.3),
                                     blurRadius: 6,
                                     offset: const Offset(0, 1),
                                   ),
@@ -1260,15 +1080,9 @@ class MinesweeperScreenState extends State<MinesweeperScreen> {
                               borderRadius: BorderRadius.circular(15),
                               boxShadow: [
                                 BoxShadow(
-                                  color:
-                                      Theme.of(
-                                            context,
-                                          ).scaffoldBackgroundColor ==
-                                          const Color(0xFF1C2526)
-                                      ? Colors.purple[900]!.withOpacity(0.3)
-                                      : Theme.of(
-                                          context,
-                                        ).primaryColor.withOpacity(0.3),
+                                  color: Theme.of(
+                                    context,
+                                  ).primaryColor.withOpacity(0.3),
                                   blurRadius: 10,
                                   spreadRadius: 3,
                                 ),
@@ -1299,11 +1113,9 @@ class MinesweeperScreenState extends State<MinesweeperScreen> {
                   child: ElevatedButton(
                     onPressed: () => _sendAction({'action': 'new_game'}),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor:
-                          Theme.of(context).scaffoldBackgroundColor ==
-                              const Color(0xFF1C2526)
-                          ? Colors.purple[900]!.withOpacity(0.4)
-                          : Theme.of(context).primaryColor.withOpacity(0.4),
+                      backgroundColor: Theme.of(
+                        context,
+                      ).primaryColor.withOpacity(0.4),
                       padding: const EdgeInsets.symmetric(
                         vertical: 14,
                         horizontal: 24,
@@ -1311,11 +1123,9 @@ class MinesweeperScreenState extends State<MinesweeperScreen> {
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
                         side: BorderSide(
-                          color:
-                              Theme.of(context).scaffoldBackgroundColor ==
-                                  const Color(0xFF1C2526)
-                              ? Colors.orange[900]!.withOpacity(0.6)
-                              : Theme.of(context).primaryColor.withOpacity(0.6),
+                          color: Theme.of(
+                            context,
+                          ).primaryColor.withOpacity(0.6),
                         ),
                       ),
                       elevation: 10,
@@ -1328,13 +1138,9 @@ class MinesweeperScreenState extends State<MinesweeperScreen> {
                         fontWeight: FontWeight.bold,
                         shadows: [
                           Shadow(
-                            color:
-                                Theme.of(context).scaffoldBackgroundColor ==
-                                    const Color(0xFF1C2526)
-                                ? Colors.orange[900]!.withOpacity(0.5)
-                                : Theme.of(
-                                    context,
-                                  ).primaryColor.withOpacity(0.5),
+                            color: Theme.of(
+                              context,
+                            ).primaryColor.withOpacity(0.5),
                             blurRadius: 8,
                             offset: const Offset(0, 2),
                           ),

@@ -7,8 +7,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter/services.dart';
 import 'package:sensors_plus/sensors_plus.dart';
 import 'dart:io';
-import 'package:brubaker_homeapp/screens/star_field.dart';
-import 'package:brubaker_homeapp/screens/spooky_field.dart';
+import 'package:brubaker_homeapp/screens/star_field.dart'; // Only StarField
 import 'package:provider/provider.dart';
 import 'package:brubaker_homeapp/theme.dart';
 
@@ -40,7 +39,6 @@ class ToadJumperScreenState extends State<ToadJumperScreen>
 
   @override
   Widget build(BuildContext context) {
-    final themeProvider = Provider.of<ThemeProvider>(context);
     return Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(
@@ -54,12 +52,8 @@ class ToadJumperScreenState extends State<ToadJumperScreen>
       ),
       child: Stack(
         children: [
-          Positioned.fill(
-            child:
-                Theme.of(context).scaffoldBackgroundColor ==
-                    const Color(0xFF1C2526)
-                ? const SpookyField()
-                : StarField(opacity: 0.3),
+          const Positioned.fill(
+            child: StarField(opacity: 0.3), // Always galactic background
           ),
           SafeArea(
             child: Column(
@@ -171,12 +165,8 @@ class ToadJumperGameState extends State<ToadJumperGame>
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    final themeProvider = Provider.of<ThemeProvider>(context);
     bottomPadding = 0.0;
-    platformColor =
-        Theme.of(context).scaffoldBackgroundColor == const Color(0xFF1C2526)
-        ? Colors.orange.shade300
-        : Colors.grey.shade300;
+    platformColor = Colors.grey.shade300; // Galactic default
 
     if (toadImage == null && isImageLoading) {
       _loadImage('assets/images/toad.png')
@@ -223,10 +213,7 @@ class ToadJumperGameState extends State<ToadJumperGame>
     _colorAnimation = _colorController.drive(
       Tween<Color>(
         begin: platformColor,
-        end:
-            Theme.of(context).scaffoldBackgroundColor == const Color(0xFF1C2526)
-            ? Colors.deepOrange.shade400
-            : const Color(0xFF00FFD1),
+        end: const Color(0xFF00FFD1), // Galactic cyan glow
       ).chain(CurveTween(curve: Curves.easeInOut)),
     );
     _colorAnimation.addListener(() {
@@ -286,7 +273,6 @@ class ToadJumperGameState extends State<ToadJumperGame>
 
   void resetGame() {
     if (!mounted) return;
-    final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
     setState(() {
       score = 0;
       worldHeight = 0;
@@ -310,20 +296,13 @@ class ToadJumperGameState extends State<ToadJumperGame>
       bgOffset2 = 0;
       bgSpeed1 = 20;
       bgSpeed2 = 30;
-      platformColor =
-          Theme.of(context).scaffoldBackgroundColor == const Color(0xFF1C2526)
-          ? Colors.orange.shade300
-          : Colors.grey.shade300;
+      platformColor = Colors.grey.shade300;
       starOpacity = 0.5;
       _colorController.reset();
       _colorAnimation = _colorController.drive(
         Tween<Color>(
           begin: platformColor,
-          end:
-              Theme.of(context).scaffoldBackgroundColor ==
-                  const Color(0xFF1C2526)
-              ? Colors.deepOrange.shade400
-              : const Color(0xFF00FFD1),
+          end: const Color(0xFF00FFD1),
         ).chain(CurveTween(curve: Curves.easeInOut)),
       );
     });
@@ -477,7 +456,6 @@ class ToadJumperGameState extends State<ToadJumperGame>
   }
 
   void updateBackgroundProgress() {
-    final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
     final level = lastLevel + 1;
     bgSpeed1 += 2;
     bgSpeed2 += 3;
@@ -488,15 +466,12 @@ class ToadJumperGameState extends State<ToadJumperGame>
     _colorAnimation = _colorController.drive(
       Tween<Color>(
         begin: platformColor,
-        end:
-            Theme.of(context).scaffoldBackgroundColor == const Color(0xFF1C2526)
-            ? Colors.deepOrange.shade400
-            : HSVColor.fromAHSV(
-                1.0,
-                (hue + random.nextDouble() * 20 - 10) % 360,
-                0.7,
-                0.5,
-              ).toColor(),
+        end: HSVColor.fromAHSV(
+          1.0,
+          (hue + random.nextDouble() * 20 - 10) % 360,
+          0.7,
+          0.5,
+        ).toColor(),
       ).chain(CurveTween(curve: Curves.easeInOut)),
     );
     _colorAnimation.addListener(() {
@@ -511,7 +486,6 @@ class ToadJumperGameState extends State<ToadJumperGame>
 
   @override
   Widget build(BuildContext context) {
-    final themeProvider = Provider.of<ThemeProvider>(context);
     return LayoutBuilder(
       builder: (BuildContext context, BoxConstraints constraints) {
         if (screenSize == null) {
@@ -562,11 +536,7 @@ class ToadJumperGameState extends State<ToadJumperGame>
                   child: SizedBox(
                     width: screenSize!.width,
                     height: screenSize!.height * 2,
-                    child:
-                        Theme.of(context).scaffoldBackgroundColor ==
-                            const Color(0xFF1C2526)
-                        ? SpookyField()
-                        : StarField(opacity: starOpacity, offset: bgOffset1),
+                    child: StarField(opacity: starOpacity, offset: bgOffset1),
                   ),
                 ),
                 if (!isImageLoading && toadImage != null)
